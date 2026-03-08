@@ -2,6 +2,10 @@ import { useApp } from '@/contexts/AppContext';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 
+import { useApp } from '@/contexts/AppContext';
+import { Link } from 'react-router-dom';
+import { AlertTriangle, Trash2, Plus, ArrowLeftRight } from 'lucide-react';
+
 export default function Estoque() {
   const { produtos, produtosBaixoEstoque, deleteProduto } = useApp();
 
