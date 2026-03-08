@@ -8,16 +8,16 @@ export default function ClienteDetalhe() {
   const navigate = useNavigate();
   const { getCliente, getVeiculosCliente, getLavagensCliente, getTipoLavagem, addVeiculo, deleteVeiculo, veiculos } = useApp();
 
+  const [showForm, setShowForm] = useState(false);
+  const [modelo, setModelo] = useState('');
+  const [placa, setPlaca] = useState('');
+  const [cor, setCor] = useState('');
+
   const cliente = getCliente(id!);
   if (!cliente) return <p className="text-muted-foreground">Cliente não encontrado.</p>;
 
   const veiculosCliente = getVeiculosCliente(id!);
   const lavagensCliente = getLavagensCliente(id!).sort((a, b) => b.data.localeCompare(a.data)).slice(0, 10);
-
-  const [showForm, setShowForm] = useState(false);
-  const [modelo, setModelo] = useState('');
-  const [placa, setPlaca] = useState('');
-  const [cor, setCor] = useState('');
 
   const handleAddVeiculo = (e: React.FormEvent) => {
     e.preventDefault();
