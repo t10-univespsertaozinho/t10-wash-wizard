@@ -1,9 +1,5 @@
 import { useApp } from '@/contexts/AppContext';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, Pencil, Trash2 } from 'lucide-react';
-
-import { useApp } from '@/contexts/AppContext';
-import { Link } from 'react-router-dom';
 import { AlertTriangle, Trash2, Plus, ArrowLeftRight } from 'lucide-react';
 
 export default function Estoque() {
@@ -17,6 +13,15 @@ export default function Estoque() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-end gap-2">
+        <Link to="/movimentacao" className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
+          <ArrowLeftRight size={14} /> Movimentação
+        </Link>
+        <Link to="/novo-produto" className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all">
+          <Plus size={14} /> Novo Produto
+        </Link>
+      </div>
+
       {produtosBaixoEstoque.length > 0 && (
         <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3 animate-fade-up">
           <AlertTriangle size={20} className="text-primary flex-shrink-0" />
