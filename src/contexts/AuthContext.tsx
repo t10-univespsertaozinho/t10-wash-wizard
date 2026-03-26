@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { nome: string } | null;
+  user: { id: string; nome: string; role: 'admin' | 'user' } | null;
   login: (usuario: string, senha: string) => boolean;
   logout: () => void;
 }
@@ -14,21 +14,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return localStorage.getItem('t10_auth') === 'true';
   });
 
-  const user = isAuthenticated ? { nome: 'Admin' } : null;
-
+  const [userState, setUserState] = useState<{ id: string; nome: string; role: 'admin' | 'user' } | null>(() => {
+    const saved = localStorage.getItem('t10_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+ 
+  const user = isAuthenticated ? userState : null;
+ 
   useEffect(() => {
     localStorage.setItem('t10_auth', String(isAuthenticated));
-  }, [isAuthenticated]);
-
+    if (userState) localStorage.setItem('t10_user', JSON.stringify(userState));
+    else localStorage.removeItem('t10_user');
+  }, [isAuthenticated, userState]);
+ 
   const login = (usuario: string, senha: string) => {
     if (usuario === 'admin' && senha === 'admin') {
       setIsAuthenticated(true);
+      setUserState({ id: 'admin-1', nome: 'Administrador', role: 'admin' });
+      return true;
+    }
+    if (usuario === 'user' && senha === 'user') {
+      setIsAuthenticated(true);
+      setUserState({ id: 'user-1', nome: 'Usuário Teste', role: 'user' });
       return true;
     }
     return false;
   };
-
-  const logout = () => setIsAuthenticated(false);
+ 
+  const logout = () => {
+    setIsAuthenticated(false);
+    setUserState(null);
+  };
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>

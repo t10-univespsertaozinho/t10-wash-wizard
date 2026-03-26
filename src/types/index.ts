@@ -2,6 +2,7 @@ export interface Cliente {
   id: string;
   nome: string;
   telefone: string;
+  user_id: string;
   created_at: string;
 }
 
@@ -11,6 +12,7 @@ export interface Veiculo {
   modelo: string;
   placa: string;
   cor: string;
+  user_id: string;
 }
 
 export interface TipoLavagem {
@@ -29,6 +31,7 @@ export interface Lavagem {
   pagamento: string;
   valor: number;
   observacao: string;
+  user_id: string;
   data: string;
   data_conclusao: string | null;
 }
@@ -41,6 +44,7 @@ export interface Produto {
   estoque_minimo: number;
   unidade: string;
   preco_unitario: number;
+  user_id: string;
 }
 
 export interface MovimentacaoEstoque {
@@ -49,5 +53,6 @@ export interface MovimentacaoEstoque {
   tipo: 'entrada' | 'saida';
   quantidade: number;
   observacao: string;
+  user_id: string;
   data: string;
 }

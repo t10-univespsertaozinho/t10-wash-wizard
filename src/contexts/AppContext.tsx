@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque } from '@/types';
+import { useAuth } from './AuthContext';
 
 const genId = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -33,6 +34,7 @@ interface AppContextType extends AppState {
   getTipoLavagem: (id: string) => TipoLavagem | undefined;
   getProduto: (id: string) => Produto | undefined;
   produtosBaixoEstoque: Produto[];
+  seedTestData: () => void;
 }
 
 const defaultTipos: TipoLavagem[] = [
@@ -62,6 +64,7 @@ function loadState(): AppState {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [state, setState] = useState<AppState>(loadState);
 
   useEffect(() => {
@@ -70,8 +73,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const update = useCallback((fn: (s: AppState) => AppState) => setState(prev => fn(prev)), []);
 
-  const addCliente = (c: Omit<Cliente, 'id' | 'created_at'>) => {
-    const novo: Cliente = { ...c, id: genId(), created_at: now() };
+  const addCliente = (c: Omit<Cliente, 'id' | 'created_at' | 'user_id'>) => {
+    if (!user) throw new Error('Auth required');
+    const novo: Cliente = { ...c, id: genId(), user_id: user.id, created_at: now() };
     update(s => ({ ...s, clientes: [...s.clientes, novo] }));
     return novo;
   };
@@ -84,8 +88,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     veiculos: s.veiculos.filter(x => x.cliente_id !== id),
     lavagens: s.lavagens.filter(x => x.cliente_id !== id),
   }));
-  const addVeiculo = (v: Omit<Veiculo, 'id'>) => {
-    const novo: Veiculo = { ...v, id: genId() };
+  const addVeiculo = (v: Omit<Veiculo, 'id' | 'user_id'>) => {
+    if (!user) throw new Error('Auth required');
+    const novo: Veiculo = { ...v, id: genId(), user_id: user.id };
     update(s => ({ ...s, veiculos: [...s.veiculos, novo] }));
     return novo;
   };
@@ -98,17 +103,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const deleteTipoLavagem = (id: string) => update(s => ({
     ...s, tiposLavagem: s.tiposLavagem.filter(x => x.id !== id)
   }));
-  const addLavagem = (l: Omit<Lavagem, 'id' | 'data' | 'data_conclusao'>) => update(s => ({
-    ...s, lavagens: [...s.lavagens, { ...l, id: genId(), data: now(), data_conclusao: null }]
-  }));
+  const addLavagem = (l: Omit<Lavagem, 'id' | 'data' | 'data_conclusao' | 'user_id'>) => {
+    if (!user) throw new Error('Auth required');
+    update(s => ({ ...s, lavagens: [...s.lavagens, { ...l, id: genId(), user_id: user.id, data: now(), data_conclusao: null }] }));
+  };
   const updateLavagemStatus = (id: string, status: Lavagem['status']) => update(s => ({
     ...s, lavagens: s.lavagens.map(x => x.id === id ? {
       ...x, status, data_conclusao: status === 'concluida' ? now() : x.data_conclusao
     } : x)
   }));
-  const addProduto = (p: Omit<Produto, 'id'>) => update(s => ({
-    ...s, produtos: [...s.produtos, { ...p, id: genId() }]
-  }));
+  const addProduto = (p: Omit<Produto, 'id' | 'user_id'>) => {
+    if (!user) throw new Error('Auth required');
+    update(s => ({ ...s, produtos: [...s.produtos, { ...p, id: genId(), user_id: user.id }] }));
+  };
   const updateProduto = (id: string, p: Partial<Produto>) => update(s => ({
     ...s, produtos: s.produtos.map(x => x.id === id ? { ...x, ...p } : x)
   }));
@@ -136,14 +143,89 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const getTipoLavagem = (id: string) => state.tiposLavagem.find(t => t.id === id);
   const getProduto = (id: string) => state.produtos.find(p => p.id === id);
   const produtosBaixoEstoque = state.produtos.filter(p => p.quantidade <= p.estoque_minimo);
+  
+  const seedTestData = () => {
+    if (!user) return;
+    const c1Id = genId();
+    const c2Id = genId();
+    
+    const novosClientes: Cliente[] = [
+      { id: c1Id, nome: 'João Silva', telefone: '(11) 98888-7777', user_id: user.id, created_at: now() },
+      { id: c2Id, nome: 'Maria Oliveira', telefone: '(11) 97777-6666', user_id: user.id, created_at: now() },
+    ];
+
+    const novosVeiculos: Veiculo[] = [
+      { id: genId(), cliente_id: c1Id, modelo: 'Toyota Corolla', placa: 'ABC-1234', cor: 'Prata', user_id: user.id },
+      { id: genId(), cliente_id: c2Id, modelo: 'Honda Civic', placa: 'XYZ-9876', cor: 'Preto', user_id: user.id },
+    ];
+
+    const novosProdutos: Produto[] = [
+      { id: genId(), nome: 'Shampoo Automotivo', categoria: 'Limpeza', quantidade: 15, unidade: 'L', estoque_minimo: 5, preco_unitario: 12, user_id: user.id },
+      { id: genId(), nome: 'Cera de Polimento', categoria: 'Polimento', quantidade: 3, unidade: 'un', estoque_minimo: 5, preco_unitario: 25, user_id: user.id },
+    ];
+
+    const tipos = state.tiposLavagem;
+    const novasLavagens: Lavagem[] = [
+      { 
+        id: genId(), 
+        cliente_id: c1Id, 
+        veiculo_id: novosVeiculos[0].id, 
+        tipo_lavagem_id: tipos[0].id, 
+        valor: tipos[0].preco, 
+        status: 'concluida', 
+        pagamento: 'Dinheiro',
+        observacao: 'Lavagem padrão',
+        user_id: user.id,
+        data: new Date(Date.now() - 86400000 * 2).toISOString(), 
+        data_conclusao: new Date(Date.now() - 86400000 * 2 + 3600000).toISOString() 
+      },
+      { 
+        id: genId(), 
+        cliente_id: c2Id, 
+        veiculo_id: novosVeiculos[1].id, 
+        tipo_lavagem_id: tipos[1].id, 
+        valor: tipos[1].preco, 
+        status: 'pendente', 
+        pagamento: 'Pendente',
+        observacao: '',
+        user_id: user.id,
+        data: now(), 
+        data_conclusao: null 
+      },
+    ];
+
+    setState({
+      clientes: [...state.clientes, ...novosClientes],
+      veiculos: [...state.veiculos, ...novosVeiculos],
+      tiposLavagem: state.tiposLavagem,
+      produtos: [...state.produtos, ...novosProdutos],
+      lavagens: [...state.lavagens, ...novasLavagens],
+      movimentacoes: [],
+    });
+  };
+
+  const filteredState = useMemo(() => {
+    if (!user) return state;
+    if (user.role === 'admin') return state;
+    
+    return {
+      ...state,
+      clientes: state.clientes.filter(c => c.user_id === user.id),
+      veiculos: state.veiculos.filter(v => v.user_id === user.id),
+      lavagens: state.lavagens.filter(l => l.user_id === user.id),
+      produtos: state.produtos.filter(p => p.user_id === user.id),
+      movimentacoes: state.movimentacoes.filter(m => m.user_id === user.id),
+    };
+  }, [state, user]);
 
   return (
     <AppContext.Provider value={{
-      ...state, addCliente, updateCliente, deleteCliente,
+      ...filteredState, addCliente, updateCliente, deleteCliente,
       addVeiculo, deleteVeiculo, addTipoLavagem, deleteTipoLavagem,
       addLavagem, updateLavagemStatus, addProduto, updateProduto,
       deleteProduto, addMovimentacao, getCliente, getVeiculosCliente,
       getLavagensCliente, getTipoLavagem, getProduto, produtosBaixoEstoque,
+      seedTestData,
     }}>
       {children}
     </AppContext.Provider>
