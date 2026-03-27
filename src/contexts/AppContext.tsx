@@ -148,24 +148,107 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (!user) return;
     const c1Id = genId();
     const c2Id = genId();
+    const c3Id = genId();
+    const c4Id = genId();
     
     const novosClientes: Cliente[] = [
       { id: c1Id, nome: 'João Silva', telefone: '(11) 98888-7777', user_id: user.id, created_at: now() },
       { id: c2Id, nome: 'Maria Oliveira', telefone: '(11) 97777-6666', user_id: user.id, created_at: now() },
+      { id: c3Id, nome: 'Carlos Santos', telefone: '(11) 96666-5555', user_id: user.id, created_at: now() },
+      { id: c4Id, nome: 'Ana Paula', telefone: '(11) 95555-4444', user_id: user.id, created_at: now() },
     ];
 
     const novosVeiculos: Veiculo[] = [
       { id: genId(), cliente_id: c1Id, modelo: 'Toyota Corolla', placa: 'ABC-1234', cor: 'Prata', user_id: user.id },
       { id: genId(), cliente_id: c2Id, modelo: 'Honda Civic', placa: 'XYZ-9876', cor: 'Preto', user_id: user.id },
+      { id: genId(), cliente_id: c3Id, modelo: 'Volkswagen Gol', placa: 'DEF-5678', cor: 'Branco', user_id: user.id },
+      { id: genId(), cliente_id: c4Id, modelo: 'Ford Ka', placa: 'GHI-9012', cor: 'Vermelho', user_id: user.id },
     ];
 
+    const p1Id = genId();
+    const p2Id = genId();
+    const p3Id = genId();
+
     const novosProdutos: Produto[] = [
-      { id: genId(), nome: 'Shampoo Automotivo', categoria: 'Limpeza', quantidade: 15, unidade: 'L', estoque_minimo: 5, preco_unitario: 12, user_id: user.id },
-      { id: genId(), nome: 'Cera de Polimento', categoria: 'Polimento', quantidade: 3, unidade: 'un', estoque_minimo: 5, preco_unitario: 25, user_id: user.id },
+      { id: p1Id, nome: 'Shampoo Automotivo', categoria: 'Limpeza', quantidade: 25, unidade: 'L', estoque_minimo: 10, preco_unitario: 12, user_id: user.id },
+      { id: p2Id, nome: 'Cera de Polimento', categoria: 'Polimento', quantidade: 8, unidade: 'un', estoque_minimo: 5, preco_unitario: 25, user_id: user.id },
+      { id: p3Id, nome: 'Limpa Vidros', categoria: 'Limpeza', quantidade: 15, unidade: 'L', estoque_minimo: 8, preco_unitario: 8, user_id: user.id },
     ];
 
     const tipos = state.tiposLavagem;
-    const novasLavagens: Lavagem[] = [
+    const dayMs = 86400000;
+    const hourMs = 3600000;
+
+    const novasLavagens: Lavagem[] = [];
+    const novasMovimentacoes: MovimentacaoEstoque[] = [];
+
+    for (let m = 5; m >= 0; m--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - m);
+      const monthKey = d.toISOString().slice(0, 7);
+      const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      
+      const lavagensNoMes = Math.floor(Math.random() * 20) + 15;
+      for (let i = 0; i < lavagensNoMes; i++) {
+        const day = Math.floor(Math.random() * daysInMonth) + 1;
+        const dataLavagem = new Date(d.getFullYear(), d.getMonth(), day, 10, Math.floor(Math.random() * 60));
+        const status = Math.random() > 0.15 ? 'concluida' : (Math.random() > 0.5 ? 'pendente' : 'em_andamento');
+        
+        const clienteIdx = Math.floor(Math.random() * novosVeiculos.length);
+        const tipoIdx = Math.floor(Math.random() * tipos.length);
+        
+        novasLavagens.push({
+          id: genId(),
+          cliente_id: novosClientes[clienteIdx].id,
+          veiculo_id: novosVeiculos[clienteIdx].id,
+          tipo_lavagem_id: tipos[tipoIdx].id,
+          valor: tipos[tipoIdx].preco,
+          status,
+          pagamento: 'Dinheiro',
+          observacao: '',
+          user_id: user.id,
+          data: dataLavagem.toISOString(),
+          data_conclusao: status === 'concluida' ? new Date(dataLavagem.getTime() + hourMs).toISOString() : null,
+        });
+      }
+
+      const entradaQtd = Math.floor(Math.random() * 30) + 20;
+      const saidaQtd = Math.floor(Math.random() * 15) + 10;
+      
+      novasMovimentacoes.push({
+        id: genId(),
+        produto_id: p1Id,
+        tipo: 'entrada',
+        quantidade: entradaQtd,
+        observacao: 'Reposição mensal',
+        user_id: user.id,
+        data: new Date(d.getFullYear(), d.getMonth(), 15).toISOString(),
+      });
+      
+      novasMovimentacoes.push({
+        id: genId(),
+        produto_id: p1Id,
+        tipo: 'saida',
+        quantidade: saidaQtd,
+        observacao: 'Consumo lavagens',
+        user_id: user.id,
+        data: new Date(d.getFullYear(), d.getMonth(), 28).toISOString(),
+      });
+
+      if (m % 2 === 0) {
+        novasMovimentacoes.push({
+          id: genId(),
+          produto_id: p2Id,
+          tipo: 'entrada',
+          quantidade: Math.floor(Math.random() * 10) + 5,
+          observacao: 'Reposição',
+          user_id: user.id,
+          data: new Date(d.getFullYear(), d.getMonth(), 10).toISOString(),
+        });
+      }
+    }
+
+    novasLavagens.push(
       { 
         id: genId(), 
         cliente_id: c1Id, 
@@ -176,8 +259,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         pagamento: 'Dinheiro',
         observacao: 'Lavagem padrão',
         user_id: user.id,
-        data: new Date(Date.now() - 86400000 * 2).toISOString(), 
-        data_conclusao: new Date(Date.now() - 86400000 * 2 + 3600000).toISOString() 
+        data: new Date(Date.now() - dayMs * 2).toISOString(), 
+        data_conclusao: new Date(Date.now() - dayMs * 2 + hourMs).toISOString() 
       },
       { 
         id: genId(), 
@@ -191,8 +274,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         user_id: user.id,
         data: now(), 
         data_conclusao: null 
-      },
-    ];
+      }
+    );
 
     setState({
       clientes: [...state.clientes, ...novosClientes],
@@ -200,7 +283,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       tiposLavagem: state.tiposLavagem,
       produtos: [...state.produtos, ...novosProdutos],
       lavagens: [...state.lavagens, ...novasLavagens],
-      movimentacoes: [],
+      movimentacoes: [...state.movimentacoes, ...novasMovimentacoes],
     });
   };
 

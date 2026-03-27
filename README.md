@@ -1,54 +1,83 @@
-# Welcome to your Lovable project
+# Wash Wizard
 
-## Project info
+Wash Wizard is a management system for car wash businesses, featuring client management, wash tracking, inventory control, and financial reporting.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## Project Info
 
-## How can I edit this code?
+**Project Name**: Wash Wizard  
+**Type**: Web Application (SPA)
 
-There are several ways of editing your application.
+## How to Run
 
-**Use Lovable**
+```bash
+# Install dependencies
+npm install
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Start development server
 npm run dev
+
+# Build for production
+npm run build
 ```
 
-**Edit a file directly in GitHub**
+## Tech Stack
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **Frontend**: React 18 + TypeScript + Vite
+- **UI Framework**: shadcn-ui + Tailwind CSS
+- **Charts**: Recharts
+- **Routing**: React Router DOM
+- **Forms**: React Hook Form + Zod
+- **Data Persistence**: LocalStorage
 
-**Use GitHub Codespaces**
+## Features
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Dashboard
+- Daily stats (washes, revenue, clients, monthly washes)
+- Pending washes and recent clients
+- 7-day revenue and wash charts
+- Low stock alerts
+- Monthly stats (revenue, completed, by type)
+- 6-month evolution charts
+
+### Client Management
+- Complete client registration
+- Wash history per client
+- Vehicle management per client
+
+### Wash Tracking
+- New wash registration
+- Service type, vehicle, and client selection
+- Status tracking (pending/completed)
+- Filterable listing
+
+### Service Types (Admin)
+- Service type configuration
+- Price definition per type
+
+### Inventory (Admin)
+- Chemical and supplies management
+- Quantity and unit tracking
+- Automatic low stock alerts
+- Stock movement tracking (in/out)
+
+### Authentication
+- Login with username and password
+- Roles: admin and employee
+- Protected routes by access level
+
+## Authentication
+
+The application uses environment variables for authentication. Copy `.env.example` to `.env` and configure your credentials:
+
+```bash
+# Default credentials (development only - change for production)
+VITE_ADMIN_USER=admin
+VITE_ADMIN_PASSWORD=admin
+VITE_USER_USER=user
+VITE_USER_PASSWORD=user
+```
+
+**Important**: For production use, change the default credentials in your `.env` file.
 
 ## What technologies are used for this project?
 
@@ -59,15 +88,40 @@ This project is built with:
 - React
 - shadcn-ui
 - Tailwind CSS
+- Recharts
+- React Router DOM
+- React Hook Form
+- Zod
 
-## How can I deploy this project?
+## Current Limitations
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+This version uses **LocalStorage** for data persistence, which means:
 
-## Can I connect a custom domain to my Lovable project?
+- Data is stored in the browser only
+- No multi-user support (all data is local to each browser)
+- No real-time synchronization between devices
+- Data is lost when browser cache is cleared
+- Not suitable for production use with multiple employees
 
-Yes, you can!
+## Future: MySQL Integration
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+For production use, this project is designed to be integrated with a MySQL database. The planned changes include:
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+1. **Backend API**: REST API with Node.js/Express
+2. **Database**: MySQL with the following tables:
+   - `users` - System users (admin/employees)
+   - `clients` - Client information
+   - `vehicles` - Client vehicles
+   - `wash_types` - Service types and prices
+   - `washes` - Wash records
+   - `products` - Inventory items
+   - `stock_movements` - Inventory tracking
+
+3. **Authentication**: JWT-based authentication
+4. **Security**: Password hashing, input validation, SQL injection prevention
+
+## How to Configure
+
+1. Copy `.env.example` to `.env`
+2. Configure your credentials
+3. For development, the default credentials are: admin/admin

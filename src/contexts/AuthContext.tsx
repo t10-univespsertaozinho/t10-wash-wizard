@@ -28,14 +28,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [isAuthenticated, userState]);
  
   const login = (usuario: string, senha: string) => {
-    if (usuario === 'admin' && senha === 'admin') {
+    const adminUser = import.meta.env.VITE_ADMIN_USER || 'admin';
+    const adminPass = import.meta.env.VITE_ADMIN_PASSWORD || 'admin';
+    const userUser = import.meta.env.VITE_USER_USER || 'user';
+    const userPass = import.meta.env.VITE_USER_PASSWORD || 'user';
+
+    if (usuario === adminUser && senha === adminPass) {
       setIsAuthenticated(true);
       setUserState({ id: 'admin-1', nome: 'Administrador', role: 'admin' });
       return true;
     }
-    if (usuario === 'user' && senha === 'user') {
+    if (usuario === userUser && senha === userPass) {
       setIsAuthenticated(true);
-      setUserState({ id: 'user-1', nome: 'Usuário Teste', role: 'user' });
+      setUserState({ id: 'user-1', nome: 'Usuário', role: 'user' });
       return true;
     }
     return false;
