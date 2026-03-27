@@ -1,22 +1,30 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User } from 'lucide-react';
+import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User, TrendingUp, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend } from 'recharts';
+
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { lavagens, clientes, produtos, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData } = useApp();
+  const { lavagens, clientes, produtos, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData, tiposLavagem } = useApp();
 
   const hoje = new Date().toISOString().slice(0, 10);
   const mesAtual = new Date().toISOString().slice(0, 7);
 
   const lavagensHoje = lavagens.filter(l => l.data.slice(0, 10) === hoje);
   const lavagensMes = lavagens.filter(l => l.data.slice(0, 7) === mesAtual);
+  const clientesHoje = [...new Set(lavagensHoje.map(l => l.cliente_id))].length;
   const receitaHoje = lavagensHoje.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0);
+  const receitaMes = lavagensMes.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0);
   const pendentes = lavagens.filter(l => l.status === 'pendente');
+  const concluidasMes = lavagensMes.filter(l => l.status === 'concluida');
+  const lavagensPorTipoMes = tiposLavagem.map(t => ({
+    nome: t.nome,
+    quantidade: lavagensMes.filter(l => l.tipo_lavagem_id === t.id).length,
+  }));
 
-  // Last 7 days chart data
   const last7 = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
@@ -29,14 +37,46 @@ export default function Dashboard() {
     };
   });
 
+  const last6Months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - i));
+    const key = d.toISOString().slice(0, 7);
+    const monthLavagens = lavagens.filter(l => l.data.slice(0, 7) === key);
+    return {
+      mes: MONTHS[d.getMonth()],
+      lavagens: monthLavagens.length,
+      receita: monthLavagens.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0),
+    };
+  });
+
+  const lavagensPorTipo = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - (5 - i));
+    const key = d.toISOString().slice(0, 7);
+    const monthLavagens = lavagens.filter(l => l.data.slice(0, 7) === key);
+    
+    const data: Record<string, number | string> = { mes: MONTHS[d.getMonth()] };
+    tiposLavagem.forEach(t => {
+      data[t.nome] = monthLavagens.filter(l => l.tipo_lavagem_id === t.id).length;
+    });
+    return data;
+  });
+
   const recentClientes = [...clientes].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5);
 
-  const stats = [
+  const statsHoje = [
     { label: 'Lavagens Hoje', value: lavagensHoje.length, icon: Droplets, border: 'border-primary' },
-    { label: 'Lavagens no Mês', value: lavagensMes.length, icon: Calendar, border: 'border-accent' },
     { label: 'Receita Hoje', value: `R$ ${receitaHoje.toFixed(2)}`, icon: DollarSign, border: 'border-success' },
-    { label: 'Total Clientes', value: clientes.length, icon: Users, border: 'border-purple-500' },
+    { label: 'Clientes Hoje', value: clientesHoje, icon: Users, border: 'border-purple-500' },
+    { label: 'Lavagens no Mês', value: lavagensMes.length, icon: Calendar, border: 'border-accent' },
   ];
+
+  const statsMes = [
+    { label: 'Receita do Mês', value: `R$ ${receitaMes.toFixed(2)}`, icon: TrendingUp, border: 'border-success' },
+    { label: 'Concluídas no Mês', value: concluidasMes.length, icon: Check, border: 'border-accent' },
+  ];
+
+  const colors = ['hsl(49,100%,50%)', 'hsl(212,80%,42%)', 'hsl(142,70%,45%)', 'hsl(280,60%,50%)', 'hsl(340,80%,50%)', 'hsl(180,70%,50%)'];
 
   return (
     <div className="space-y-6">
@@ -65,9 +105,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stats */}
+      {/* 1. Stats Rápidas - Hoje */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((s, i) => (
+        {statsHoje.map((s, i) => (
           <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
             <div className="flex items-center justify-between">
               <div>
@@ -80,49 +120,9 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Chart + Low Stock */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '320ms' }}>
-          <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Últimos 7 dias</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={last7}>
-                <XAxis dataKey="dia" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, color: '#fff', fontSize: 12 }} />
-                <Bar yAxisId="left" dataKey="receita" fill="hsl(49,100%,50%)" radius={[4, 4, 0, 0]} name="Receita (R$)" />
-                <Line yAxisId="right" type="monotone" dataKey="lavagens" stroke="hsl(212,80%,42%)" strokeWidth={2} dot={{ fill: 'hsl(212,80%,42%)' }} name="Lavagens" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={16} className="text-primary" />
-            <h2 className="font-barlow-condensed font-bold text-foreground">Estoque Baixo</h2>
-          </div>
-          {produtosBaixoEstoque.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todos os produtos estão OK.</p>
-          ) : (
-            <div className="space-y-2">
-              {produtosBaixoEstoque.map(p => (
-                <div key={p.id} className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">{p.nome}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${p.quantidade === 0 ? 'badge-zerado' : 'badge-baixo'}`}>
-                    {p.quantidade} {p.unidade}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Pending + Recent Clients */}
+      {/* Pendentes + Clientes */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '480ms' }}>
+        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '240ms' }}>
           <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens Pendentes</h2>
           {pendentes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma lavagem pendente.</p>
@@ -155,18 +155,18 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '560ms' }}>
+        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '320ms' }}>
           <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Clientes Recentes</h2>
           {recentClientes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado.</p>
           ) : (
             <div className="space-y-2">
               {recentClientes.map(c => {
-                const colors = ['bg-primary/20 text-primary', 'bg-accent/20 text-accent', 'bg-success/20 text-success', 'bg-purple-500/20 text-purple-400', 'bg-destructive/20 text-destructive'];
-                const ci = c.nome.charCodeAt(0) % colors.length;
+                const avatarColors = ['bg-primary/20 text-primary', 'bg-accent/20 text-accent', 'bg-success/20 text-success', 'bg-purple-500/20 text-purple-400', 'bg-destructive/20 text-destructive'];
+                const ci = c.nome.charCodeAt(0) % avatarColors.length;
                 return (
                   <Link key={c.id} to={`/clientes/${c.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/40 transition-colors">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${colors[ci]}`}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${avatarColors[ci]}`}>
                       {c.nome[0]?.toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -181,6 +181,118 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* 2. Gráficos Últimos 7 dias + Estoque Baixo */}
+      <div className="grid lg:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
+          <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Últimos 7 dias</h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={last7}>
+                <XAxis dataKey="dia" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="left" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, color: '#fff', fontSize: 12 }} />
+                <Bar yAxisId="left" dataKey="receita" fill="hsl(49,100%,50%)" radius={[4, 4, 0, 0]} name="Receita (R$)" />
+                <Line yAxisId="right" type="monotone" dataKey="lavagens" stroke="hsl(212,80%,42%)" strokeWidth={2} dot={{ fill: 'hsl(212,80%,42%)' }} name="Lavagens" />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '480ms' }}>
+          <div className="flex items-center gap-2 mb-4">
+            <AlertTriangle size={16} className="text-primary" />
+            <h2 className="font-barlow-condensed font-bold text-foreground">Estoque Baixo</h2>
+          </div>
+          {produtosBaixoEstoque.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Todos os produtos estão OK.</p>
+          ) : (
+            <div className="space-y-2">
+              {produtosBaixoEstoque.map(p => (
+                <div key={p.id} className="flex items-center justify-between text-sm">
+                  <span className="text-foreground">{p.nome}</span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${p.quantidade === 0 ? 'badge-zerado' : 'badge-baixo'}`}>
+                    {p.quantidade} {p.unidade}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Stats do Mês + Lavagens por Tipo */}
+      {user?.role === 'admin' && (
+        <>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {statsMes.map((s, i) => (
+              <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{s.label}</p>
+                    <p className="text-2xl font-barlow-condensed font-bold text-foreground mt-1">{s.value}</p>
+                  </div>
+                  <s.icon className="text-muted-foreground" size={22} />
+                </div>
+              </div>
+            ))}
+            <div className="bg-card rounded-xl border-l-4 border-purple-500 p-4 animate-fade-up" style={{ animationDelay: '160ms' }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total por Tipo (Mês)</p>
+                  <div className="mt-1 space-y-1">
+                    {lavagensPorTipoMes.map((t, i) => (
+                      <p key={t.nome} className="text-sm font-barlow-condensed font-bold text-foreground">
+                        {t.nome}: <span className="text-purple-400">{t.quantidade}</span>
+                      </p>
+                    ))}
+                  </div>
+                </div>
+                <Package className="text-muted-foreground" size={22} />
+              </div>
+            </div>
+          </div>
+
+          {/* 4. Gráficos 6 meses */}
+          <div className="grid lg:grid-cols-2 gap-4">
+            <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '320ms' }}>
+              <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens e Receita - Últimos 6 meses</h2>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={last6Months}>
+                    <XAxis dataKey="mes" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="left" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, color: '#fff', fontSize: 12 }} />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="lavagens" fill="hsl(212,80%,42%)" radius={[4, 4, 0, 0]} name="Lavagens" />
+                    <Line yAxisId="right" type="monotone" dataKey="receita" stroke="hsl(49,100%,50%)" strokeWidth={2} dot={{ fill: 'hsl(49,100%,50%)' }} name="Receita (R$)" />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
+              <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens por Tipo - Últimos 6 meses</h2>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={lavagensPorTipo}>
+                    <XAxis dataKey="mes" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, color: '#fff', fontSize: 12 }} />
+                    <Legend />
+                    {tiposLavagem.map((t, i) => (
+                      <Bar key={t.id} dataKey={t.nome} stackId="a" fill={colors[i % colors.length]} radius={[2, 2, 0, 0]} />
+                    ))}
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
     </div>
   );
 }
