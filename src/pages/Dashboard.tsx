@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
 
 export default function Dashboard() {
-  const { user, login } = useAuth();
+  const { user } = useAuth();
   const { lavagens, clientes, produtos, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData } = useApp();
 
   const hoje = new Date().toISOString().slice(0, 10);
@@ -50,26 +50,18 @@ export default function Dashboard() {
         </div>
         
         <div className="flex items-center gap-2">
-          <button 
-            onClick={() => {
-              const target = user?.role === 'admin' ? 'user' : 'admin';
-              login(target, target);
-            }}
-            className="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-border"
-          >
-            Trocar para {user?.role === 'admin' ? 'Usuário' : 'Admin'}
-          </button>
-          
-          <button 
-            onClick={() => {
-              if (confirm('Deseja carregar dados de teste? Isso irá substituir os dados atuais.')) {
-                seedTestData();
-              }
-            }}
-            className="bg-accent/10 text-accent hover:bg-accent/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
-          >
-            <Droplets size={16} /> Carregar Dados
-          </button>
+          {user?.role === 'admin' && (
+            <button 
+              onClick={() => {
+                if (confirm('Deseja carregar dados de teste? Isso irá substituir os dados atuais.')) {
+                  seedTestData();
+                }
+              }}
+              className="bg-accent/10 text-accent hover:bg-accent/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
+            >
+              <Droplets size={16} /> Carregar Dados
+            </button>
+          )}
         </div>
       </div>
 
