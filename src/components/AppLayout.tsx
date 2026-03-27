@@ -6,7 +6,7 @@ import {
   Package, ArrowLeftRight, LogOut, Menu, X, Plus
 } from 'lucide-react';
 
-const navItems = [
+const navItemsAdmin = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/nova-lavagem', label: 'Nova Lavagem', icon: Plus },
   { to: '/lavagens', label: 'Lavagens', icon: Droplets },
@@ -15,6 +15,14 @@ const navItems = [
   { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
   { to: '/estoque', label: 'Estoque', icon: Package },
   { to: '/movimentacao', label: 'Movimentação', icon: ArrowLeftRight },
+];
+
+const navItemsUser = [
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/nova-lavagem', label: 'Nova Lavagem', icon: Plus },
+  { to: '/lavagens', label: 'Lavagens', icon: Droplets },
+  { to: '/clientes', label: 'Clientes', icon: Users },
+  { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
 ];
 
 const pageTitle: Record<string, string> = {
@@ -37,6 +45,7 @@ export default function AppLayout() {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
+  const navItems = user?.role === 'admin' ? navItemsAdmin : navItemsUser;
   const title = pageTitle[location.pathname] || 'T10 Gestão';
 
   return (

@@ -1,10 +1,12 @@
 import { useApp } from '@/contexts/AppContext';
-import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
 
 export default function Dashboard() {
-  const { lavagens, clientes, produtos, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos } = useApp();
+  const { user } = useAuth();
+  const { lavagens, clientes, produtos, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData } = useApp();
 
   const hoje = new Date().toISOString().slice(0, 10);
   const mesAtual = new Date().toISOString().slice(0, 7);
@@ -38,6 +40,31 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-barlow-condensed font-bold text-2xl text-foreground">Dashboard</h1>
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            {user?.role === 'admin' ? <Shield size={14} className="text-accent" /> : <User size={14} />}
+            Perfil: <span className="font-semibold text-foreground capitalize">{user?.role}</span> ({user?.nome})
+          </p>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {user?.role === 'admin' && (
+            <button 
+              onClick={() => {
+                if (confirm('Deseja carregar dados de teste? Isso irá substituir os dados atuais.')) {
+                  seedTestData();
+                }
+              }}
+              className="bg-accent/10 text-accent hover:bg-accent/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
+            >
+              <Droplets size={16} /> Carregar Dados
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((s, i) => (
