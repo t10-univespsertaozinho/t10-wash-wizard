@@ -31,5 +31,13 @@ dist-ssr
 *.sqlite
 *.sql
 
-# Environment variables template (copy to .env and fill)
-.env.example
+# Firebase (não versionar credenciais)
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*.runtimeconfig.json
+
+# Dados sensíveis (produção)
+data/
+storage/
+*.json (exceto package.json e configs públicas)

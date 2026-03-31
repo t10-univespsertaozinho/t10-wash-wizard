@@ -5,18 +5,25 @@ import { useNavigate } from 'react-router-dom';
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [usuario, setUsuario] = useState('');
+  const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(usuario, senha)) {
+    setLoading(true);
+    setErro('');
+    
+    const sucesso = await login(email, senha);
+    
+    if (sucesso) {
       navigate('/');
     } else {
-      setErro('Usuário ou senha inválidos');
+      setErro('Email ou senha inválidos');
       setTimeout(() => setErro(''), 4000);
     }
+    setLoading(false);
   };
 
   return (
@@ -33,15 +40,33 @@ export default function Login() {
             <div className="badge-cancelada text-sm rounded-lg px-4 py-2 text-center">{erro}</div>
           )}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Usuário</label>
-            <input className="input-t10" value={usuario} onChange={e => setUsuario(e.target.value)} placeholder="admin" />
+            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Email</label>
+            <input 
+              className="input-t10" 
+              value={email} 
+              onChange={e => setEmail(e.target.value)} 
+              placeholder="admin@washwizard.com" 
+              type="email"
+              required
+            />
           </div>
           <div>
             <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Senha</label>
-            <input className="input-t10" type="password" value={senha} onChange={e => setSenha(e.target.value)} placeholder="••••••" />
+            <input 
+              className="input-t10" 
+              type="password" 
+              value={senha} 
+              onChange={e => setSenha(e.target.value)} 
+              placeholder="••••••••" 
+              required
+            />
           </div>
-          <button type="submit" className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm">
-            Entrar
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm disabled:opacity-50"
+          >
+            {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
       </div>

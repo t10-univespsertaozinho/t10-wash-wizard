@@ -57,7 +57,9 @@ function loadState(): AppState {
   try {
     const s = localStorage.getItem('t10_state');
     if (s) return JSON.parse(s);
-  } catch {}
+  } catch {
+    // Silent fail - return default state
+  }
   return initialState;
 }
 

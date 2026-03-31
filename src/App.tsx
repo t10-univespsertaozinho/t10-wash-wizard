@@ -12,6 +12,7 @@ import Dashboard from "@/pages/Dashboard";
 import Clientes from "@/pages/Clientes";
 import NovoCliente from "@/pages/NovoCliente";
 import ClienteDetalhe from "@/pages/ClienteDetalhe";
+import EditarCliente from "@/pages/EditarCliente";
 import Lavagens from "@/pages/Lavagens";
 import NovaLavagem from "@/pages/NovaLavagem";
 import TiposLavagem from "@/pages/TiposLavagem";
@@ -22,8 +23,33 @@ import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-primary">Carregando...</div>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-pulse text-primary">Carregando...</div>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (user?.role !== 'admin') return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -44,11 +70,12 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />
-                <Route element={<AppLayout />}>
+                <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/clientes" element={<Clientes />} />
                   <Route path="/novo-cliente" element={<NovoCliente />} />
                   <Route path="/clientes/:id" element={<ClienteDetalhe />} />
+                  <Route path="/clientes/:id/editar" element={<EditarCliente />} />
                   <Route path="/lavagens" element={<Lavagens />} />
                   <Route path="/nova-lavagem" element={<NovaLavagem />} />
                   <Route path="/tipos-lavagem" element={<AdminRoute><TiposLavagem /></AdminRoute>} />
