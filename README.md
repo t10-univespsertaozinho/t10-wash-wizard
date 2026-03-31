@@ -1,127 +1,262 @@
 # Wash Wizard
 
-Wash Wizard is a management system for car wash businesses, featuring client management, wash tracking, inventory control, and financial reporting.
+Sistema de gerenciamento para lava rápido com controle de clientes, lavagens, estoque e finanças.
 
-## Project Info
-
-**Project Name**: Wash Wizard  
-**Type**: Web Application (SPA)
-
-## How to Run
+## Quick Start
 
 ```bash
-# Install dependencies
+# Clone o projeto
+git clone https://github.com/seu-usuario/t10-wash-wizard.git
+cd t10-wash-wizard
+
+# Instale dependências
 npm install
 
-# Start development server
-npm run dev
+# Configure o ambiente
+cp .env.example .env
 
-# Build for production
-npm run build
+# Inicie o desenvolvimento
+npm run dev
 ```
 
 ## Tech Stack
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI Framework**: shadcn-ui + Tailwind CSS
-- **Charts**: Recharts
-- **Routing**: React Router DOM
-- **Forms**: React Hook Form + Zod
-- **Data Persistence**: LocalStorage
+| Tecnologia | Uso |
+|------------|-----|
+| React 18 + TypeScript | Frontend framework |
+| Vite | Build tool e dev server |
+| shadcn-ui + Tailwind CSS | Component library |
+| React Router DOM | Roteamento |
+| React Hook Form + Zod | Formulários e validação |
+| Firebase Auth + Firestore | Autenticação e banco de dados |
+| Recharts | Gráficos e dashboards |
 
-## Features
+## Arquitetura do Projeto
 
-### Dashboard
-- Daily stats (washes, revenue, clients, monthly washes)
-- Pending washes and recent clients
-- 7-day revenue and wash charts
-- Low stock alerts
-- Monthly stats (revenue, completed, by type)
-- 6-month evolution charts
-
-### Client Management
-- Complete client registration
-- Wash history per client
-- Vehicle management per client
-
-### Wash Tracking
-- New wash registration
-- Service type, vehicle, and client selection
-- Status tracking (pending/completed)
-- Filterable listing
-
-### Service Types (Admin)
-- Service type configuration
-- Price definition per type
-
-### Inventory (Admin)
-- Chemical and supplies management
-- Quantity and unit tracking
-- Automatic low stock alerts
-- Stock movement tracking (in/out)
-
-### Authentication
-- Login with username and password
-- Roles: admin and employee
-- Protected routes by access level
-
-## Authentication
-
-The application uses environment variables for authentication. Copy `.env.example` to `.env` and configure your credentials:
-
-```bash
-# Default credentials (development only - change for production)
-VITE_ADMIN_USER=admin
-VITE_ADMIN_PASSWORD=admin
-VITE_USER_USER=user
-VITE_USER_PASSWORD=user
+```
+src/
+├── components/          # Componentes reutilizáveis UI
+│   └── ui/             # Componentes shadcn-ui
+├── contexts/           # React Contexts
+│   ├── AuthContext.tsx # Autenticação
+│   └── AppContext.tsx  # Estado global da aplicação
+├── pages/              # Páginas principais
+├── services/           # Camada de dados
+│   └── database.ts     # Interface abstrata (LocalStorage/Firebase)
+├── lib/                # Utilitários
+│   └── firebase.ts     # Configuração Firebase SDK
+└── types/              # TypeScript interfaces
 ```
 
-**Important**: For production use, change the default credentials in your `.env` file.
+## Configuração de Ambiente
 
-## What technologies are used for this project?
+### Variáveis de Ambiente
 
-This project is built with:
+Copie `.env.example` para `.env` e configure:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-- Recharts
-- React Router DOM
-- React Hook Form
-- Zod
+```bash
+# Tipo de banco de dados: 'localstorage' ou 'firebase'
+VITE_DB_TYPE=localstorage
 
-## Current Limitations
+# Firebase (quando VITE_DB_TYPE=firebase)
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
 
-This version uses **LocalStorage** for data persistence, which means:
+# Credenciais locais (apenas para modo localstorage)
+VITE_ADMIN_EMAIL=admin@washwizard.com
+VITE_ADMIN_PASSWORD=admin123
+VITE_USER_EMAIL=user@washwizard.com
+VITE_USER_PASSWORD=user123
+```
 
-- Data is stored in the browser only
-- No multi-user support (all data is local to each browser)
-- No real-time synchronization between devices
-- Data is lost when browser cache is cleared
-- Not suitable for production use with multiple employees
+## Modos de Desenvolvimento
 
-## Future: MySQL Integration
+### Modo 1: LocalStorage (Desenvolvimento Rápido)
 
-For production use, this project is designed to be integrated with a MySQL database. The planned changes include:
+Sem configuração externa - usa o browser como banco de dados:
 
-1. **Backend API**: REST API with Node.js/Express
-2. **Database**: MySQL with the following tables:
-   - `users` - System users (admin/employees)
-   - `clients` - Client information
-   - `vehicles` - Client vehicles
-   - `wash_types` - Service types and prices
-   - `washes` - Wash records
-   - `products` - Inventory items
-   - `stock_movements` - Inventory tracking
+```bash
+VITE_DB_TYPE=localstorage
+```
 
-3. **Authentication**: JWT-based authentication
-4. **Security**: Password hashing, input validation, SQL injection prevention
+**Vantagens:**
+- Sem configuração
+- Sem necessidade de conta Firebase
+- Rápido para prototipagem
 
-## How to Configure
+**Limitações:**
+- Dados ficam no browser
+- Não sincroniza entre dispositivos
+- Dados perdidos ao limpar cache
 
-1. Copy `.env.example` to `.env`
-2. Configure your credentials
-3. For development, the default credentials are: admin/admin
+### Modo 2: Firebase (Produção)
+
+Banco de dados cloud com autenticação:
+
+```bash
+VITE_DB_TYPE=firebase
+# + variáveis do Firebase
+```
+
+**Vantagens:**
+- Dados na nuvem
+- Acesso multiplataforma
+- Autenticação real
+- Multi-usuário com controle de acesso
+
+**Configuração:**
+1. Crie projeto no [Firebase Console](https://console.firebase.google.com)
+2. Ative **Authentication** → Email/Password
+3. Crie **Firestore Database** (modo produção)
+4. Configure as regras de segurança (vide `SECURITY.md`)
+
+## Camada de Abstração de Dados
+
+O projeto usa uma interface `Database` que permite alternar entre LocalStorage e Firebase sem alterar o código das páginas:
+
+```typescript
+// src/services/database.ts
+export interface Database {
+  initialize(): Promise<void>;
+  
+  // Clientes
+  getClientes(userId: string): Promise<Cliente[]>;
+  createCliente(data: Omit<Cliente, 'id' | 'created_at'>): Promise<Cliente>;
+  updateCliente(id: string, data: Partial<Cliente>): Promise<Cliente>;
+  deleteCliente(id: string): Promise<void>;
+  
+  // Veículos
+  getVeiculos(userId: string): Promise<Veiculo[]>;
+  getVeiculosByCliente(clienteId: string): Promise<Veiculo[]>;
+  // ... etc
+}
+
+export function getDatabase(): Database {
+  const type = import.meta.env.VITE_DB_TYPE;
+  switch (type) {
+    case 'firebase': return firebaseDB;
+    default: return localStorageDB;
+  }
+}
+```
+
+## Schema do Banco de Dados
+
+### Relações
+
+```
+clientes (1) ──────< (N) veiculos
+    │                    │
+    └────< (N) lavagens -< (N) tipos_lavagem
+                           │
+produtos (1) ─────< (N) movimentacoes_estoque
+```
+
+### Collections/Tabelas
+
+| Entidade | Descrição |
+|----------|-----------|
+| `clientes` | Dados dos clientes (nome, telefone) |
+| `veiculos` | Veículos vinculados a clientes |
+| `lavagens` | Registros de lavagens |
+| `tipos_lavagem` | Tipos de serviço disponíveis |
+| `produtos` | Estoque de produtos |
+| `movimentacoes` | Movimentações de estoque |
+| `users` | Perfis de usuários (role: admin/user) |
+
+Consulte `docs/DATABASE_SCHEMA.md` para detalhes completos.
+
+## Controle de Acesso
+
+| Rota | Acesso |
+|------|--------|
+| `/login` | Público |
+| `/` (Dashboard) | Autenticado |
+| `/clientes` | Autenticado |
+| `/lavagens` | Autenticado |
+| `/tipos-lavagem` | Admin |
+| `/estoque` | Admin |
+| `/novo-produto` | Admin |
+| `/movimentacao` | Admin |
+
+## Autenticação Firebase
+
+O sistema suporta dois modos:
+
+### Modo LocalStorage
+Credenciais definidas no `.env` (admin@washwizard.com / admin123)
+
+### Modo Firebase
+Email/senha cadastrados no Firebase Authentication console
+
+**Estrutura do usuário:**
+```typescript
+interface AppUser {
+  id: string;        // Firebase UID
+  nome: string;
+  email: string;
+  role: 'admin' | 'user';
+}
+```
+
+## Deploy
+
+### Lovable + GitHub
+
+1. Faça push para o GitHub
+2. O Lovable detecta automaticamente
+3. Deploy disponível em tempo real
+
+### Build Produção
+
+```bash
+npm run build
+# Saída em dist/
+```
+
+## Scripts Disponíveis
+
+```bash
+npm run dev        # Servidor desenvolvimento (porta 5173)
+npm run build      # Build produção
+npm run build:dev # Build modo desenvolvimento
+npm run lint      # Verificar código ESLint
+npm run test      # Executar testes Vitest
+npm run preview   # Preview do build
+```
+
+## Considerações de Segurança
+
+- **NUNCA** commite credenciais reais no `.env`
+- O arquivo está no `.gitignore`
+- Em produção, use Firebase Auth
+- Configure regras de segurança no Firestore
+- Veja `SECURITY.md` para guidelines completos
+
+## Resolução de Problemas
+
+### Erro de build Firebase
+```bash
+# Verifique se as variáveis estão no .env
+# Formato: VITE_FIREBASE_*
+```
+
+### Dados não aparecem
+```bash
+# Modo localstorage: limpe o localStorage do browser
+# Modo firebase: verifique as regras de segurança
+```
+
+### Erro de lint
+```bash
+npm run lint
+# Corrija os erros reportados
+```
+
+## License
+
+MIT - Feel free to use and contribute!
