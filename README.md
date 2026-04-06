@@ -28,7 +28,7 @@ npm run dev
 | shadcn-ui + Tailwind CSS | Component library |
 | React Router DOM | Roteamento |
 | React Hook Form + Zod | Formulários e validação |
-| Firebase Auth + Firestore | Autenticação e banco de dados |
+| Firebase Auth + Firestore | Autenticação e banco de dados (opcional) |
 | Recharts | Gráficos e dashboards |
 
 ## Arquitetura do Projeto
@@ -38,13 +38,13 @@ src/
 ├── components/          # Componentes reutilizáveis UI
 │   └── ui/             # Componentes shadcn-ui
 ├── contexts/           # React Contexts
-│   ├── AuthContext.tsx # Autenticação
-│   └── AppContext.tsx  # Estado global da aplicação
+│   ├── AuthContext.tsx # Autenticação com HMAC
+│   └── AppContext.tsx  # Estado global com criptografia
 ├── pages/              # Páginas principais
 ├── services/           # Camada de dados
 │   └── database.ts     # Interface abstrata (LocalStorage/Firebase)
-├── lib/                # Utilitários
-│   └── firebase.ts     # Configuração Firebase SDK
+├── utils/               # Utilitários
+│   └── security.ts     # Criptografia e sanitização
 └── types/              # TypeScript interfaces
 ```
 
@@ -58,6 +58,9 @@ Copie `.env.example` para `.env` e configure:
 # Tipo de banco de dados: 'localstorage' ou 'firebase'
 VITE_DB_TYPE=localstorage
 
+# Chave secreta para assinatura HMAC
+VITE_STORAGE_SECRET=sua_chave_secreta
+
 # Firebase (quando VITE_DB_TYPE=firebase)
 VITE_FIREBASE_API_KEY=...
 VITE_FIREBASE_AUTH_DOMAIN=...
@@ -65,13 +68,31 @@ VITE_FIREBASE_PROJECT_ID=...
 VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
-
-# Credenciais locais (apenas para modo localstorage)
-VITE_ADMIN_EMAIL=admin@washwizard.com
-VITE_ADMIN_PASSWORD=admin123
-VITE_USER_EMAIL=user@washwizard.com
-VITE_USER_PASSWORD=user123
 ```
+
+## Segurança
+
+### Proteção LocalStorage
+
+O sistema implementa múltiplas camadas de segurança:
+
+- **Assinatura HMAC**: Sessões de usuário assinadas digitalmente
+- **Validação de Timestamp**: Assinaturas expiram após 30 dias
+- **Criptografia de Dados**: Dados criptografados antes do armazenamento
+
+### Firebase (Produção)
+
+Para produção com Firebase, o projeto inclui regras completas em `firestore.rules`:
+
+| Coleção | Leitura | Escrita |
+|---------|---------|---------|
+| `clientes` | Proprietário ou Admin | Proprietário ou Admin |
+| `veiculos` | Via cliente owner | Via cliente owner |
+| `lavagens` | Via cliente owner | Via cliente owner |
+| `produtos` | Usuários autenticados | Apenas Admin |
+| `movimentacoes` | Usuários autenticados | Apenas Admin |
+| `tipos_lavagem` | Usuários autenticados | Apenas Admin |
+| `users` | Próprio perfil | Próprio perfil (sem mudança de role) |
 
 ## Modos de Desenvolvimento
 
@@ -87,11 +108,7 @@ VITE_DB_TYPE=localstorage
 - Sem configuração
 - Sem necessidade de conta Firebase
 - Rápido para prototipagem
-
-**Limitações:**
-- Dados ficam no browser
-- Não sincroniza entre dispositivos
-- Dados perdidos ao limpar cache
+- Dados criptografados localmente
 
 ### Modo 2: Firebase (Produção)
 
@@ -112,27 +129,32 @@ VITE_DB_TYPE=firebase
 1. Crie projeto no [Firebase Console](https://console.firebase.google.com)
 2. Ative **Authentication** → Email/Password
 3. Crie **Firestore Database** (modo produção)
-4. Configure as regras de segurança (vide `SECURITY.md`)
+4. Faça deploy das regras: `firebase deploy --only firestore:rules`
+
+## Controle de Acesso
+
+| Rota | Acesso |
+|------|--------|
+| `/login` | Público |
+| `/` (Dashboard) | Autenticado |
+| `/clientes` | Autenticado |
+| `/lavagens` | Autenticado |
+| `/tipos-lavagem` | Admin |
+| `/estoque` | Admin |
+| `/novo-produto` | Admin |
+| `/movimentacao` | Admin |
 
 ## Camada de Abstração de Dados
 
-O projeto usa uma interface `Database` que permite alternar entre LocalStorage e Firebase sem alterar o código das páginas:
+O projeto usa uma interface `Database` que permite alternar entre LocalStorage e Firebase:
 
 ```typescript
 // src/services/database.ts
 export interface Database {
   initialize(): Promise<void>;
-  
-  // Clientes
   getClientes(userId: string): Promise<Cliente[]>;
   createCliente(data: Omit<Cliente, 'id' | 'created_at'>): Promise<Cliente>;
-  updateCliente(id: string, data: Partial<Cliente>): Promise<Cliente>;
-  deleteCliente(id: string): Promise<void>;
-  
-  // Veículos
-  getVeiculos(userId: string): Promise<Veiculo[]>;
-  getVeiculosByCliente(clienteId: string): Promise<Veiculo[]>;
-  // ... etc
+  // ... outros métodos
 }
 
 export function getDatabase(): Database {
@@ -168,41 +190,6 @@ produtos (1) ─────< (N) movimentacoes_estoque
 | `movimentacoes` | Movimentações de estoque |
 | `users` | Perfis de usuários (role: admin/user) |
 
-Consulte `docs/DATABASE_SCHEMA.md` para detalhes completos.
-
-## Controle de Acesso
-
-| Rota | Acesso |
-|------|--------|
-| `/login` | Público |
-| `/` (Dashboard) | Autenticado |
-| `/clientes` | Autenticado |
-| `/lavagens` | Autenticado |
-| `/tipos-lavagem` | Admin |
-| `/estoque` | Admin |
-| `/novo-produto` | Admin |
-| `/movimentacao` | Admin |
-
-## Autenticação Firebase
-
-O sistema suporta dois modos:
-
-### Modo LocalStorage
-Credenciais definidas no `.env` (admin@washwizard.com / admin123)
-
-### Modo Firebase
-Email/senha cadastrados no Firebase Authentication console
-
-**Estrutura do usuário:**
-```typescript
-interface AppUser {
-  id: string;        // Firebase UID
-  nome: string;
-  email: string;
-  role: 'admin' | 'user';
-}
-```
-
 ## Deploy
 
 ### Lovable + GitHub
@@ -210,6 +197,21 @@ interface AppUser {
 1. Faça push para o GitHub
 2. O Lovable detecta automaticamente
 3. Deploy disponível em tempo real
+
+### Dados de Teste
+
+O sistema inclui um botão **"Carregar Dados"** no Dashboard que gera dados fictícios automaticamente para演示ções:
+
+- **4 clientes fictícios**: João Silva, Maria Oliveira, Carlos Santos, Ana Paula
+- **4 veículos**: Toyota Corolla, Honda Civic, Volkswagen Gol, Ford Ka
+- **3 produtos**: Shampoo Automotivo, Cera de Polimento, Limpa Vidros
+- **Lavagens**: Dados dos últimos 6 meses com datas, valores e status variados
+- **Movimentações**: Entradas e saídas de estoque
+
+Para usar:
+1. Faça login como admin (`admin@washwizard.com` / `admin123`)
+2. Clique em "Carregar Dados" no Dashboard
+3. Dados fictícios serão criados automaticamente
 
 ### Build Produção
 
@@ -235,27 +237,22 @@ npm run preview   # Preview do build
 - O arquivo está no `.gitignore`
 - Em produção, use Firebase Auth
 - Configure regras de segurança no Firestore
-- Veja `SECURITY.md` para guidelines completos
+- Usuário é assinado com HMAC para evitar manipulação
+- Dados LocalStorage são criptografados
 
 ## Resolução de Problemas
 
-### Erro de build Firebase
-```bash
-# Verifique se as variáveis estão no .env
-# Formato: VITE_FIREBASE_*
-```
+### Dados não aparecem após login
+- Limpe o localStorage: `localStorage.clear()`
+- Atualize a página
 
-### Dados não aparecem
-```bash
-# Modo localstorage: limpe o localStorage do browser
-# Modo firebase: verifique as regras de segurança
-```
+### Erro de assinatura HMAC
+- A sessão expirou ou foi manipulada
+- Faça logout e login novamente
 
-### Erro de lint
-```bash
-npm run lint
-# Corrija os erros reportados
-```
+### Firebase não conecta
+- Verifique as variáveis no `.env`
+- Configure as regras de segurança
 
 ## License
 
