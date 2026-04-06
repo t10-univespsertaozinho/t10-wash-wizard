@@ -1,5 +1,6 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { isDarkTheme } from '@/hooks/useTheme';
 import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User, TrendingUp, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend } from 'recharts';
@@ -8,7 +9,18 @@ const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', '
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { lavagens, clientes, produtos, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData, tiposLavagem } = useApp();
+  const { lavagens, clientes, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData, tiposLavagem } = useApp();
+  const isDark = isDarkTheme();
+
+  const tooltipStyle = {
+    background: isDark ? '#1a1d27' : '#ffffff',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : '#e5e7eb'}`,
+    borderRadius: 8,
+    color: isDark ? '#fff' : '#1f2937',
+    fontSize: 12,
+  };
+
+  const tickStyle = { fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 };
 
   const hoje = new Date().toISOString().slice(0, 10);
   const mesAtual = new Date().toISOString().slice(0, 7);
@@ -76,7 +88,9 @@ export default function Dashboard() {
     { label: 'Concluídas no Mês', value: concluidasMes.length, icon: Check, border: 'border-accent' },
   ];
 
-  const colors = ['hsl(49,100%,50%)', 'hsl(212,80%,42%)', 'hsl(142,70%,45%)', 'hsl(280,60%,50%)', 'hsl(340,80%,50%)', 'hsl(180,70%,50%)'];
+  const colors = isDark 
+    ? ['hsl(49,100%,50%)', 'hsl(212,80%,42%)', 'hsl(142,70%,45%)', 'hsl(280,60%,50%)', 'hsl(340,80%,50%)', 'hsl(180,70%,50%)']
+    : ['hsl(25,95%,45%)', 'hsl(212,80%,50%)', 'hsl(142,70%,35%)', 'hsl(280,60%,45%)', 'hsl(340,80%,50%)', 'hsl(180,70%,45%)'];
 
   return (
     <div className="space-y-6">
@@ -189,10 +203,11 @@ export default function Dashboard() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={last7}>
-                <XAxis dataKey="dia" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, color: '#fff', fontSize: 12 }} />
+                <XAxis dataKey="dia" tick={tickStyle} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
+                <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={tooltipStyle} />
+                <Legend />
                 <Bar yAxisId="left" dataKey="receita" fill="hsl(49,100%,50%)" radius={[4, 4, 0, 0]} name="Receita (R$)" />
                 <Line yAxisId="right" type="monotone" dataKey="lavagens" stroke="hsl(212,80%,42%)" strokeWidth={2} dot={{ fill: 'hsl(212,80%,42%)' }} name="Lavagens" />
               </ComposedChart>
@@ -261,10 +276,10 @@ export default function Dashboard() {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={last6Months}>
-                    <XAxis dataKey="mes" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="left" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="right" orientation="right" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, color: '#fff', fontSize: 12 }} />
+                    <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
+                    <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
                     <Legend />
                     <Bar yAxisId="left" dataKey="lavagens" fill="hsl(212,80%,42%)" radius={[4, 4, 0, 0]} name="Lavagens" />
                     <Line yAxisId="right" type="monotone" dataKey="receita" stroke="hsl(49,100%,50%)" strokeWidth={2} dot={{ fill: 'hsl(49,100%,50%)' }} name="Receita (R$)" />
@@ -278,9 +293,9 @@ export default function Dashboard() {
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={lavagensPorTipo}>
-                    <XAxis dataKey="mes" tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: '#6b7280', fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={{ background: '#1a1d27', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, color: '#fff', fontSize: 12 }} />
+                    <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
+                    <YAxis tick={tickStyle} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
                     <Legend />
                     {tiposLavagem.map((t, i) => (
                       <Bar key={t.id} dataKey={t.nome} stackId="a" fill={colors[i % colors.length]} radius={[2, 2, 0, 0]} />
@@ -292,7 +307,6 @@ export default function Dashboard() {
           </div>
         </>
       )}
-
     </div>
   );
 }

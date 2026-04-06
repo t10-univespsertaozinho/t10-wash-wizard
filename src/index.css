@@ -45,29 +45,29 @@
     --card-foreground: 225 20% 7%;
     --popover: 0 0% 100%;
     --popover-foreground: 225 20% 7%;
-    --primary: 49 100% 50%;
-    --primary-foreground: 225 20% 7%;
+    --primary: 25 95% 45%;
+    --primary-foreground: 0 0% 100%;
     --secondary: 220 10% 93%;
     --secondary-foreground: 225 20% 7%;
     --muted: 220 10% 93%;
     --muted-foreground: 215 16% 47%;
-    --accent: 212 80% 42%;
+    --accent: 212 80% 50%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 347 100% 63%;
+    --destructive: 347 100% 55%;
     --destructive-foreground: 0 0% 100%;
-    --success: 145 100% 45%;
+    --success: 145 70% 35%;
     --success-foreground: 0 0% 100%;
     --border: 220 10% 85%;
     --input: 220 10% 90%;
-    --ring: 212 80% 42%;
+    --ring: 212 80% 50%;
     --sidebar-background: 0 0% 96%;
     --sidebar-foreground: 225 20% 10%;
-    --sidebar-primary: 49 100% 50%;
-    --sidebar-primary-foreground: 225 20% 7%;
+    --sidebar-primary: 25 95% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 220 10% 90%;
     --sidebar-accent-foreground: 225 20% 10%;
     --sidebar-border: 220 10% 85%;
-    --sidebar-ring: 212 80% 42%;
+    --sidebar-ring: 212 80% 50%;
   }
 }
 
@@ -82,34 +82,34 @@
 
 @layer components {
   .badge-pendente {
-    @apply bg-primary/10 text-primary;
+    @apply bg-primary/15 text-primary dark:bg-primary/20;
   }
   .badge-andamento {
-    @apply bg-accent/10 text-accent;
+    @apply bg-accent/15 text-accent dark:bg-accent/20;
   }
   .badge-concluida {
-    @apply bg-success/10 text-success;
+    @apply bg-success/15 text-success dark:bg-success/20;
   }
   .badge-cancelada {
-    @apply bg-destructive/10 text-destructive;
+    @apply bg-destructive/15 text-destructive dark:bg-destructive/20;
   }
   .badge-ok {
-    @apply bg-success/10 text-success;
+    @apply bg-success/15 text-success dark:bg-success/20;
   }
   .badge-baixo {
-    @apply bg-primary/10 text-primary;
+    @apply bg-primary/15 text-primary dark:bg-primary/20;
   }
   .badge-zerado {
-    @apply bg-destructive/10 text-destructive;
+    @apply bg-destructive/15 text-destructive dark:bg-destructive/20;
   }
   .input-t10 {
     @apply w-full rounded-lg border border-border bg-input px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40 transition-all;
   }
   .table-header {
-    @apply text-[10px] uppercase tracking-widest text-muted-foreground font-semibold bg-secondary/30;
+    @apply text-[10px] uppercase tracking-widest text-muted-foreground font-semibold bg-secondary/50;
   }
   .table-row-hover {
-    @apply transition-colors hover:bg-secondary/40;
+    @apply transition-colors hover:bg-secondary/50;
   }
 }
 
