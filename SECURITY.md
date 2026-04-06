@@ -1,118 +1,131 @@
 # Wash Wizard - Security Guidelines
 
-## Visão Geral
+## Overview
 
-Este projeto é um sistema de gerenciamento para lava rápido. Ao disponibilizar o código publicamente, é necessário garantir que informações sensíveis não sejam expostas.
+This is a car wash management system. When making the code public, it's essential to ensure that sensitive information is not exposed.
 
-## Configurações de Segurança
+## Security Implementation
 
-### 1. Variáveis de Ambiente
+### 1. Environment Variables
 
-**NUNCA commite arquivos `.env` com credenciais reais!**
+**NEVER commit `.env` files with real credentials!**
 
-O projeto usa `.gitignore` para bloquear:
-- `.env` - variáveis de produção
-- `.env.local` - variáveis locais
-- Qualquer arquivo com credenciais do Firebase
+The project uses `.gitignore` to block:
+- `.env` - production variables
+- `.env.local` - local variables
+- Any file with Firebase credentials
 
-### 2. Modo de Desenvolvimento Seguro
+### 2. LocalStorage Security
 
-Para desenvolvimento local sem Firebase:
-```bash
-# No arquivo .env
-VITE_DB_TYPE=localstorage
+The application implements multiple security layers for LocalStorage mode:
 
-# Credenciais locais (apenas para teste)
-VITE_ADMIN_EMAIL=admin@washwizard.com
-VITE_ADMIN_PASSWORD=sua_senha_teste
-VITE_USER_EMAIL=user@washwizard.com
-VITE_USER_PASSWORD=sua_senha_teste
+- **HMAC Signing**: User sessions are signed with HMAC to prevent tampering
+- **Timestamp Validation**: Signatures expire after 30 days
+- **Data Encryption**: Application data is encrypted before storage
+
+```typescript
+// Security utilities in src/utils/security.ts
+- createSignedUser()    // Creates HMAC-signed user session
+- verifySignedUser()    // Verifies session integrity
+- encryptStorage()      // Encrypts data before storage
+- decryptStorage()      // Decrypts and validates data
+- sanitizeInput()       // XSS protection for user inputs
 ```
 
-### 3. Configuração Firebase (Produção)
+### 3. Firebase Configuration (Production)
 
-Ao configurar o Firebase para produção:
+When configuring Firebase for production:
 
 1. **Firebase Console** → Project Settings → Add app
 2. **Authentication** → Enable Email/Password
 3. **Firestore Database** → Create database (Production mode)
-4. **Regras do Firestore** (firestore.rules):
-   ```
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       
-       // Usuários só veem seus próprios dados
-       match /clientes/{clienteId} {
-         allow read, write: if request.auth != null && request.auth.uid == resource.data.user_id;
-         allow create: if request.auth != null;
-       }
-       
-       match /veiculos/{veiculoId} {
-         allow read, write: if request.auth != null && request.auth.uid == resource.data.user_id;
-         allow create: if request.auth != null;
-       }
-       
-       match /lavagens/{lavagemId} {
-         allow read, write: if request.auth != null && request.auth.uid == resource.data.user_id;
-         allow create: if request.auth != null;
-       }
-       
-       match /produtos/{produtoId} {
-         allow read, write: if request.auth != null && request.auth.uid == resource.data.user_id;
-         allow create: if request.auth != null;
-       }
-       
-       // Tipos de lavagem são públicos (lidos por todos)
-       match /tipos_lavagem/{tipoId} {
-         allow read: if request.auth != null;
-         allow write: if request.auth != null && 
-                     get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
-       }
-       
-       // Usuários (apenas leitura do próprio perfil)
-       match /users/{userId} {
-         allow read, write: if request.auth != null && request.auth.uid == userId;
-       }
-     }
-   }
-   ```
+4. **Deploy Rules**: Use `firestore.rules` file
 
-5. **Authentication** → Authorized domains → Adicione seu domínio
+```bash
+# Deploy rules to Firebase
+firebase deploy --only firestore:rules
+```
 
-### 4. Regras de Produção Recomendadas
+### 4. Firestore Security Rules
 
-Se o projeto for público no GitHub:
+The project includes comprehensive Firestore rules in `firestore.rules`:
 
-1. **Criar arquivo `.env` local** com credenciais de teste
-2. **NUNCA fazer push** de credenciais reais
-3. **Usar Firebase Emulator** para desenvolvimento local
-4. **Documentar apenas a estrutura** do banco (não dados reais)
+| Collection | Read | Write |
+|------------|------|-------|
+| `clientes` | Owner or Admin | Owner or Admin |
+| `veiculos` | Via cliente owner | Via cliente owner |
+| `lavagens` | Via cliente owner | Via cliente owner |
+| `produtos` | Auth users | Admin only |
+| `movimentacoes` | Auth users | Admin only |
+| `tipos_lavagem` | Auth users | Admin only |
+| `users` | Own profile | Own profile (no role change) |
 
-### 5. Checklist de Segurança
+### 5. Access Control
 
-- [ ] `.env` está no `.gitignore`
-- [ ] Credenciais do Firebase não estão no código
-- [ ] Regras do Firestore bloqueiam acesso entre usuários
-- [ ] Senhas não são armazenadas em plain text
-- [ ] Dados de teste não contêm informações reais
+| Route | Access |
+|-------|--------|
+| `/login` | Public |
+| `/` (Dashboard) | Authenticated |
+| `/clientes` | Authenticated |
+| `/lavagens` | Authenticated |
+| `/tipos-lavagem` | Admin only |
+| `/estoque` | Admin only |
+| `/novo-produto` | Admin only |
+| `/movimentacao` | Admin only |
 
-## Dados de Teste
+### 6. Security Checklist
 
-O sistema inclui dados de demonstração gerados automaticamente (`seedTestData`). Estes são dados fictícios seguros para testes.
+- [x] `.env` is in `.gitignore`
+- [x] No Firebase credentials in code
+- [x] Firestore rules prevent cross-user access
+- [x] User sessions are HMAC-signed
+- [x] LocalStorage data is encrypted
+- [x] Input sanitization available
+- [x] Test data contains no real information
+
+## Environment Variables
+
+### LocalStorage Mode (Default)
+```bash
+VITE_DB_TYPE=localstorage
+VITE_STORAGE_SECRET=your_secret_key
+```
+
+### Firebase Mode
+```bash
+VITE_DB_TYPE=firebase
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=...
+```
 
 ## FAQ
 
-**Posso fazer o projeto público?**
-Sim, desde que:
-- Não inclua credenciais reais
-- Configure regras de segurança no Firebase
-- Use dados de teste para demos
+**Can I make the project public?**
+Yes, as long as:
+- No real credentials included
+- Firebase security rules configured
+- Use test data for demos
 
-**Como testar sem expor dados?**
-Use o modo `localstorage` (padrão) ou Firebase Emulator.
+**How to test without exposing data?**
+Use `localstorage` mode (default) or Firebase Emulator.
 
-**O que fazer seCredenciais vazarem?**
-1. Alterar senhas imediatamente
-2. Revogar chaves API no console do Firebase
-3. Verificar se não houve acesso não autorizado
+**What if credentials leak?**
+1. Change passwords immediately
+2. Revoke API keys in Firebase Console
+3. Check for unauthorized access
+4. Review Firestore logs
+
+## Vulnerability Mitigation
+
+| Vulnerability | Status |
+|---------------|--------|
+| LocalStorage tampering | ✅ Mitigated with HMAC |
+| Privilege escalation | ✅ Server-side validation |
+| XSS injection | ✅ Sanitization available |
+| Firestore IDOR | ✅ Comprehensive rules |
+| Sensitive data exposure | ✅ Encryption implemented |
+
+## Data for Testing
+
+The system includes demonstration data generated automatically (`seedTestData`). These are safe fictitious data for testing.

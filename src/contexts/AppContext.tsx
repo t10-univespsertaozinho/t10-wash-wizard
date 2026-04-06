@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque } from '@/types';
 import { useAuth } from './AuthContext';
+import { encryptStorage, decryptStorage } from '@/utils/security';
 
 const genId = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -55,12 +56,32 @@ const initialState: AppState = {
 
 function loadState(): AppState {
   try {
-    const s = localStorage.getItem('t10_state');
-    if (s) return JSON.parse(s);
+    const encrypted = localStorage.getItem('t10_state');
+    if (encrypted) {
+      const decrypted = decryptStorage(encrypted);
+      if (decrypted) {
+        const parsed = JSON.parse(decrypted);
+        if (parsed.clientes && parsed.veiculos && parsed.lavagens && 
+            parsed.produtos && parsed.movimentacoes) {
+          return parsed;
+        }
+      }
+    }
   } catch {
-    // Silent fail - return default state
+    // Silent fail
   }
   return initialState;
+}
+
+function saveState(state: AppState): void {
+  try {
+    const data = JSON.stringify(state);
+    const encrypted = encryptStorage(data);
+    localStorage.setItem('t10_state', encrypted);
+  } catch {
+    // Fallback to unencrypted if encryption fails
+    localStorage.setItem('t10_state', JSON.stringify(state));
+  }
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -70,7 +91,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AppState>(loadState);
 
   useEffect(() => {
-    localStorage.setItem('t10_state', JSON.stringify(state));
+    saveState(state);
   }, [state]);
 
   const update = useCallback((fn: (s: AppState) => AppState) => setState(prev => fn(prev)), []);

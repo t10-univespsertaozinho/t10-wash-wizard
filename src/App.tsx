@@ -50,7 +50,11 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   }
   
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (user?.role !== 'admin') return <Navigate to="/" replace />;
+  
+  if (!user || user.role !== 'admin') {
+    return <Navigate to="/" replace />;
+  }
+  
   return <>{children}</>;
 }
 

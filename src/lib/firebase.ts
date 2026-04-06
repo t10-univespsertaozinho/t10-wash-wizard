@@ -1,4 +1,4 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
+import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 
@@ -15,8 +15,13 @@ let app: FirebaseApp | undefined;
 let auth: Auth | undefined;
 let db: Firestore | undefined;
 
+export function isFirebaseConfigured(): boolean {
+  const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
+  return !!apiKey && apiKey.length > 10;
+}
+
 export function initializeFirebase() {
-  if (!app && firebaseConfig.apiKey) {
+  if (!app && isFirebaseConfigured()) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
@@ -36,8 +41,4 @@ export function getFirebaseDb(): Firestore {
     initializeFirebase();
   }
   return db!;
-}
-
-export function isFirebaseConfigured(): boolean {
-  return !!firebaseConfig.apiKey;
 }
