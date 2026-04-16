@@ -1,6 +1,6 @@
 import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque } from '@/types';
 import { 
-  collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp 
+  collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp, DocumentSnapshot 
 } from 'firebase/firestore';
 import { getFirebaseDb, isFirebaseConfigured } from '@/lib/firebase';
 
@@ -258,80 +258,80 @@ function timestampToISOString(ts: Timestamp | null | undefined): string {
   return ts.toDate().toISOString();
 }
 
-function documentToCliente(docSnap: any): Cliente {
+function documentToCliente(docSnap: DocumentSnapshot): Cliente {
   const data = docSnap.data();
   return {
     id: docSnap.id,
-    nome: data.nome,
-    telefone: data.telefone,
-    user_id: data.user_id,
-    created_at: timestampToISOString(data.created_at),
+    nome: data?.nome,
+    telefone: data?.telefone,
+    user_id: data?.user_id,
+    created_at: timestampToISOString(data?.created_at),
   };
 }
 
-function documentToVeiculo(docSnap: any): Veiculo {
+function documentToVeiculo(docSnap: DocumentSnapshot): Veiculo {
   const data = docSnap.data();
   return {
     id: docSnap.id,
-    cliente_id: data.cliente_id,
-    modelo: data.modelo,
-    placa: data.placa,
-    cor: data.cor,
-    user_id: data.user_id,
+    cliente_id: data?.cliente_id,
+    modelo: data?.modelo,
+    placa: data?.placa,
+    cor: data?.cor,
+    user_id: data?.user_id,
   };
 }
 
-function documentToLavagem(docSnap: any): Lavagem {
+function documentToLavagem(docSnap: DocumentSnapshot): Lavagem {
   const data = docSnap.data();
   return {
     id: docSnap.id,
-    cliente_id: data.cliente_id,
-    veiculo_id: data.veiculo_id,
-    tipo_lavagem_id: data.tipo_lavagem_id,
-    status: data.status,
-    pagamento: data.pagamento,
-    valor: data.valor,
-    observacao: data.observacao,
-    user_id: data.user_id,
-    data: timestampToISOString(data.data),
-    data_conclusao: timestampToISOString(data.data_conclusao),
+    cliente_id: data?.cliente_id,
+    veiculo_id: data?.veiculo_id,
+    tipo_lavagem_id: data?.tipo_lavagem_id,
+    status: data?.status,
+    pagamento: data?.pagamento,
+    valor: data?.valor,
+    observacao: data?.observacao,
+    user_id: data?.user_id,
+    data: timestampToISOString(data?.data),
+    data_conclusao: timestampToISOString(data?.data_conclusao),
   };
 }
 
-function documentToTipoLavagem(docSnap: any): TipoLavagem {
+function documentToTipoLavagem(docSnap: DocumentSnapshot): TipoLavagem {
   const data = docSnap.data();
   return {
     id: docSnap.id,
-    nome: data.nome,
-    descricao: data.descricao,
-    preco: data.preco,
+    nome: data?.nome,
+    descricao: data?.descricao,
+    preco: data?.preco,
   };
 }
 
-function documentToProduto(docSnap: any): Produto {
+function documentToProduto(docSnap: DocumentSnapshot): Produto {
   const data = docSnap.data();
   return {
     id: docSnap.id,
-    nome: data.nome,
-    categoria: data.categoria,
-    quantidade: data.quantidade,
-    estoque_minimo: data.estoque_minimo,
-    unidade: data.unidade,
-    preco_unitario: data.preco_unitario,
-    user_id: data.user_id,
+    nome: data?.nome,
+    categoria: data?.categoria,
+    quantidade: data?.quantidade,
+    estoque_minimo: data?.estoque_minimo,
+    unidade: data?.unidade,
+    preco_unitario: data?.preco_unitario,
+    user_id: data?.user_id,
   };
 }
 
-function documentToMovimentacao(docSnap: any): MovimentacaoEstoque {
+function documentToMovimentacao(docSnap: DocumentSnapshot): MovimentacaoEstoque {
   const data = docSnap.data();
   return {
     id: docSnap.id,
-    produto_id: data.produto_id,
-    tipo: data.tipo,
-    quantidade: data.quantidade,
-    observacao: data.observacao,
-    user_id: data.user_id,
-    data: timestampToISOString(data.data),
+    produto_id: data?.produto_id,
+    tipo: data?.tipo,
+    quantidade: data?.quantidade,
+    observacao: data?.observacao,
+    user_id: data?.user_id,
+    data: timestampToISOString(data?.data),
   };
 }
 

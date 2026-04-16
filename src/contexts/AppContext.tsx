@@ -54,11 +54,11 @@ const initialState: AppState = {
   movimentacoes: [],
 };
 
-function loadState(): AppState {
+async function loadStateAsync(): Promise<AppState> {
   try {
     const encrypted = localStorage.getItem('t10_state');
     if (encrypted) {
-      const decrypted = decryptStorage(encrypted);
+      const decrypted = await decryptStorage(encrypted);
       if (decrypted) {
         const parsed = JSON.parse(decrypted);
         if (parsed.clientes && parsed.veiculos && parsed.lavagens && 
@@ -73,10 +73,10 @@ function loadState(): AppState {
   return initialState;
 }
 
-function saveState(state: AppState): void {
+async function saveStateAsync(state: AppState): Promise<void> {
   try {
     const data = JSON.stringify(state);
-    const encrypted = encryptStorage(data);
+    const encrypted = await encryptStorage(data);
     localStorage.setItem('t10_state', encrypted);
   } catch {
     // Fallback to unencrypted if encryption fails
@@ -88,11 +88,23 @@ const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const [state, setState] = useState<AppState>(loadState);
+  const [state, setState] = useState<AppState>(initialState);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    saveState(state);
-  }, [state]);
+    async function init() {
+      const s = await loadStateAsync();
+      setState(s);
+      setIsReady(true);
+    }
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (isReady) {
+      saveStateAsync(state);
+    }
+  }, [state, isReady]);
 
   const update = useCallback((fn: (s: AppState) => AppState) => setState(prev => fn(prev)), []);
 

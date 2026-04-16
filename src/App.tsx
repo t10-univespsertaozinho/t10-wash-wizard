@@ -20,6 +20,7 @@ import Estoque from "@/pages/Estoque";
 import NovoProduto from "@/pages/NovoProduto";
 import Movimentacao from "@/pages/Movimentacao";
 import NotFound from "@/pages/NotFound";
+import Configuracoes from "@/pages/Configuracoes";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const App = () => (
                   <Route path="/estoque" element={<AdminRoute><Estoque /></AdminRoute>} />
                   <Route path="/novo-produto" element={<AdminRoute><NovoProduto /></AdminRoute>} />
                   <Route path="/movimentacao" element={<AdminRoute><Movimentacao /></AdminRoute>} />
+                  <Route path="/configuracoes" element={<AdminRoute><Configuracoes /></AdminRoute>} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

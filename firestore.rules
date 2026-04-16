@@ -78,7 +78,7 @@ service cloud.firestore {
     // USUÁRIOS - Cada usuário gerencia apenas seu próprio perfil
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId && (!('role' in request.resource.data) || request.resource.data.role == 'user');
       allow update: if request.auth != null && 
           request.auth.uid == userId && 
           // Não permite alteração do role sem ser admin

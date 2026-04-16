@@ -16,22 +16,28 @@ function base64Decode(str: string): string {
   }
 }
 
-export function computeHMAC(data: string): string {
-  const key = STORAGE_SECRET.split('').reverse().join('');
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+async function getCryptoKey(): Promise<CryptoKey> {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(STORAGE_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign", "verify"]
+  );
+  return keyMaterial;
+}
+
+export async function computeHMAC(data: string): Promise<string> {
+  try {
+    const key = await getCryptoKey();
+    const enc = new TextEncoder();
+    const signature = await crypto.subtle.sign("HMAC", key, enc.encode(data));
+    const hashArray = Array.from(new Uint8Array(signature));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  } catch {
+    return 'invalid-hash';
   }
-  const combined = `${hash}-${data}-${key}`;
-  let result = 0;
-  for (let i = 0; i < combined.length; i++) {
-    const char = combined.charCodeAt(i);
-    result = ((result << 5) - result) + char;
-    result = result & result;
-  }
-  return Math.abs(result).toString(36);
 }
 
 export interface SignedUser {
@@ -43,20 +49,20 @@ export interface SignedUser {
   _timestamp: number;
 }
 
-export function createSignedUser(user: Omit<SignedUser, '_signature' | '_timestamp'>): SignedUser {
+export async function createSignedUser(user: Omit<SignedUser, '_signature' | '_timestamp'>): Promise<SignedUser> {
   const data = `${user.id}|${user.nome}|${user.email}|${user.role}`;
   return {
     ...user,
-    _signature: computeHMAC(data),
+    _signature: await computeHMAC(data),
     _timestamp: Date.now(),
   };
 }
 
-export function verifySignedUser(user: SignedUser | null): SignedUser | null {
+export async function verifySignedUser(user: SignedUser | null): Promise<SignedUser | null> {
   if (!user) return null;
   
   const data = `${user.id}|${user.nome}|${user.email}|${user.role}`;
-  const expectedSignature = computeHMAC(data);
+  const expectedSignature = await computeHMAC(data);
   
   if (user._signature !== expectedSignature) {
     return null;
@@ -70,13 +76,13 @@ export function verifySignedUser(user: SignedUser | null): SignedUser | null {
   return user;
 }
 
-export function encryptStorage(data: string): string {
+export async function encryptStorage(data: string): Promise<string> {
   const encoded = base64Encode(data);
-  const hash = computeHMAC(encoded);
+  const hash = await computeHMAC(encoded);
   return base64Encode(`${hash}|${encoded}`);
 }
 
-export function decryptStorage(encrypted: string): string | null {
+export async function decryptStorage(encrypted: string): Promise<string | null> {
   try {
     const decoded = base64Decode(encrypted);
     const parts = decoded.split('|');
@@ -84,7 +90,7 @@ export function decryptStorage(encrypted: string): string | null {
     
     const hash = parts[0];
     const data = parts.slice(1).join('|');
-    const expectedHash = computeHMAC(data);
+    const expectedHash = await computeHMAC(data);
     
     if (hash !== expectedHash) {
       return null;
