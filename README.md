@@ -143,6 +143,29 @@ VITE_DB_TYPE=firebase
 | `/estoque` | Admin |
 | `/novo-produto` | Admin |
 | `/movimentacao` | Admin |
+| `/configuracoes` | Admin |
+
+## Página de Configurações
+
+O sistema inclui uma página de configurações acessível apenas para administradores (`/configuracoes`) que permite:
+
+### Configuração do Banco de Dados
+- **Modo Local**: Dados armazenados no navegador (ideal para testes)
+- **Modo Firebase**: Dados na nuvem (ideal para produção)
+
+### Interface Amigável
+- Seleção visual entre Local e Firebase
+- Campos com validações em tempo real
+- Instruções passo a passo para obter credenciais
+- Botão para testar conexão
+- Mensagens de feedback claras
+
+### Recursos de Segurança
+- Validação de formato de URL (Firebase domain)
+- Validação de Project ID (apenas letras minúsculas, números e hífens)
+- Validação de API Key (mínimo 10 caracteres)
+- Credenciais armazenadas com segurança no navegador
+- Opção de testar conexão antes de salvar
 
 ## Camada de Abstração de Dados
 

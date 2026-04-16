@@ -30,36 +30,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('t10_user');
-    if (savedUser) {
-      try {
-        const parsed = JSON.parse(savedUser) as SignedUser;
-        const verified = verifySignedUser(parsed);
-        
-        if (verified) {
-          const { _signature, _timestamp, ...userData } = verified;
-          setAppUser(userData);
-        } else {
+    async function loadAuth() {
+      const savedUser = localStorage.getItem('t10_user');
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser) as SignedUser;
+          const verified = await verifySignedUser(parsed);
+          
+          if (verified) {
+            const { _signature, _timestamp, ...userData } = verified;
+            setAppUser(userData);
+          } else {
+            localStorage.removeItem('t10_user');
+          }
+        } catch {
           localStorage.removeItem('t10_user');
         }
-      } catch {
-        localStorage.removeItem('t10_user');
       }
+      setLoading(false);
     }
-    setLoading(false);
+    loadAuth();
   }, []);
 
   const login = useCallback(async (email: string, senha: string): Promise<boolean> => {
     if (email === ADMIN_EMAIL && senha === ADMIN_PASSWORD) {
       const user: AppUser = { id: 'admin-local', nome: 'Administrador', email, role: 'admin' };
-      const signedUser = createSignedUser(user);
+      const signedUser = await createSignedUser(user);
       setAppUser(user);
       localStorage.setItem('t10_user', JSON.stringify(signedUser));
       return true;
     }
     if (email === USER_EMAIL && senha === USER_PASSWORD) {
       const user: AppUser = { id: 'user-local', nome: 'Usuário', email, role: 'user' };
-      const signedUser = createSignedUser(user);
+      const signedUser = await createSignedUser(user);
       setAppUser(user);
       localStorage.setItem('t10_user', JSON.stringify(signedUser));
       return true;

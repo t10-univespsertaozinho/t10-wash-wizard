@@ -65,6 +65,8 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
+  const sanitizeCSS = (val: string) => typeof val === 'string' ? val.replace(/[<>]/g, '') : val;
+
   return (
     <style
       dangerouslySetInnerHTML={{
@@ -75,7 +77,7 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    return color ? `  --color-${key}: ${sanitizeCSS(color as string)};` : null;
   })
   .join("\n")}
 }

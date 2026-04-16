@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import {
   LayoutDashboard, Droplets, List, Tags, Users, UserPlus,
-  Package, ArrowLeftRight, LogOut, Menu, X, Plus
+  Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings
 } from 'lucide-react';
 
 const navItemsAdmin = [
@@ -15,6 +15,7 @@ const navItemsAdmin = [
   { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
   { to: '/estoque', label: 'Estoque', icon: Package },
   { to: '/movimentacao', label: 'Movimentação', icon: ArrowLeftRight },
+  { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
 const navItemsUser = [
@@ -35,6 +36,7 @@ const pageTitle: Record<string, string> = {
   '/estoque': 'Estoque',
   '/movimentacao': 'Movimentação',
   '/novo-produto': 'Novo Produto',
+  '/configuracoes': 'Configurações',
 };
 
 export default function AppLayout() {
