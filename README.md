@@ -288,6 +288,6 @@ npm run preview   # Preview do build
 - Verifique as variáveis no `.env`
 - Configure as regras de segurança
 
-## License
+## Licença
 
-MIT - Feel free to use and contribute!
+Este projeto é de uso exclusivo para fins acadêmicos (**Projeto Integrador UNIVESP**) e para a empresa parceira. Todos os direitos reservados. Não é permitida a redistribuição, cópia ou uso comercial sem autorização prévia dos autores e da instituição.
