@@ -8,6 +8,7 @@
 - **Database Layer**: Abstraction layer supporting LocalStorage and Firebase
 - **Test Data**: Built-in seedTestData() for demonstrations
 - **Settings Page**: Admin-only database configuration interface
+- **Performance**: Code splitting with React.lazy + Suspense, memoization with useMemo
 
 ## Environment Configuration
 
@@ -36,6 +37,14 @@ VITE_STORAGE_SECRET=your_secure_secret
 - Data encryption in LocalStorage
 - Built-in test data for demonstrations
 - **Admin settings page for Firebase configuration**
+- **Lazy loading of pages** for better performance
+
+## Performance Implementation
+
+- **Code Splitting**: All pages loaded with React.lazy + Suspense
+- **Memoization**: Dashboard calculations wrapped in useMemo
+- **Loading States**: Animated spinner component (PageLoading)
+- **Optimized Charts**: Styles memoized to prevent re-renders
 
 ## Security Implementation
 
@@ -56,9 +65,10 @@ The system includes an admin-only settings page (`/configuracoes`) that allows:
 ### User-Friendly Interface
 - Visual selection between Local and Firebase
 - Real-time validation fields
-- Step-by-step instructions to get credentials
+- Step-by-step tutorial to get credentials
 - Test connection button
 - Clear feedback messages
+- Tutorial displayed above credential fields
 
 ### Security Features
 - URL format validation (Firebase domain)
@@ -98,5 +108,5 @@ To use for presentation:
 ```bash
 npm run dev      # Development server (port 8080)
 npm run build    # Production build
-npm run lint     # Lint code
+npm run lint    # Lint code
 ```

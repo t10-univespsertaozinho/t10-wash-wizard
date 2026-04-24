@@ -1,62 +1,60 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
 import AppLayout from "@/components/AppLayout";
-import Login from "@/pages/Login";
-import Dashboard from "@/pages/Dashboard";
-import Clientes from "@/pages/Clientes";
-import NovoCliente from "@/pages/NovoCliente";
-import ClienteDetalhe from "@/pages/ClienteDetalhe";
-import EditarCliente from "@/pages/EditarCliente";
-import Lavagens from "@/pages/Lavagens";
-import NovaLavagem from "@/pages/NovaLavagem";
-import TiposLavagem from "@/pages/TiposLavagem";
-import Estoque from "@/pages/Estoque";
-import NovoProduto from "@/pages/NovoProduto";
-import Movimentacao from "@/pages/Movimentacao";
-import NotFound from "@/pages/NotFound";
-import Configuracoes from "@/pages/Configuracoes";
+import { Loader2 } from "lucide-react";
+
+// Lazy-loaded pages
+const Login = lazy(() => import("@/pages/Login"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Clientes = lazy(() => import("@/pages/Clientes"));
+const NovoCliente = lazy(() => import("@/pages/NovoCliente"));
+const ClienteDetalhe = lazy(() => import("@/pages/ClienteDetalhe"));
+const EditarCliente = lazy(() => import("@/pages/EditarCliente"));
+const Lavagens = lazy(() => import("@/pages/Lavagens"));
+const NovaLavagem = lazy(() => import("@/pages/NovaLavagem"));
+const TiposLavagem = lazy(() => import("@/pages/TiposLavagem"));
+const Estoque = lazy(() => import("@/pages/Estoque"));
+const NovoProduto = lazy(() => import("@/pages/NovoProduto"));
+const Movimentacao = lazy(() => import("@/pages/Movimentacao"));
+const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-primary">Carregando...</div>
-      </div>
-    );
-  }
-  
-  if (!isAuthenticated) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
+// Loading Fallback
+const PageLoading = () => (
+  <div className="min-h-[400px] w-full flex flex-col items-center justify-center gap-3 animate-fade-in">
+    <Loader2 className="w-10 h-10 text-primary animate-spin" />
+    <p className="text-sm text-muted-foreground font-medium">Carregando conteúdo...</p>
+  </div>
+);
 
-function AdminRoute({ children }: { children: React.ReactNode }) {
+// Unified Protected Route
+function ProtectedRoute({ adminOnly = false }: { adminOnly?: boolean }) {
   const { user, isAuthenticated, loading } = useAuth();
   
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="animate-pulse text-primary">Carregando...</div>
+        <Loader2 className="w-8 h-8 text-primary animate-spin" />
       </div>
     );
   }
   
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   
-  if (!user || user.role !== 'admin') {
+  if (adminOnly && (!user || user.role !== 'admin')) {
     return <Navigate to="/" replace />;
   }
   
-  return <>{children}</>;
+  return <Outlet />;
 }
 
 const App = () => (
@@ -73,24 +71,37 @@ const App = () => (
         <AuthProvider>
           <AppProvider>
             <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<Login />} />
-                <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/clientes" element={<Clientes />} />
-                  <Route path="/novo-cliente" element={<NovoCliente />} />
-                  <Route path="/clientes/:id" element={<ClienteDetalhe />} />
-                  <Route path="/clientes/:id/editar" element={<EditarCliente />} />
-                  <Route path="/lavagens" element={<Lavagens />} />
-                  <Route path="/nova-lavagem" element={<NovaLavagem />} />
-                  <Route path="/tipos-lavagem" element={<AdminRoute><TiposLavagem /></AdminRoute>} />
-                  <Route path="/estoque" element={<AdminRoute><Estoque /></AdminRoute>} />
-                  <Route path="/novo-produto" element={<AdminRoute><NovoProduto /></AdminRoute>} />
-                  <Route path="/movimentacao" element={<AdminRoute><Movimentacao /></AdminRoute>} />
-                  <Route path="/configuracoes" element={<AdminRoute><Configuracoes /></AdminRoute>} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+              <Suspense fallback={<PageLoading />}>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  
+                  {/* Protected User Routes */}
+                  <Route element={<ProtectedRoute />}>
+                    <Route element={<AppLayout />}>
+                      <Route path="/" element={<Dashboard />} />
+                      <Route path="/clientes" element={<Clientes />} />
+                      <Route path="/novo-cliente" element={<NovoCliente />} />
+                      <Route path="/clientes/:id" element={<ClienteDetalhe />} />
+                      <Route path="/clientes/:id/editar" element={<EditarCliente />} />
+                      <Route path="/lavagens" element={<Lavagens />} />
+                      <Route path="/nova-lavagem" element={<NovaLavagem />} />
+                    </Route>
+                  </Route>
+
+                  {/* Protected Admin Routes */}
+                  <Route element={<ProtectedRoute adminOnly />}>
+                    <Route element={<AppLayout />}>
+                      <Route path="/tipos-lavagem" element={<TiposLavagem />} />
+                      <Route path="/estoque" element={<Estoque />} />
+                      <Route path="/novo-produto" element={<NovoProduto />} />
+                      <Route path="/movimentacao" element={<Movimentacao />} />
+                      <Route path="/configuracoes" element={<Configuracoes />} />
+                    </Route>
+                  </Route>
+
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Suspense>
             </BrowserRouter>
           </AppProvider>
         </AuthProvider>

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { isDarkTheme } from '@/hooks/useTheme';
@@ -12,85 +13,108 @@ export default function Dashboard() {
   const { lavagens, clientes, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData, tiposLavagem } = useApp();
   const isDark = isDarkTheme();
 
-  const tooltipStyle = {
+  const tooltipStyle = useMemo(() => ({
     background: isDark ? '#1a1d27' : '#ffffff',
     border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : '#e5e7eb'}`,
     borderRadius: 8,
     color: isDark ? '#fff' : '#1f2937',
     fontSize: 12,
-  };
+  }), [isDark]);
 
-  const tickStyle = { fill: isDark ? '#9ca3af' : '#6b7280', fontSize: 11 };
+  const tickStyle = useMemo(() => ({ 
+    fill: isDark ? '#9ca3af' : '#6b7280', 
+    fontSize: 11 
+  }), [isDark]);
 
-  const hoje = new Date().toISOString().slice(0, 10);
-  const mesAtual = new Date().toISOString().slice(0, 7);
+  const stats = useMemo(() => {
+    const hoje = new Date().toISOString().slice(0, 10);
+    const mesAtual = new Date().toISOString().slice(0, 7);
 
-  const lavagensHoje = lavagens.filter(l => l.data.slice(0, 10) === hoje);
-  const lavagensMes = lavagens.filter(l => l.data.slice(0, 7) === mesAtual);
-  const clientesHoje = [...new Set(lavagensHoje.map(l => l.cliente_id))].length;
-  const receitaHoje = lavagensHoje.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0);
-  const receitaMes = lavagensMes.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0);
-  const pendentes = lavagens.filter(l => l.status === 'pendente');
-  const concluidasMes = lavagensMes.filter(l => l.status === 'concluida');
-  const lavagensPorTipoMes = tiposLavagem.map(t => ({
-    nome: t.nome,
-    quantidade: lavagensMes.filter(l => l.tipo_lavagem_id === t.id).length,
-  }));
-
-  const last7 = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
-    const key = d.toISOString().slice(0, 10);
-    const dayLavagens = lavagens.filter(l => l.data.slice(0, 10) === key);
-    return {
-      dia: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
-      receita: dayLavagens.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0),
-      lavagens: dayLavagens.length,
-    };
-  });
-
-  const last6Months = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - (5 - i));
-    const key = d.toISOString().slice(0, 7);
-    const monthLavagens = lavagens.filter(l => l.data.slice(0, 7) === key);
-    return {
-      mes: MONTHS[d.getMonth()],
-      lavagens: monthLavagens.length,
-      receita: monthLavagens.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0),
-    };
-  });
-
-  const lavagensPorTipo = Array.from({ length: 6 }, (_, i) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - (5 - i));
-    const key = d.toISOString().slice(0, 7);
-    const monthLavagens = lavagens.filter(l => l.data.slice(0, 7) === key);
+    const lavagensHoje = lavagens.filter(l => l.data.slice(0, 10) === hoje);
+    const lavagensMes = lavagens.filter(l => l.data.slice(0, 7) === mesAtual);
+    const clientesHoje = [...new Set(lavagensHoje.map(l => l.cliente_id))].length;
+    const receitaHoje = lavagensHoje.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0);
+    const receitaMes = lavagensMes.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0);
+    const pendentes = lavagens.filter(l => l.status === 'pendente');
+    const concluidasMes = lavagensMes.filter(l => l.status === 'concluida');
     
-    const data: Record<string, number | string> = { mes: MONTHS[d.getMonth()] };
-    tiposLavagem.forEach(t => {
-      data[t.nome] = monthLavagens.filter(l => l.tipo_lavagem_id === t.id).length;
+    const lavagensPorTipoMes = tiposLavagem.map(t => ({
+      nome: t.nome,
+      quantidade: lavagensMes.filter(l => l.tipo_lavagem_id === t.id).length,
+    }));
+
+    const last7 = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      const key = d.toISOString().slice(0, 10);
+      const dayLavagens = lavagens.filter(l => l.data.slice(0, 10) === key);
+      return {
+        dia: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
+        receita: dayLavagens.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0),
+        lavagens: dayLavagens.length,
+      };
     });
-    return data;
-  });
 
-  const recentClientes = [...clientes].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5);
+    const last6Months = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      const key = d.toISOString().slice(0, 7);
+      const monthLavagens = lavagens.filter(l => l.data.slice(0, 7) === key);
+      return {
+        mes: MONTHS[d.getMonth()],
+        lavagens: monthLavagens.length,
+        receita: monthLavagens.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0),
+      };
+    });
 
-  const statsHoje = [
-    { label: 'Lavagens Hoje', value: lavagensHoje.length, icon: Droplets, border: 'border-primary' },
-    { label: 'Receita Hoje', value: `R$ ${receitaHoje.toFixed(2)}`, icon: DollarSign, border: 'border-success' },
-    { label: 'Clientes Hoje', value: clientesHoje, icon: Users, border: 'border-purple-500' },
-    { label: 'Lavagens no Mês', value: lavagensMes.length, icon: Calendar, border: 'border-accent' },
-  ];
+    const lavagensPorTipo = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date();
+      d.setMonth(d.getMonth() - (5 - i));
+      const key = d.toISOString().slice(0, 7);
+      const monthLavagens = lavagens.filter(l => l.data.slice(0, 7) === key);
+      
+      const data: Record<string, number | string> = { mes: MONTHS[d.getMonth()] };
+      tiposLavagem.forEach(t => {
+        data[t.nome] = monthLavagens.filter(l => l.tipo_lavagem_id === t.id).length;
+      });
+      return data;
+    });
 
-  const statsMes = [
-    { label: 'Receita do Mês', value: `R$ ${receitaMes.toFixed(2)}`, icon: TrendingUp, border: 'border-success' },
-    { label: 'Concluídas no Mês', value: concluidasMes.length, icon: Check, border: 'border-accent' },
-  ];
+    return {
+      lavagensHoje,
+      lavagensMes,
+      clientesHoje,
+      receitaHoje,
+      receitaMes,
+      pendentes,
+      concluidasMes,
+      lavagensPorTipoMes,
+      last7,
+      last6Months,
+      lavagensPorTipo
+    };
+  }, [lavagens, tiposLavagem]);
 
-  const colors = isDark 
+  const recentClientes = useMemo(() => 
+    [...clientes].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5),
+  [clientes]);
+
+  const statsCardsHoje = useMemo(() => [
+    { label: 'Lavagens Hoje', value: stats.lavagensHoje.length, icon: Droplets, border: 'border-primary' },
+    { label: 'Receita Hoje', value: `R$ ${stats.receitaHoje.toFixed(2)}`, icon: DollarSign, border: 'border-success' },
+    { label: 'Clientes Hoje', value: stats.clientesHoje, icon: Users, border: 'border-purple-500' },
+    { label: 'Lavagens no Mês', value: stats.lavagensMes.length, icon: Calendar, border: 'border-accent' },
+  ], [stats]);
+
+  const statsCardsMes = useMemo(() => [
+    { label: 'Receita do Mês', value: `R$ ${stats.receitaMes.toFixed(2)}`, icon: TrendingUp, border: 'border-success' },
+    { label: 'Concluídas no Mês', value: stats.concluidasMes.length, icon: Check, border: 'border-accent' },
+  ], [stats]);
+
+  const colors = useMemo(() => isDark 
     ? ['hsl(49,100%,50%)', 'hsl(212,80%,42%)', 'hsl(142,70%,45%)', 'hsl(280,60%,50%)', 'hsl(340,80%,50%)', 'hsl(180,70%,50%)']
-    : ['hsl(25,95%,45%)', 'hsl(212,80%,50%)', 'hsl(142,70%,35%)', 'hsl(280,60%,45%)', 'hsl(340,80%,50%)', 'hsl(180,70%,45%)'];
+    : ['hsl(25,95%,45%)', 'hsl(212,80%,50%)', 'hsl(142,70%,35%)', 'hsl(280,60%,45%)', 'hsl(340,80%,50%)', 'hsl(180,70%,45%)'],
+  [isDark]);
 
   return (
     <div className="space-y-6">
@@ -121,7 +145,7 @@ export default function Dashboard() {
 
       {/* 1. Stats Rápidas - Hoje */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsHoje.map((s, i) => (
+        {statsCardsHoje.map((s, i) => (
           <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
             <div className="flex items-center justify-between">
               <div>
@@ -138,14 +162,14 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '240ms' }}>
           <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens Pendentes</h2>
-          {pendentes.length === 0 ? (
+          {stats.pendentes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma lavagem pendente.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead><tr className="table-header"><th className="text-left py-2 px-3">Cliente</th><th className="text-left py-2 px-3">Veículo</th><th className="text-left py-2 px-3">Tipo</th><th className="text-right py-2 px-3">Valor</th><th className="py-2 px-3"></th></tr></thead>
                 <tbody>
-                  {pendentes.slice(0, 5).map(l => {
+                  {stats.pendentes.slice(0, 5).map(l => {
                     const c = getCliente(l.cliente_id);
                     const v = veiculos.find(x => x.id === l.veiculo_id);
                     const t = getTipoLavagem(l.tipo_lavagem_id);
@@ -202,7 +226,7 @@ export default function Dashboard() {
           <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Últimos 7 dias</h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={last7}>
+              <ComposedChart data={stats.last7}>
                 <XAxis dataKey="dia" tick={tickStyle} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
                 <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
@@ -241,7 +265,7 @@ export default function Dashboard() {
       {user?.role === 'admin' && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {statsMes.map((s, i) => (
+            {statsCardsMes.map((s, i) => (
               <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between">
                   <div>
@@ -257,7 +281,7 @@ export default function Dashboard() {
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total por Tipo (Mês)</p>
                   <div className="mt-1 space-y-1">
-                    {lavagensPorTipoMes.map((t, i) => (
+                    {stats.lavagensPorTipoMes.map((t) => (
                       <p key={t.nome} className="text-sm font-barlow-condensed font-bold text-foreground">
                         {t.nome}: <span className="text-purple-400">{t.quantidade}</span>
                       </p>
@@ -275,7 +299,7 @@ export default function Dashboard() {
               <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens e Receita - Últimos 6 meses</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={last6Months}>
+                  <ComposedChart data={stats.last6Months}>
                     <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
                     <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
@@ -292,7 +316,7 @@ export default function Dashboard() {
               <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens por Tipo - Últimos 6 meses</h2>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={lavagensPorTipo}>
+                  <BarChart data={stats.lavagensPorTipo}>
                     <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
                     <YAxis tick={tickStyle} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={tooltipStyle} />
