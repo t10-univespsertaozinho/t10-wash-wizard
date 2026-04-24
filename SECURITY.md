@@ -23,6 +23,14 @@ The application implements multiple security layers for LocalStorage mode:
 - **Timestamp Validation**: Signatures expire after 30 days
 - **Data Encryption**: Application data is encrypted before storage
 
+### 3. Performance Best Practices
+
+When deploying, ensure:
+
+- **Code Splitting**: Enabled via React.lazy + Suspense
+- **Lazy Loading**: Only necessary pages load on demand
+- **Memoization**: Dashboard calculations are memoized with useMemo
+
 ```typescript
 // Security utilities in src/utils/security.ts
 - createSignedUser()    // Creates HMAC-signed user session

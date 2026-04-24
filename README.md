@@ -28,7 +28,9 @@ npm run dev
 | shadcn-ui + Tailwind CSS | Component library |
 | React Router DOM | Roteamento |
 | React Hook Form + Zod | Formulários e validação |
+| TanStack React Query | Gerenciamento de estado |
 | Firebase Auth + Firestore | Autenticação e banco de dados (opcional) |
+| React.lazy + Suspense | Code splitting |
 | Recharts | Gráficos e dashboards |
 
 ## Arquitetura do Projeto
@@ -79,6 +81,15 @@ O sistema implementa múltiplas camadas de segurança:
 - **Assinatura HMAC**: Sessões de usuário assinadas digitalmente
 - **Validação de Timestamp**: Assinaturas expiram após 30 dias
 - **Criptografia de Dados**: Dados criptografados antes do armazenamento
+
+### Performance
+
+O projeto inclui otimizações de performance:
+
+- **Code Splitting**: Páginas usam React.lazy + Suspense (carregamento sob demanda)
+- **Memoização**: useMemo para cálculos pesados no Dashboard
+- **Loading States**: Componentes de carregamento com spinners animadas
+- **Bundle Partitioning**: Vite divide o bundle em chunks separados (vendor-firebase, vendor-charts, vendor-ui)
 
 ### Firebase (Produção)
 
@@ -246,7 +257,7 @@ npm run build
 ## Scripts Disponíveis
 
 ```bash
-npm run dev        # Servidor desenvolvimento (porta 5173)
+npm run dev        # Servidor desenvolvimento (porta 8080)
 npm run build      # Build produção
 npm run build:dev # Build modo desenvolvimento
 npm run lint      # Verificar código ESLint
