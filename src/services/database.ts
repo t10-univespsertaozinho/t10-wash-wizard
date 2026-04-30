@@ -359,11 +359,12 @@ export const firebaseDB: Database = {
 
   async createCliente(data) {
     const db = getFirebaseDb();
+    const timestamp = Timestamp.now();
     const docRef = await addDoc(collection(db, 'clientes'), {
       ...data,
-      created_at: Timestamp.now(),
+      created_at: timestamp,
     });
-    return { id: docRef.id, ...data, created_at: now() };
+    return { id: docRef.id, ...data, created_at: timestampToISOString(timestamp) };
   },
 
   async updateCliente(id, data) {
@@ -419,12 +420,13 @@ export const firebaseDB: Database = {
 
   async createLavagem(data) {
     const db = getFirebaseDb();
+    const timestamp = Timestamp.now();
     const docRef = await addDoc(collection(db, 'lavagens'), {
       ...data,
-      data: Timestamp.now(),
+      data: timestamp,
       data_conclusao: null,
     });
-    return { id: docRef.id, ...data, data: now(), data_conclusao: null };
+    return { id: docRef.id, ...data, data: timestampToISOString(timestamp), data_conclusao: null };
   },
 
   async updateLavagem(id, data) {
@@ -444,10 +446,13 @@ export const firebaseDB: Database = {
     const db = getFirebaseDb();
     const snapshot = await getDocs(collection(db, 'tipos_lavagem'));
     if (snapshot.empty) {
+      const novosTipos: TipoLavagem[] = [];
       for (const tipo of defaultTipos) {
-        await addDoc(collection(db, 'tipos_lavagem'), tipo);
+        const { id, ...data } = tipo;
+        const docRef = await addDoc(collection(db, 'tipos_lavagem'), data);
+        novosTipos.push({ id: docRef.id, ...data });
       }
-      return defaultTipos;
+      return novosTipos;
     }
     return snapshot.docs.map(documentToTipoLavagem);
   },
@@ -506,11 +511,12 @@ export const firebaseDB: Database = {
 
   async createMovimentacao(data) {
     const db = getFirebaseDb();
+    const timestamp = Timestamp.now();
     const docRef = await addDoc(collection(db, 'movimentacoes'), {
       ...data,
-      data: Timestamp.now(),
+      data: timestamp,
     });
-    return { id: docRef.id, ...data, data: now() };
+    return { id: docRef.id, ...data, data: timestampToISOString(timestamp) };
   },
 };
 

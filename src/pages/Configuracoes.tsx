@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { isFirebaseConfigured } from '@/lib/firebase';
+import { isFirebaseConfigured, getFirebaseConfig } from '@/lib/firebase';
 import { Shield, Database, Key, CheckCircle, AlertTriangle, Save, Eye, EyeOff, RefreshCw } from 'lucide-react';
 
 interface FirebaseConfig {
@@ -19,18 +19,24 @@ export default function Configuracoes() {
   const [showSecrets, setShowSecrets] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [dbType, setDbType] = useState<'localstorage' | 'firebase'>(
-    (localStorage.getItem('t10_db_type') as 'localstorage' | 'firebase') || 'localstorage'
-  );
-  
-  const [config, setConfig] = useState<FirebaseConfig>({
-    apiKey: localStorage.getItem('t10_firebase_apiKey') || '',
-    authDomain: localStorage.getItem('t10_firebase_authDomain') || '',
-    projectId: localStorage.getItem('t10_firebase_projectId') || '',
-    storageBucket: localStorage.getItem('t10_firebase_storageBucket') || '',
-    messagingSenderId: localStorage.getItem('t10_firebase_messagingSenderId') || '',
-    appId: localStorage.getItem('t10_firebase_appId') || '',
+  const [dbType, setDbType] = useState<'localstorage' | 'firebase'>(() => {
+    const envType = import.meta.env.VITE_DB_TYPE as 'localstorage' | 'firebase';
+    const storageType = localStorage.getItem('t10_db_type') as 'localstorage' | 'firebase';
+    return envType || storageType || 'localstorage';
   });
+  
+  const [config, setConfig] = useState<FirebaseConfig>(() => {
+    const currentConfig = getFirebaseConfig();
+    return {
+      apiKey: currentConfig.apiKey || '',
+      authDomain: currentConfig.authDomain || '',
+      projectId: currentConfig.projectId || '',
+      storageBucket: currentConfig.storageBucket || '',
+      messagingSenderId: currentConfig.messagingSenderId || '',
+      appId: currentConfig.appId || '',
+    };
+  });
+
 
   const firebaseReady = isFirebaseConfigured();
 

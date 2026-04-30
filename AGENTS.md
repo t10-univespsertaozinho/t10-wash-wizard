@@ -1,5 +1,8 @@
 # Wash Wizard - Project Notes
 
+> Este arquivo contém notas para agentes de IA trabalharem no projeto.
+> Para histórico detalhado, veja `HISTORY.md`.
+
 ## Current Architecture
 
 - **Data Storage**: LocalStorage (browser-based) with encryption, Firebase ready
@@ -9,6 +12,23 @@
 - **Test Data**: Built-in seedTestData() for demonstrations
 - **Settings Page**: Admin-only database configuration interface
 - **Performance**: Code splitting with React.lazy + Suspense, memoization with useMemo
+
+## Quick Start
+
+```bash
+# Clone o projeto
+git clone https://github.com/t10-univespsertaozinho/t10-wash-wizard.git
+cd t10-wash-wizard
+
+# Instale dependências
+npm install
+
+# Configure o ambiente
+cp .env.example .env
+
+# Inicie o desenvolvimento
+npm run dev  # Porta: 8080
+```
 
 ## Environment Configuration
 
