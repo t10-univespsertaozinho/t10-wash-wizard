@@ -4,6 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { isFirebaseConfigured, getFirebaseConfig } from '@/lib/firebase';
 import { isFirebaseActive } from '@/services/database';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { Shield, Database, Key, CheckCircle, AlertTriangle, Save, Eye, EyeOff, RefreshCw, Cloud, CloudOff, ArrowLeftRight } from 'lucide-react';
 
 interface FirebaseConfig {
@@ -44,14 +46,9 @@ export default function Configuracoes() {
 
   const firebaseReady = isFirebaseConfigured();
 
-  const isValidUrl = (value: string) => {
+  const isValidDomain = (value: string) => {
     if (!value) return true;
-    try {
-      new URL(value);
-      return true;
-    } catch {
-      return false;
-    }
+    return /^[a-zA-Z0-9.-]+$/.test(value);
   };
 
   const isValidProjectId = (value: string) => {
@@ -69,8 +66,8 @@ export default function Configuracoes() {
       if (!config.apiKey || config.apiKey.length < 10) {
         return 'A API Key é obrigatória e deve ter pelo menos 10 caracteres';
       }
-      if (!config.authDomain || !isValidUrl(config.authDomain)) {
-        return 'O Auth Domain deve ser uma URL válida';
+      if (!config.authDomain || !isValidDomain(config.authDomain)) {
+        return 'O Auth Domain deve ser um domínio válido (ex: projeto.firebaseapp.com)';
       }
       if (!config.projectId || !isValidProjectId(config.projectId)) {
         return 'O Project ID deve conter apenas letras minúsculas, números e hífens';
@@ -130,19 +127,24 @@ export default function Configuracoes() {
     }
 
     setSaving(true);
+    let tempApp;
     try {
-      const response = await fetch(`https://${config.projectId}.firebaseio.com/.json`, {
-        method: 'GET',
-      });
+      tempApp = initializeApp(config, `test-app-${Date.now()}`);
+      const tempDb = getFirestore(tempApp);
+      const dummyRef = doc(tempDb, '_connection_test_', 'test');
+      await getDoc(dummyRef);
       
-      if (response.ok || response.status === 401) {
-        setMessage({ type: 'success', text: 'Conexão com Firebase verificada!' });
+      setMessage({ type: 'success', text: 'Conexão com Firebase verificada!' });
+    } catch (e: any) {
+      if (e.code === 'permission-denied') {
+        setMessage({ type: 'success', text: 'Conexão com Firebase verificada (regras de segurança ativas)!' });
       } else {
         setMessage({ type: 'error', text: 'Não foi possível conectar ao Firebase. Verifique as credenciais.' });
       }
-    } catch {
-      setMessage({ type: 'error', text: 'Erro de conexão. Verifique a internet e as credenciais.' });
     } finally {
+      if (tempApp) {
+        await deleteApp(tempApp).catch(() => {});
+      }
       setSaving(false);
     }
   };
