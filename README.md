@@ -82,6 +82,24 @@ O sistema implementa múltiplas camadas de segurança:
 - **Validação de Timestamp**: Assinaturas expiram após 30 dias
 - **Criptografia de Dados**: Dados criptografados antes do armazenamento
 
+### Sincronização Firebase
+
+O projeto implementa sincronização bidirecional entre dados locais e Firebase:
+
+- **Inicialização**: Ao abrir o app, dados são carregados do Firebase (se configurado)
+- **Trabalho Local**: Alterações ficam no estado local durante o uso
+- **Auto-Sync**: Ao fechar a página, dados são automaticamente enviados para o Firebase
+- **Detecção de Conflitos**: Timestamps comparados para identificar alterações remotas
+- **Resolução**: Admin é notificado sobre conflitos e pode escolher qual versão manter
+
+### Interface de Sincronização
+
+Na página de configurações (`/configuracoes`), o admin pode:
+- Ver o status atual de sincronização (synced/pending/conflict)
+- Ver o número de alterações pendentes
+- Sincronizar manualmente com botão dedicado
+- Resolver conflitos detectados (manter local ou remoto)
+
 ### Performance
 
 O projeto inclui otimizações de performance:

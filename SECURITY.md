@@ -134,6 +134,26 @@ Use `localstorage` mode (default) or Firebase Emulator.
 | Firestore IDOR | ✅ Comprehensive rules |
 | Sensitive data exposure | ✅ Encryption implemented |
 
+## Sync Security
+
+A implementação de sincronização adiciona camadas adicionais de segurança:
+
+### Campos de Sincronização
+Cada entidade agora inclui:
+- `updated_at`: Timestamp da última modificação (protegido contra manipulação)
+- `_syncStatus`: Estado de sincronização (`synced` | `pending` | `conflict`)
+
+### Fluxo de Sync Seguro
+1. **Inicialização**: Dados são validados antes de serem carregados
+2. **Detecção de Conflitos**: Usa timestamps para identificar alterações remotas
+3. **Sincronização**: Apenas dados do usuário atual são sincronizados (user_id)
+4. **Resolução de Conflitos**: Admin decide qual versão manter
+
+### Configuração de Segurança para Sync
+- Firebase credentials nunca expostas no código
+- Dados são associados ao user_id em todas as operações
+- Sync automático apenas se houver alterações pendentes
+
 ## Data for Testing
 
 The system includes demonstration data generated automatically (`seedTestData`). These are safe fictitious data for testing.

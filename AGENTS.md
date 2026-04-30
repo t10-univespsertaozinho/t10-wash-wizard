@@ -13,6 +13,47 @@
 - **Settings Page**: Admin-only database configuration interface
 - **Performance**: Code splitting with React.lazy + Suspense, memoization with useMemo
 
+## Sync Architecture (Firebase Integration)
+
+O projeto implementa sincronização bidirecional entre dados locais e Firebase:
+
+### Fluxo de Sincronização
+
+1. **Inicialização**: Ao abrir o app, os dados são carregados do Firebase (se configurado)
+2. **Trabalho Local**: Todas as alterações ficam no estado local (AppContext)
+3. **Detecção de Conflitos**: Timestamps (`updated_at`) comparados para detectar alterações remotas
+4. **Sincronização**: Ao fechar a página (`beforeunload`), dados locais são enviados para Firebase
+5. **Resolução de Conflitos**: Admin é notificado sobre conflitos e pode escolher qual versão manter
+
+### Campos de Sincronização
+
+Cada entidade possui campos adicionais:
+- `updated_at`: Timestamp da última modificação
+- `_syncStatus`: Estado de sincronização (`synced` | `pending` | `conflict`)
+
+### UI de Sync
+
+A página de configurações (`/configuracoes`) mostra:
+- Status atual de sincronização (synced/pending/conflict)
+- Número de alterações pendentes
+- Botão para sincronização manual
+- Lista de conflitos com opção de resolução
+
+### Funções Principais
+
+```typescript
+// Em src/services/database.ts
+syncLocalToFirebase(clientes, veiculos, lavagens, produtos, movimentacoes, userId)
+// Retorna: { conflicts: Conflict[], synced: number, errors: string[] }
+
+detectConflicts(localClientes, remoteClientes)
+// Detecta conflitos por comparação de timestamps
+
+// Em src/contexts/AppContext.tsx
+syncToFirebase()  // Sincronização manual
+resolveConflict(entityType, entityId, useLocal)  // Resolver conflito
+```
+
 ## Quick Start
 
 ```bash
@@ -58,6 +99,10 @@ VITE_STORAGE_SECRET=your_secure_secret
 - Built-in test data for demonstrations
 - **Admin settings page for Firebase configuration**
 - **Lazy loading of pages** for better performance
+- **Bidirectional Sync**: Auto-sync to Firebase on page close
+- **Conflict Detection**: Timestamps-based conflict detection
+- **Manual Sync**: Button to force synchronization anytime
+- **Conflict Resolution**: Admin can choose local or remote version
 
 ## Performance Implementation
 
@@ -113,15 +158,55 @@ To use for presentation:
 
 ## Known Limitations
 
-1. **LocalStorage Only**: All data is stored in browser localStorage (with encryption)
-2. **No Real Backend**: Optional Firebase integration for production
-3. **Single Browser**: Data doesn't sync across devices (unless Firebase enabled)
+1. **Browser Storage**: Dados locais ficam no localStorage do navegador (com criptografia)
+2. **Single Browser**: Dados não sincronizam entre dispositivos (a menos que Firebase esteja ativo)
 
-## Future Plans
+## Firebase Configuration
 
-- **Firebase Integration**: Full Firestore + Auth integration
-- **Real-time Sync**: Multi-device support
-- **Cloud Functions**: Backend logic for security
+### Configuração via .env
+
+```bash
+VITE_DB_TYPE=firebase
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
+VITE_FIREBASE_APP_ID=1:123456789:web:abc123
+```
+
+### Configuração via Interface
+
+O admin pode configurar o Firebase através da página de configurações:
+1. Acesse `/configuracoes` (requer acesso admin)
+2. Selecione "Firebase (Nuvem)"
+3. Preencha as credenciais do Firebase Console
+4. Clique em "Testar Conexão" para verificar
+5. Salve as configurações
+
+### Regras de Segurança Firestore
+
+No Firebase Console, configure as regras de segurança:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{collection}/{document} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.user_id;
+    }
+  }
+}
+```
+
+## Run Commands
+
+```bash
+npm run dev      # Development server (port 8080)
+npm run build    # Production build
+npm run lint    # Lint code
+```
 
 ## Run Commands
 

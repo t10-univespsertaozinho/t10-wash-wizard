@@ -8,6 +8,54 @@
 
 ---
 
+## 2026-04-30 — opencode/minimax-m2.5-free — Firebase Sync Integration
+
+### Resumo
+
+Implementação completa de sincronização bidirecional entre dados locais e Firebase, com detecção de conflitos por timestamps e resolução pelo admin.
+
+### Arquivos modificados
+
+- `src/types/index.ts`
+  - Adicionados campos `updated_at` e `_syncStatus` em todas as entidades
+  - Nova interface `Conflict` e tipo `SyncStatus`
+
+- `src/services/database.ts`
+  - Adicionadas funções `syncLocalToFirebase()` para sincronização
+  - Adicionada função `detectConflicts()` para detecção de conflitos
+  - Adicionada função `isFirebaseActive()` para verificar modo ativo
+  - Adicionada função `getDatabaseType()` para detectar tipo configurado
+
+- `src/contexts/AppContext.tsx`
+  - Nova inicialização que carrega dados do Firebase ao iniciar
+  - Estados: `syncStatus`, `lastSync`, `conflicts`, `hasPendingChanges`
+  - Operações CRUD agora marcam `_syncStatus: 'pending'`
+  - Listener `beforeunload` para sincronização automática ao fechar
+  - Carregamento de conflitos pendentes do localStorage
+
+- `src/pages/Configuracoes.tsx`
+  - Nova seção de status de sincronização
+  - Botão para sincronização manual
+  - Lista de conflitos com opções de resolução (manter local/remoto)
+
+- `AGENTS.md`
+  - Nova seção "Sync Architecture" com documentação completa
+  - Recursos atualizados (bidirectional sync, conflict detection, manual sync)
+
+### Verificação
+
+- `npm run lint` → sem erros (apenas warnings de componentes pré-existentes)
+- `npm run dev` → servidor inicia normalmente
+
+### Fluxo de Sync Implementado
+
+1. **Inicialização**: Carrega dados do Firebase se configurado
+2. **Trabalho**: Alterações ficam no estado local com `pending`
+3. **Fechar**: Auto-sync ao fechar a página (`beforeunload`)
+4. **Conflitos**: Admin notificado e pode resolver na página de configurações
+
+---
+
 ## 2026-04-30 — opencode/minimax-m2.5-free — Performance optimization and settings page improvements
 
 ### Resumo

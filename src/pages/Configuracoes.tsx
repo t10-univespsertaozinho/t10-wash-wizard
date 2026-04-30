@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
 import { isFirebaseConfigured, getFirebaseConfig } from '@/lib/firebase';
-import { Shield, Database, Key, CheckCircle, AlertTriangle, Save, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { isFirebaseActive } from '@/services/database';
+import { Shield, Database, Key, CheckCircle, AlertTriangle, Save, Eye, EyeOff, RefreshCw, Cloud, CloudOff, ArrowLeftRight } from 'lucide-react';
 
 interface FirebaseConfig {
   apiKey: string;
@@ -15,9 +17,11 @@ interface FirebaseConfig {
 
 export default function Configuracoes() {
   const { user } = useAuth();
+  const { syncStatus, lastSync, conflicts, hasPendingChanges, syncToFirebase, resolveConflict } = useApp();
   const navigate = useNavigate();
   const [showSecrets, setShowSecrets] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [dbType, setDbType] = useState<'localstorage' | 'firebase'>(() => {
     const envType = import.meta.env.VITE_DB_TYPE as 'localstorage' | 'firebase';
@@ -191,6 +195,111 @@ export default function Configuracoes() {
           )}
         </div>
       </div>
+
+      {/* Status de Sincronização - apenas se Firebase ativo */}
+      {isFirebaseActive() && (
+        <div className="bg-card rounded-xl border border-border p-5">
+          <h2 className="font-barlow-condensed font-bold text-lg text-foreground mb-4 flex items-center gap-2">
+            <ArrowLeftRight size={18} /> Sincronização
+          </h2>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              {syncStatus === 'synced' && (
+                <span className="flex items-center gap-2 text-success">
+                  <Cloud size={18} /> Sincronizado
+                </span>
+              )}
+              {syncStatus === 'pending' && (
+                <span className="flex items-center gap-2 text-yellow-500">
+                  <RefreshCw size={18} className="animate-spin" /> Alterações pendentes
+                </span>
+              )}
+              {syncStatus === 'conflict' && (
+                <span className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle size={18} /> Conflitos detectados
+                </span>
+              )}
+              
+              {lastSync && (
+                <span className="text-xs text-muted-foreground">
+                  Última sync: {new Date(lastSync).toLocaleString('pt-BR')}
+                </span>
+              )}
+            </div>
+
+            {hasPendingChanges && (
+              <p className="text-xs text-muted-foreground">
+                Você tem alterações não sincronizadas. A sincronização ocorrerá automaticamente ao fechar a página.
+              </p>
+            )}
+
+            <button
+              onClick={async () => {
+                setSyncing(true);
+                setMessage(null);
+                try {
+                  const result = await syncToFirebase();
+                  if (result.length > 0) {
+                    setMessage({ type: 'error', text: `${result.length} conflito(s) detectado(s). Verifique abaixo.` });
+                  } else {
+                    setMessage({ type: 'success', text: 'Dados sincronizados com sucesso!' });
+                  }
+                } catch (e) {
+                  setMessage({ type: 'error', text: 'Erro ao sincronizar. Tente novamente.' });
+                } finally {
+                  setSyncing(false);
+                }
+              }}
+              disabled={syncing || !hasPendingChanges}
+              className="bg-secondary text-secondary-foreground font-bold py-2 px-4 rounded-lg hover:brightness-110 transition-all text-sm flex items-center gap-2 disabled:opacity-50"
+            >
+              {syncing ? <RefreshCw className="animate-spin" size={16} /> : <Cloud size={16} />}
+              Sincronizar Agora
+            </button>
+
+            {/* Conflitos */}
+            {conflicts.length > 0 && (
+              <div className="mt-4 p-4 bg-destructive/10 rounded-lg border border-destructive/30">
+                <h3 className="font-semibold text-destructive mb-2 flex items-center gap-2">
+                  <AlertTriangle size={16} /> Conflitos Pendentes ({conflicts.length})
+                </h3>
+                <div className="space-y-2">
+                  {conflicts.map((conflict, idx) => (
+                    <div key={idx} className="text-sm bg-card p-3 rounded border border-border">
+                      <div className="font-medium">
+                        {conflict.entityType === 'cliente' && 'Cliente'}
+                        {conflict.entityType === 'veiculo' && 'Veículo'}
+                        {conflict.entityType === 'lavagem' && 'Lavagem'}
+                        {conflict.entityType === 'produto' && 'Produto'}
+                        {conflict.entityType === 'movimentacao' && 'Movimentação'}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Local: {conflict.localUpdatedAt ? new Date(conflict.localUpdatedAt).toLocaleString('pt-BR') : 'N/A'} | 
+                        Remoto: {conflict.remoteUpdatedAt ? new Date(conflict.remoteUpdatedAt).toLocaleString('pt-BR') : 'N/A'}
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => resolveConflict(conflict.entityType, conflict.entityId, true)}
+                          className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded"
+                        >
+                          Manter Local
+                        </button>
+                        <button
+                          onClick={() => resolveConflict(conflict.entityType, conflict.entityId, false)}
+                          className="text-xs px-2 py-1 bg-secondary text-secondary-foreground rounded"
+                        >
+                          Manter Remoto
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Tipo de Banco */}
       <div className="bg-card rounded-xl border border-border p-5">

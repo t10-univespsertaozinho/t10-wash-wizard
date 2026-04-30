@@ -1,4 +1,4 @@
-import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque } from '@/types';
+import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque, Conflict } from '@/types';
 import { 
   collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp, DocumentSnapshot 
 } from 'firebase/firestore';
@@ -521,11 +521,243 @@ export const firebaseDB: Database = {
 };
 
 export function getDatabase(): Database {
-  const type = (import.meta.env.VITE_DB_TYPE as DatabaseType) || 'localstorage';
+  const type = getDatabaseType();
   switch (type) {
     case 'firebase':
       return firebaseDB;
     default:
       return localStorageDB;
   }
+}
+
+export function getDatabaseType(): DatabaseType {
+  const savedType = localStorage.getItem('t10_db_type') as DatabaseType | null;
+  if (savedType) return savedType;
+  const envType = import.meta.env.VITE_DB_TYPE as DatabaseType;
+  return envType || 'localstorage';
+}
+
+export function isFirebaseActive(): boolean {
+  return getDatabaseType() === 'firebase';
+}
+
+interface SyncResult {
+  conflicts: Conflict[];
+  synced: number;
+  errors: string[];
+}
+
+export async function syncLocalToFirebase(
+  clientes: Cliente[],
+  veiculos: Veiculo[],
+  lavagens: Lavagem[],
+  produtos: Produto[],
+  movimentacoes: MovimentacaoEstoque[],
+  userId: string
+): Promise<SyncResult> {
+  const result: SyncResult = { conflicts: [], synced: 0, errors: [] };
+  
+  if (!isFirebaseConfigured()) {
+    result.errors.push('Firebase não configurado');
+    return result;
+  }
+
+  const db = getFirebaseDb();
+
+  for (const cliente of clientes) {
+    try {
+      const existing = await getDoc(doc(db, 'clientes', cliente.id));
+      
+      if (existing.exists()) {
+        const remoteData = existing.data();
+        const localUpdated = new Date(cliente.updated_at || cliente.created_at).getTime();
+        const remoteUpdated = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0;
+        
+        if (remoteUpdated > localUpdated) {
+          result.conflicts.push({
+            entityType: 'cliente',
+            entityId: cliente.id,
+            localData: cliente,
+            remoteData: { id: cliente.id, ...remoteData },
+            localUpdatedAt: cliente.updated_at || cliente.created_at,
+            remoteUpdatedAt: remoteData.updated_at || '',
+          });
+        } else {
+          await updateDoc(doc(db, 'clientes', cliente.id), {
+            ...cliente,
+            updated_at: Timestamp.now(),
+          });
+          result.synced++;
+        }
+      } else {
+        await addDoc(collection(db, 'clientes'), {
+          ...cliente,
+          created_at: Timestamp.now(),
+          updated_at: Timestamp.now(),
+        });
+        result.synced++;
+      }
+    } catch (e) {
+      result.errors.push(`Erro ao sincronizar cliente ${cliente.id}: ${e}`);
+    }
+  }
+
+  for (const veiculo of veiculos) {
+    try {
+      const existing = await getDoc(doc(db, 'veiculos', veiculo.id));
+      
+      if (existing.exists()) {
+        const remoteData = existing.data();
+        const localUpdated = new Date(veiculo.updated_at || 0).getTime();
+        const remoteUpdated = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0;
+        
+        if (remoteUpdated > localUpdated) {
+          result.conflicts.push({
+            entityType: 'veiculo',
+            entityId: veiculo.id,
+            localData: veiculo,
+            remoteData: { id: veiculo.id, ...remoteData },
+            localUpdatedAt: veiculo.updated_at || '',
+            remoteUpdatedAt: remoteData.updated_at || '',
+          });
+        } else {
+          await updateDoc(doc(db, 'veiculos', veiculo.id), {
+            ...veiculo,
+            updated_at: Timestamp.now(),
+          });
+          result.synced++;
+        }
+      } else {
+        await addDoc(collection(db, 'veiculos'), {
+          ...veiculo,
+          updated_at: Timestamp.now(),
+        });
+        result.synced++;
+      }
+    } catch (e) {
+      result.errors.push(`Erro ao sincronizar veículo ${veiculo.id}: ${e}`);
+    }
+  }
+
+  for (const lavagem of lavagens) {
+    try {
+      const existing = await getDoc(doc(db, 'lavagens', lavagem.id));
+      
+      if (existing.exists()) {
+        const remoteData = existing.data();
+        const localUpdated = new Date(lavagem.updated_at || lavagem.data).getTime();
+        const remoteUpdated = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : new Date(remoteData.data?.toDate?.() || 0).getTime();
+        
+        if (remoteUpdated > localUpdated) {
+          result.conflicts.push({
+            entityType: 'lavagem',
+            entityId: lavagem.id,
+            localData: lavagem,
+            remoteData: { id: lavagem.id, ...remoteData },
+            localUpdatedAt: lavagem.updated_at || lavagem.data,
+            remoteUpdatedAt: remoteData.updated_at || '',
+          });
+        } else {
+          await updateDoc(doc(db, 'lavagens', lavagem.id), {
+            ...lavagem,
+            updated_at: Timestamp.now(),
+          });
+          result.synced++;
+        }
+      } else {
+        await addDoc(collection(db, 'lavagens'), {
+          ...lavagem,
+          data: Timestamp.now(),
+          updated_at: Timestamp.now(),
+        });
+        result.synced++;
+      }
+    } catch (e) {
+      result.errors.push(`Erro ao sincronizar lavagem ${lavagem.id}: ${e}`);
+    }
+  }
+
+  for (const produto of produtos) {
+    try {
+      const existing = await getDoc(doc(db, 'produtos', produto.id));
+      
+      if (existing.exists()) {
+        const remoteData = existing.data();
+        const localUpdated = new Date(produto.updated_at || 0).getTime();
+        const remoteUpdated = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0;
+        
+        if (remoteUpdated > localUpdated) {
+          result.conflicts.push({
+            entityType: 'produto',
+            entityId: produto.id,
+            localData: produto,
+            remoteData: { id: produto.id, ...remoteData },
+            localUpdatedAt: produto.updated_at || '',
+            remoteUpdatedAt: remoteData.updated_at || '',
+          });
+        } else {
+          await updateDoc(doc(db, 'produtos', produto.id), {
+            ...produto,
+            updated_at: Timestamp.now(),
+          });
+          result.synced++;
+        }
+      } else {
+        await addDoc(collection(db, 'produtos'), {
+          ...produto,
+          updated_at: Timestamp.now(),
+        });
+        result.synced++;
+      }
+    } catch (e) {
+      result.errors.push(`Erro ao sincronizar produto ${produto.id}: ${e}`);
+    }
+  }
+
+  for (const mov of movimentacoes) {
+    try {
+      const existing = await getDoc(doc(db, 'movimentacoes', mov.id));
+      
+      if (!existing.exists()) {
+        await addDoc(collection(db, 'movimentacoes'), {
+          ...mov,
+          data: Timestamp.now(),
+          updated_at: Timestamp.now(),
+        });
+        result.synced++;
+      }
+    } catch (e) {
+      result.errors.push(`Erro ao sincronizar movimentação ${mov.id}: ${e}`);
+    }
+  }
+
+  return result;
+}
+
+export function detectConflicts(
+  localClientes: Cliente[],
+  remoteClientes: Cliente[]
+): Conflict[] {
+  const conflicts: Conflict[] = [];
+  
+  for (const local of localClientes) {
+    const remote = remoteClientes.find(r => r.id === local.id);
+    if (remote) {
+      const localTime = local.updated_at ? new Date(local.updated_at).getTime() : 0;
+      const remoteTime = remote.updated_at ? new Date(remote.updated_at).getTime() : 0;
+      
+      if (remoteTime > localTime) {
+        conflicts.push({
+          entityType: 'cliente',
+          entityId: local.id,
+          localData: local,
+          remoteData: remote,
+          localUpdatedAt: local.updated_at || local.created_at,
+          remoteUpdatedAt: remote.updated_at || '',
+        });
+      }
+    }
+  }
+  
+  return conflicts;
 }
