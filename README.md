@@ -131,7 +131,7 @@ VITE_DB_TYPE=localstorage
 
 **Vantagens:**
 - Sem configuração
-- Sem necessidade de conta Firebase
+- Sem necessidade de conta Supabase
 - Rápido para prototipagem
 - Dados criptografados localmente
 

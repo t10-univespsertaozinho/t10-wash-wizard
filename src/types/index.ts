@@ -31,7 +31,7 @@ export interface Lavagem {
   cliente_id: string;
   veiculo_id: string;
   tipo_lavagem_id: string;
-  status: 'pendente' | 'em_andamento' | 'concluida' | 'cancelada';
+  status: 'pendente' | 'em_progresso' | 'concluida' | 'cancelada';
   pagamento: string;
   valor: number;
   observacao: string;

@@ -185,11 +185,3 @@ npm run dev      # Development server (port 8080)
 npm run build    # Production build
 npm run lint    # Lint code
 ```
-
-## Run Commands
-
-```bash
-npm run dev      # Development server (port 8080)
-npm run build    # Production build
-npm run lint    # Lint code
-```

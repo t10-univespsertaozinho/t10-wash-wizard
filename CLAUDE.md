@@ -6,9 +6,9 @@ Este projeto é um sistema de gerenciamento para lava-rapido.
 
 Para continuar o trabalho:
 ```bash
-cd /home/labiocom-abel/Documentos/t10-0wash0wizard
-cat AGENTS. md HISTORY. md
-npm run dev  # Porta: 80
+cd /home/labiocom-abel/Documentos/t10-wash-wizard
+cat AGENTS.md HISTORY.md
+npm run dev  # Porta: 8080
 ```
 
-Consulte `AGENTS. md` para detalhes completos.
+Consulte `AGENTS.md` para detalhes completos.

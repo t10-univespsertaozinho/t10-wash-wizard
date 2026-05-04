@@ -422,7 +422,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       for (let i = 0; i < lavagensNoMes; i++) {
         const day = Math.floor(Math.random() * daysInMonth) + 1;
         const dataLavagem = new Date(d.getFullYear(), d.getMonth(), day, 10, Math.floor(Math.random() * 60));
-        const status = Math.random() > 0.15 ? 'concluida' : (Math.random() > 0.5 ? 'pendente' : 'em_andamento');
+        const status = Math.random() > 0.15 ? 'concluida' : (Math.random() > 0.5 ? 'pendente' : 'em_progresso');
         
         const clienteIdx = Math.floor(Math.random() * novosVeiculos.length);
         const tipoIdx = Math.floor(Math.random() * tipos.length);

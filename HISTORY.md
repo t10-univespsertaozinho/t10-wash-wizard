@@ -39,6 +39,59 @@ Migração da camada de nuvem do Firebase para o Supabase, mantendo intacta toda
 
 ---
 
+## 2026-05-04 — opencode/minimax-m2.5-free — Schema Alignment and Firebase Cleanup
+
+### Resumo
+
+Alinhamento do schema SQL do Supabase com os tipos TypeScript do projeto e remoção de artefatos obsoletos do Firebase.
+
+### Arquivos modificados
+
+- `tabela_sistema.sql` *(atualizado)*
+  - Adicionada coluna `nome` em `users`
+  - Adicionadas colunas `cor` e `user_id` em `veiculos`
+  - Renomeado `tipo_id` → `tipo_lavagem_id` em `lavagens`
+  - Adicionadas colunas `user_id`, `pagamento`, `observacao`, `data_conclusao` em `lavagens`
+  - Renomeado `min_quantidade` → `estoque_minimo` em `produtos`
+  - Adicionadas colunas `categoria`, `unidade`, `preco_unitario`, `user_id` em `produtos`
+  - Adicionadas colunas `observacao`, `user_id` em `movimentacoes`
+
+- `firestore.rules` *(removido)*
+  - Arquivo de regras do Firestore removido (obsoleto após migração para Supabase)
+
+- `src/types/index.ts`
+  - Alterado `status` de `em_andamento` para `em_progresso` (alinhado com schema SQL)
+
+- `src/contexts/AppContext.tsx`
+  - Atualizado `seedTestData` para usar `em_progresso` no status das lavagens
+
+- `src/pages/ClienteDetalhe.tsx`
+  - Atualizados labels e mappings de status de lavagens
+
+- `src/pages/Lavagens.tsx`
+  - Atualizados filtros, labels e verificações de status de lavagens
+
+- `AGENTS.md`
+  - Atualizada referência de "Firestore Rules" para "Supabase RLS"
+  - Corrigida referência de "Firebase" para "Supabase" na seção Settings
+  - Removida seção duplicada de "Run Commands"
+
+- `README.md`
+  - Corrigida menção de "conta Firebase" para "conta Supabase"
+
+- `CLAUDE.md`
+  - Corrigido caminho do projeto: `t10-0wash0wizard` → `t10-wash-wizard`
+  - Corrigida porta: 80 → 8080
+
+- `docs/DATABASE_SCHEMA.md` *(pendente)*
+  - Substituição pelo schema completo do `tabela_sistema.sql`
+
+### Verificação
+
+- `npm run lint` → sem erros (apenas warnings de componentes pré-existentes)
+
+---
+
 ## 2026-04-30 — opencode/minimax-m2.5-free — Firebase Sync Integration
 
 ### Resumo
