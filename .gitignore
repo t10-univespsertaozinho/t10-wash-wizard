@@ -31,13 +31,9 @@ dist-ssr
 *.sqlite
 *.sql
 
-# Firebase (não versionar credenciais)
-firebase-debug.log
-firestore-debug.log
-ui-debug.log
-*.runtimeconfig.json
+# Backups SQLite e Arquivos CSV
+*.csv
 
 # Dados sensíveis (produção)
 data/
 storage/
-*.json (exceto package.json e configs públicas)
