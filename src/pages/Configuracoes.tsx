@@ -1,79 +1,47 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
-import { isFirebaseConfigured, getFirebaseConfig } from '@/lib/firebase';
-import { isFirebaseActive } from '@/services/database';
-import { initializeApp, deleteApp } from 'firebase/app';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { Shield, Database, Key, CheckCircle, AlertTriangle, Save, Eye, EyeOff, RefreshCw, Cloud, CloudOff, ArrowLeftRight } from 'lucide-react';
+import { isSupabaseConfigured, getSupabaseConfig, getSupabaseClient } from '@/lib/supabase';
+import { isSupabaseActive } from '@/services/database';
+import { Shield, Database, Key, CheckCircle, AlertTriangle, Save, RefreshCw, Cloud, ArrowLeftRight } from 'lucide-react';
 
-interface FirebaseConfig {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-  storageBucket: string;
-  messagingSenderId: string;
-  appId: string;
+interface SupabaseConfigForm {
+  url: string;
+  anonKey: string;
 }
 
 export default function Configuracoes() {
   const { user } = useAuth();
-  const { syncStatus, lastSync, conflicts, hasPendingChanges, syncToFirebase, resolveConflict } = useApp();
-  const navigate = useNavigate();
-  const [showSecrets, setShowSecrets] = useState(false);
+  const { syncStatus, lastSync, conflicts, hasPendingChanges, syncToSupabase, resolveConflict } = useApp();
+  
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [dbType, setDbType] = useState<'localstorage' | 'firebase'>(() => {
-    const envType = import.meta.env.VITE_DB_TYPE as 'localstorage' | 'firebase';
-    const storageType = localStorage.getItem('t10_db_type') as 'localstorage' | 'firebase';
-    return envType || storageType || 'localstorage';
+  
+  const [dbType, setDbType] = useState<'localstorage' | 'supabase'>(() => {
+    const envType = import.meta.env.VITE_DB_TYPE as string;
+    const storageType = localStorage.getItem('t10_db_type') as string;
+    const resolvedType = envType || storageType || 'localstorage';
+    return (resolvedType === 'supabase' || resolvedType === 'firebase') ? 'supabase' : 'localstorage';
   });
   
-  const [config, setConfig] = useState<FirebaseConfig>(() => {
-    const currentConfig = getFirebaseConfig();
+  const [config, setConfig] = useState<SupabaseConfigForm>(() => {
+    const currentConfig = getSupabaseConfig();
     return {
-      apiKey: currentConfig.apiKey || '',
-      authDomain: currentConfig.authDomain || '',
-      projectId: currentConfig.projectId || '',
-      storageBucket: currentConfig.storageBucket || '',
-      messagingSenderId: currentConfig.messagingSenderId || '',
-      appId: currentConfig.appId || '',
+      url: currentConfig.url || '',
+      anonKey: currentConfig.anonKey || '',
     };
   });
 
-
-  const firebaseReady = isFirebaseConfigured();
-
-  const isValidDomain = (value: string) => {
-    if (!value) return true;
-    return /^[a-zA-Z0-9.-]+$/.test(value);
-  };
-
-  const isValidProjectId = (value: string) => {
-    if (!value) return true;
-    return /^[a-z0-9-]+$/.test(value);
-  };
-
-  const isValidSenderId = (value: string) => {
-    if (!value) return true;
-    return /^\d+$/.test(value);
-  };
+  const supabaseReady = isSupabaseConfigured();
 
   const validateConfig = (): string | null => {
-    if (dbType === 'firebase') {
-      if (!config.apiKey || config.apiKey.length < 10) {
-        return 'A API Key é obrigatória e deve ter pelo menos 10 caracteres';
+    if (dbType === 'supabase') {
+      if (!config.url || !config.url.startsWith('https://')) {
+        return 'A URL do Supabase é obrigatória e deve ser válida (começar com https://)';
       }
-      if (!config.authDomain || !isValidDomain(config.authDomain)) {
-        return 'O Auth Domain deve ser um domínio válido (ex: projeto.firebaseapp.com)';
-      }
-      if (!config.projectId || !isValidProjectId(config.projectId)) {
-        return 'O Project ID deve conter apenas letras minúsculas, números e hífens';
-      }
-      if (!config.appId || config.appId.length < 10) {
-        return 'O App ID é obrigatório';
+      if (!config.anonKey || config.anonKey.length < 20) {
+        return 'A Anon Key é obrigatória e deve ser válida';
       }
     }
     return null;
@@ -92,20 +60,12 @@ export default function Configuracoes() {
     try {
       localStorage.setItem('t10_db_type', dbType);
       
-      if (dbType === 'firebase') {
-        localStorage.setItem('t10_firebase_apiKey', config.apiKey);
-        localStorage.setItem('t10_firebase_authDomain', config.authDomain);
-        localStorage.setItem('t10_firebase_projectId', config.projectId);
-        localStorage.setItem('t10_firebase_storageBucket', config.storageBucket);
-        localStorage.setItem('t10_firebase_messagingSenderId', config.messagingSenderId);
-        localStorage.setItem('t10_firebase_appId', config.appId);
+      if (dbType === 'supabase') {
+        localStorage.setItem('t10_supabase_url', config.url);
+        localStorage.setItem('t10_supabase_anonKey', config.anonKey);
       } else {
-        localStorage.removeItem('t10_firebase_apiKey');
-        localStorage.removeItem('t10_firebase_authDomain');
-        localStorage.removeItem('t10_firebase_projectId');
-        localStorage.removeItem('t10_firebase_storageBucket');
-        localStorage.removeItem('t10_firebase_messagingSenderId');
-        localStorage.removeItem('t10_firebase_appId');
+        localStorage.removeItem('t10_supabase_url');
+        localStorage.removeItem('t10_supabase_anonKey');
       }
 
       setMessage({ type: 'success', text: 'Configurações salvas! Recarregue a página para aplicar as mudanças.' });
@@ -121,30 +81,28 @@ export default function Configuracoes() {
   };
 
   const testConnection = async () => {
-    if (dbType !== 'firebase') {
-      setMessage({ type: 'error', text: 'Configure o Firebase primeiro.' });
+    if (dbType !== 'supabase') {
+      setMessage({ type: 'error', text: 'Configure o Supabase primeiro.' });
       return;
     }
 
     setSaving(true);
-    let tempApp;
     try {
-      tempApp = initializeApp(config, `test-app-${Date.now()}`);
-      const tempDb = getFirestore(tempApp);
-      const dummyRef = doc(tempDb, '_connection_test_', 'test');
-      await getDoc(dummyRef);
+      // Usa as configurações temporárias do formulário
+      localStorage.setItem('t10_supabase_url', config.url);
+      localStorage.setItem('t10_supabase_anonKey', config.anonKey);
       
-      setMessage({ type: 'success', text: 'Conexão com Firebase verificada!' });
-    } catch (e: any) {
-      if (e.code === 'permission-denied') {
-        setMessage({ type: 'success', text: 'Conexão com Firebase verificada (regras de segurança ativas)!' });
-      } else {
-        setMessage({ type: 'error', text: 'Não foi possível conectar ao Firebase. Verifique as credenciais.' });
+      const tempDb = getSupabaseClient();
+      const { error } = await tempDb.from('clientes').select('id').limit(1);
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 é no results, o que não é um erro de conexão
+        throw error;
       }
+      
+      setMessage({ type: 'success', text: 'Conexão com Supabase verificada!' });
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: 'Não foi possível conectar ao Supabase. Verifique as credenciais.' });
     } finally {
-      if (tempApp) {
-        await deleteApp(tempApp).catch(() => {});
-      }
       setSaving(false);
     }
   };
@@ -162,7 +120,7 @@ export default function Configuracoes() {
       <div>
         <h1 className="font-barlow-condensed font-bold text-2xl text-foreground">Configurações do Banco de Dados</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Escolha onde os dados serão salvos: no navegador (local) ou na nuvem (Firebase). 
+          Escolha onde os dados serão salvos: no navegador (local) ou na nuvem (Supabase). 
           Recomendamos começar pelo modo local para testar.
         </p>
       </div>
@@ -173,13 +131,10 @@ export default function Configuracoes() {
           <Database size={18} /> Status do Banco de Dados
         </h2>
         <div className="flex items-center gap-3">
-          {dbType === 'firebase' && firebaseReady ? (
+          {dbType === 'supabase' && supabaseReady ? (
             <>
               <CheckCircle className="text-success" size={20} />
-              <span className="text-foreground font-semibold">Firebase (Ativo)</span>
-              <span className="text-xs text-muted-foreground">
-                Projeto: {config.projectId || 'não configurado'}
-              </span>
+              <span className="text-foreground font-semibold">Supabase (Ativo)</span>
             </>
           ) : dbType === 'localstorage' ? (
             <>
@@ -192,14 +147,14 @@ export default function Configuracoes() {
           ) : (
             <>
               <AlertTriangle className="text-primary" size={20} />
-              <span className="text-foreground font-semibold">Firebase (Parcial)</span>
+              <span className="text-foreground font-semibold">Supabase (Incompleto)</span>
             </>
           )}
         </div>
       </div>
 
-      {/* Status de Sincronização - apenas se Firebase ativo */}
-      {isFirebaseActive() && (
+      {/* Status de Sincronização - apenas se Supabase ativo */}
+      {isSupabaseActive() && (
         <div className="bg-card rounded-xl border border-border p-5">
           <h2 className="font-barlow-condensed font-bold text-lg text-foreground mb-4 flex items-center gap-2">
             <ArrowLeftRight size={18} /> Sincronização
@@ -241,7 +196,7 @@ export default function Configuracoes() {
                 setSyncing(true);
                 setMessage(null);
                 try {
-                  const result = await syncToFirebase();
+                  const result = await syncToSupabase();
                   if (result.length > 0) {
                     setMessage({ type: 'error', text: `${result.length} conflito(s) detectado(s). Verifique abaixo.` });
                   } else {
@@ -325,153 +280,93 @@ export default function Configuracoes() {
           >
             <div className="font-semibold text-foreground">💾 Modo Local</div>
             <div className="text-xs text-muted-foreground mt-1">
-              <strong>Recomendado para testes.</strong> Os dados ficam salvos no seu navegador (localStorage). 
+              <strong>Recomendado para uso offline.</strong> Os dados ficam salvos no seu navegador (localStorage). 
               Fácil de usar, mas os dados não sincronizam entre dispositivos.
             </div>
           </button>
           
           <button
             onClick={() => {
-              setDbType('firebase');
+              setDbType('supabase');
               setMessage(null);
             }}
             className={`p-4 rounded-lg border-2 transition-all text-left ${
-              dbType === 'firebase'
+              dbType === 'supabase'
                 ? 'border-primary bg-primary/10'
                 : 'border-border hover:border-primary/50'
             }`}
           >
-            <div className="font-semibold text-foreground">☁️ Firebase (Nuvem)</div>
+            <div className="font-semibold text-foreground">☁️ Supabase (Nuvem)</div>
             <div className="text-xs text-muted-foreground mt-1">
-              <strong>Recomendado para uso real.</strong> Os dados ficam salvos na nuvem do Google (Firebase). 
-              Permite múltiplos usuários e acesso de qualquer dispositivo.
+              <strong>Recomendado para produção.</strong> Os dados ficam salvos na nuvem (Supabase PostgreSQL). 
+              Permite sincronização entre dispositivos.
             </div>
           </button>
         </div>
       </div>
 
-      {/* Tutorial - mostra quando Firebase está selecionado */}
-      {dbType === 'firebase' && (
+      {/* Tutorial - mostra quando Supabase está selecionado */}
+      {dbType === 'supabase' && (
         <div className="bg-primary/10 border-2 border-primary/30 rounded-xl p-5">
           <h2 className="font-barlow-condensed font-bold text-lg text-foreground mb-3 flex items-center gap-2">
             <AlertTriangle size={18} className="text-primary" /> Como obter as credenciais
           </h2>
           <p className="text-sm text-muted-foreground mb-4">
-            Siga estes passos para configurar o Firebase:
+            Siga estes passos para configurar o Supabase:
           </p>
           <div className="text-sm text-foreground space-y-2 ml-1">
             <ol className="list-decimal list-inside space-y-2">
               <li className="bg-card p-2 rounded border border-border">
-                Acesse o <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Firebase Console</a> e faça login
+                Acesse o <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-primary font-semibold hover:underline">Supabase Dashboard</a> e faça login
               </li>
               <li className="bg-card p-2 rounded border border-border">
-                Clique em <strong>"Criar projeto"</strong> ou selecione um projeto existente
+                Crie um novo projeto ou selecione um existente
               </li>
               <li className="bg-card p-2 rounded border border-border">
-                No menu (≡), clique em <strong>"Configurações do projeto"</strong>
+                Vá em <strong>"Project Settings"</strong> (ícone de engrenagem)
               </li>
               <li className="bg-card p-2 rounded border border-border">
-                Role até <strong>"Seus apps"</strong> e clique em <strong>"&lt;/&gt;"</strong> (Web)
+                Clique em <strong>"API"</strong>
               </li>
               <li className="bg-card p-2 rounded border border-border">
-                Dê um nome ao app e clique em <strong>"Registrar app"</strong>
-              </li>
-              <li className="bg-card p-2 rounded border border-border">
-                Copie os valores do SDK e cole nos campos abaixo
+                Copie o <strong>Project URL</strong> e a <strong>anon public key</strong> e cole nos campos abaixo
               </li>
             </ol>
           </div>
         </div>
       )}
 
-      {dbType === 'firebase' && (
+      {dbType === 'supabase' && (
         <div className="bg-card rounded-xl border border-border p-5">
           <h2 className="font-barlow-condensed font-bold text-lg text-foreground mb-4 flex items-center gap-2">
-            <Key size={18} /> Credenciais do Firebase
+            <Key size={18} /> Credenciais do Supabase
           </h2>
           
           <div className="space-y-4">
             <div>
               <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">
-                API Key *
+                Project URL *
               </label>
               <input
                 className="input-t10"
                 type="text"
-                value={config.apiKey}
-                onChange={e => setConfig({ ...config, apiKey: e.target.value })}
-                placeholder="AIzaSy..."
+                value={config.url}
+                onChange={e => setConfig({ ...config, url: e.target.value })}
+                placeholder="https://xyz.supabase.co"
               />
             </div>
 
             <div>
               <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">
-                Auth Domain *
+                Anon Public Key *
               </label>
               <input
                 className="input-t10"
                 type="text"
-                value={config.authDomain}
-                onChange={e => setConfig({ ...config, authDomain: e.target.value })}
-                placeholder="meu-projeto.firebaseapp.com"
+                value={config.anonKey}
+                onChange={e => setConfig({ ...config, anonKey: e.target.value })}
+                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                O domínio configurado no Firebase Authentication
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">
-                Project ID *
-              </label>
-              <input
-                className="input-t10"
-                type="text"
-                value={config.projectId}
-                onChange={e => setConfig({ ...config, projectId: e.target.value.toLowerCase() })}
-                placeholder="meu-projeto"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">
-                App ID
-              </label>
-              <input
-                className="input-t10"
-                type="text"
-                value={config.appId}
-                onChange={e => setConfig({ ...config, appId: e.target.value })}
-                placeholder="1:123456789:web:abc123..."
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">
-                  Storage Bucket
-                </label>
-                <input
-                  className="input-t10"
-                  type="text"
-                  value={config.storageBucket}
-                  onChange={e => setConfig({ ...config, storageBucket: e.target.value })}
-                  placeholder="meu-projeto.appspot.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">
-                  Messaging Sender ID
-                </label>
-                <input
-                  className="input-t10"
-                  type="text"
-                  value={config.messagingSenderId}
-                  onChange={e => setConfig({ ...config, messagingSenderId: e.target.value })}
-                  placeholder="123456789"
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -484,10 +379,8 @@ export default function Configuracoes() {
         </h2>
         <ul className="text-sm text-muted-foreground space-y-2">
           <li>• As credenciais são armazenadas apenas no seu navegador local</li>
-          <li>• Os dados são criptografados antes de serem enviados ao Firebase</li>
           <li>• Para apps em produção, recomenda-se usar variáveis de ambiente (.env)</li>
-          <li>• O Project ID deve ser único globalmente (não é possível alterá-lo depois)</li>
-          <li>• Após configurar, atualize as regras de segurança no Firebase Console</li>
+          <li>• Lembre-se de configurar as políticas de Row Level Security (RLS) no Supabase</li>
         </ul>
       </div>
 
@@ -511,10 +404,10 @@ export default function Configuracoes() {
           Salvar Configurações
         </button>
 
-        {dbType === 'firebase' && (
+        {dbType === 'supabase' && (
           <button
             onClick={testConnection}
-            disabled={saving || !config.projectId}
+            disabled={saving || !config.url || !config.anonKey}
             className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
           >
             Testar Conexão
@@ -524,5 +417,3 @@ export default function Configuracoes() {
     </div>
   );
 }
-
-      

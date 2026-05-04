@@ -8,6 +8,37 @@
 
 ---
 
+## 2026-05-04 — antigravity — Supabase Migration and Optimizations
+
+### Resumo
+
+Migração da camada de nuvem do Firebase para o Supabase, mantendo intacta toda a robusta arquitetura offline (LocalStorage com criptografia e sessões HMAC). Sincronização agora conecta diretamente com PostgreSQL.
+
+### Arquivos modificados
+
+- `src/lib/supabase.ts` *(novo)*
+  - Cliente do Supabase implementado (substitui `firebase.ts`)
+- `src/services/database.ts`
+  - Refatorado para o modelo `supabaseDB` substituindo o `firebaseDB`.
+  - Funções atualizadas (`syncLocalToSupabase` em vez de `syncLocalToFirebase`) com suporte ao PostgreSQL.
+- `src/contexts/AppContext.tsx`
+  - Métodos renomeados para usar terminologia e as funções do Supabase no auto-sync.
+- `src/pages/Configuracoes.tsx`
+  - Interface remodelada para pedir URL e Anon Key do Supabase, incluindo validações simplificadas.
+- `.env` e `.env.example`
+  - Variáveis do Firebase substituídas pelas correspondentes do Supabase (`VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`).
+- `vite.config.ts`
+  - Atualização do `manualChunks` para suportar `@supabase/supabase-js`.
+- Documentação (`SECURITY.md`, `README.md`, `AGENTS.md`)
+  - Atualizadas todas as menções de Firestore/Firebase para PostgreSQL/Supabase com RLS.
+
+### Verificação
+
+- `npm run lint` → erros corrigidos
+- `npm run build:dev` → build rodando com sucesso.
+
+---
+
 ## 2026-04-30 — opencode/minimax-m2.5-free — Firebase Sync Integration
 
 ### Resumo

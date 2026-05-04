@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque, Conflict, SyncStatus } from '@/types';
 import { useAuth } from './AuthContext';
 import { encryptStorage, decryptStorage } from '@/utils/security';
-import { getDatabase, isFirebaseActive, syncLocalToFirebase, detectConflicts } from '@/services/database';
-import { isFirebaseConfigured } from '@/lib/firebase';
+import { getDatabase, isSupabaseActive, syncLocalToSupabase, detectConflicts } from '@/services/database';
+import { isSupabaseConfigured } from '@/lib/supabase';
 
 const genId = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
@@ -22,7 +22,7 @@ interface AppContextType extends AppState {
   lastSync: string | null;
   conflicts: Conflict[];
   hasPendingChanges: boolean;
-  syncToFirebase: () => Promise<Conflict[]>;
+  syncToSupabase: () => Promise<Conflict[]>;
   resolveConflict: (entityType: string, entityId: string, useLocal: boolean) => void;
   addCliente: (c: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>) => Cliente;
   updateCliente: (id: string, c: Partial<Cliente>) => void;
@@ -116,7 +116,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      if (isFirebaseConfigured() && isFirebaseActive()) {
+      if (isSupabaseConfigured() && isSupabaseActive()) {
         try {
           const db = getDatabase();
           await db.initialize();
@@ -154,7 +154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
           setSyncStatus(detectedConflicts.length > 0 ? 'conflict' : 'synced');
         } catch (e) {
-          console.error('Erro ao carregar do Firebase:', e);
+          console.error('Erro ao carregar do Supabase:', e);
           const s = await loadStateAsync();
           setState(s);
           setSyncStatus('synced');
@@ -178,11 +178,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleBeforeUnload = async (e: BeforeUnloadEvent) => {
-      if (!user || !hasPendingChanges || !isFirebaseActive()) return;
+      if (!user || !hasPendingChanges || !isSupabaseActive()) return;
       
       e.preventDefault();
       
-      const result = await syncLocalToFirebase(
+      const result = await syncLocalToSupabase(
         state.clientes.filter(c => c.user_id === user.id),
         state.veiculos.filter(v => v.user_id === user.id),
         state.lavagens.filter(l => l.user_id === user.id),
@@ -232,10 +232,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const syncToFirebase = useCallback(async (): Promise<Conflict[]> => {
+  const syncToSupabase = useCallback(async (): Promise<Conflict[]> => {
     if (!user) return [];
 
-    const result = await syncLocalToFirebase(
+    const result = await syncLocalToSupabase(
       state.clientes.filter(c => c.user_id === user.id),
       state.veiculos.filter(v => v.user_id === user.id),
       state.lavagens.filter(l => l.user_id === user.id),
@@ -538,7 +538,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       lastSync,
       conflicts,
       hasPendingChanges,
-      syncToFirebase,
+      syncToSupabase,
       resolveConflict,
       addCliente, updateCliente, deleteCliente,
       addVeiculo, deleteVeiculo, addTipoLavagem, deleteTipoLavagem,

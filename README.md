@@ -29,7 +29,7 @@ npm run dev
 | React Router DOM | Roteamento |
 | React Hook Form + Zod | Formulários e validação |
 | TanStack React Query | Gerenciamento de estado |
-| Firebase Auth + Firestore | Autenticação e banco de dados (opcional) |
+| Supabase PostgreSQL | Banco de dados na nuvem e sync |
 | React.lazy + Suspense | Code splitting |
 | Recharts | Gráficos e dashboards |
 
@@ -44,7 +44,7 @@ src/
 │   └── AppContext.tsx  # Estado global com criptografia
 ├── pages/              # Páginas principais
 ├── services/           # Camada de dados
-│   └── database.ts     # Interface abstrata (LocalStorage/Firebase)
+│   └── database.ts     # Interface abstrata (LocalStorage/Supabase)
 ├── utils/               # Utilitários
 │   └── security.ts     # Criptografia e sanitização
 └── types/              # TypeScript interfaces
@@ -57,19 +57,15 @@ src/
 Copie `.env.example` para `.env` e configure:
 
 ```bash
-# Tipo de banco de dados: 'localstorage' ou 'firebase'
+# Tipo de banco de dados: 'localstorage' ou 'supabase'
 VITE_DB_TYPE=localstorage
 
 # Chave secreta para assinatura HMAC
 VITE_STORAGE_SECRET=sua_chave_secreta
 
-# Firebase (quando VITE_DB_TYPE=firebase)
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
-VITE_FIREBASE_STORAGE_BUCKET=...
-VITE_FIREBASE_MESSAGING_SENDER_ID=...
-VITE_FIREBASE_APP_ID=...
+# Supabase (quando VITE_DB_TYPE=supabase)
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
 ```
 
 ## Segurança
@@ -82,13 +78,13 @@ O sistema implementa múltiplas camadas de segurança:
 - **Validação de Timestamp**: Assinaturas expiram após 30 dias
 - **Criptografia de Dados**: Dados criptografados antes do armazenamento
 
-### Sincronização Firebase
+### Sincronização Supabase
 
-O projeto implementa sincronização bidirecional entre dados locais e Firebase:
+O projeto implementa sincronização bidirecional entre dados locais e Supabase:
 
-- **Inicialização**: Ao abrir o app, dados são carregados do Firebase (se configurado)
+- **Inicialização**: Ao abrir o app, dados são carregados do Supabase (se configurado)
 - **Trabalho Local**: Alterações ficam no estado local durante o uso
-- **Auto-Sync**: Ao fechar a página, dados são automaticamente enviados para o Firebase
+- **Auto-Sync**: Ao fechar a página, dados são automaticamente enviados para o Supabase
 - **Detecção de Conflitos**: Timestamps comparados para identificar alterações remotas
 - **Resolução**: Admin é notificado sobre conflitos e pode escolher qual versão manter
 
@@ -107,11 +103,11 @@ O projeto inclui otimizações de performance:
 - **Code Splitting**: Páginas usam React.lazy + Suspense (carregamento sob demanda)
 - **Memoização**: useMemo para cálculos pesados no Dashboard
 - **Loading States**: Componentes de carregamento com spinners animadas
-- **Bundle Partitioning**: Vite divide o bundle em chunks separados (vendor-firebase, vendor-charts, vendor-ui)
+- **Bundle Partitioning**: Vite divide o bundle em chunks separados (vendor-supabase, vendor-charts, vendor-ui)
 
-### Firebase (Produção)
+### Supabase (Produção)
 
-Para produção com Firebase, o projeto inclui regras completas em `firestore.rules`:
+Para produção com Supabase, o projeto usa RLS:
 
 | Coleção | Leitura | Escrita |
 |---------|---------|---------|
@@ -139,13 +135,13 @@ VITE_DB_TYPE=localstorage
 - Rápido para prototipagem
 - Dados criptografados localmente
 
-### Modo 2: Firebase (Produção)
+### Modo 2: Supabase (Produção)
 
 Banco de dados cloud com autenticação:
 
 ```bash
-VITE_DB_TYPE=firebase
-# + variáveis do Firebase
+VITE_DB_TYPE=supabase
+# + variáveis do Supabase
 ```
 
 **Vantagens:**
@@ -155,10 +151,10 @@ VITE_DB_TYPE=firebase
 - Multi-usuário com controle de acesso
 
 **Configuração:**
-1. Crie projeto no [Firebase Console](https://console.firebase.google.com)
-2. Ative **Authentication** → Email/Password
-3. Crie **Firestore Database** (modo produção)
-4. Faça deploy das regras: `firebase deploy --only firestore:rules`
+1. Crie projeto no [Supabase Dashboard](https://supabase.com/dashboard)
+2. Vá em **Project Settings -> API** para pegar a URL e Anon Key
+3. Crie as tabelas com colunas adequadas (id, created_at, updated_at, etc)
+4. Habilite e configure as políticas **RLS (Row Level Security)**
 
 ## Controle de Acesso
 
@@ -180,25 +176,21 @@ O sistema inclui uma página de configurações acessível apenas para administr
 
 ### Configuração do Banco de Dados
 - **Modo Local**: Dados armazenados no navegador (ideal para testes)
-- **Modo Firebase**: Dados na nuvem (ideal para produção)
-
-### Interface Amigável
-- Seleção visual entre Local e Firebase
+- **Modo Supabase**: Dados na nuvem (ideal para produção)
 - Campos com validações em tempo real
 - Instruções passo a passo para obter credenciais
 - Botão para testar conexão
 - Mensagens de feedback claras
 
 ### Recursos de Segurança
-- Validação de formato de URL (Firebase domain)
-- Validação de Project ID (apenas letras minúsculas, números e hífens)
-- Validação de API Key (mínimo 10 caracteres)
+- Validação de formato de URL (Supabase URL)
+- Validação de Anon Key
 - Credenciais armazenadas com segurança no navegador
 - Opção de testar conexão antes de salvar
 
 ## Camada de Abstração de Dados
 
-O projeto usa uma interface `Database` que permite alternar entre LocalStorage e Firebase:
+O projeto usa uma interface `Database` que permite alternar entre LocalStorage e Supabase:
 
 ```typescript
 // src/services/database.ts
@@ -212,7 +204,7 @@ export interface Database {
 export function getDatabase(): Database {
   const type = import.meta.env.VITE_DB_TYPE;
   switch (type) {
-    case 'firebase': return firebaseDB;
+    case 'supabase': return supabaseDB;
     default: return localStorageDB;
   }
 }
@@ -287,8 +279,8 @@ npm run preview   # Preview do build
 
 - **NUNCA** commite credenciais reais no `.env`
 - O arquivo está no `.gitignore`
-- Em produção, use Firebase Auth
-- Configure regras de segurança no Firestore
+- Em produção, use Supabase Auth ou a segurança de HMAC offline
+- Configure regras de segurança (RLS) no Supabase
 - Usuário é assinado com HMAC para evitar manipulação
 - Dados LocalStorage são criptografados
 
@@ -302,9 +294,9 @@ npm run preview   # Preview do build
 - A sessão expirou ou foi manipulada
 - Faça logout e login novamente
 
-### Firebase não conecta
-- Verifique as variáveis no `.env`
-- Configure as regras de segurança
+### Supabase não conecta
+- Verifique as variáveis no `.env` ou tela de configurações
+- Verifique as permissões de rede
 
 ## Licença
 

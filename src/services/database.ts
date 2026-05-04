@@ -1,12 +1,9 @@
 import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque, Conflict } from '@/types';
-import { 
-  collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, Timestamp, DocumentSnapshot 
-} from 'firebase/firestore';
-import { getFirebaseDb, isFirebaseConfigured } from '@/lib/firebase';
+import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase';
 
 const STORAGE_KEY = 't10_state';
 
-export type DatabaseType = 'localstorage' | 'firebase';
+export type DatabaseType = 'localstorage' | 'supabase';
 
 export interface Database {
   initialize(): Promise<void>;
@@ -253,278 +250,201 @@ export const localStorageDB: Database = {
   },
 };
 
-function timestampToISOString(ts: Timestamp | null | undefined): string {
-  if (!ts) return '';
-  return ts.toDate().toISOString();
-}
-
-function documentToCliente(docSnap: DocumentSnapshot): Cliente {
-  const data = docSnap.data();
-  return {
-    id: docSnap.id,
-    nome: data?.nome,
-    telefone: data?.telefone,
-    user_id: data?.user_id,
-    created_at: timestampToISOString(data?.created_at),
-  };
-}
-
-function documentToVeiculo(docSnap: DocumentSnapshot): Veiculo {
-  const data = docSnap.data();
-  return {
-    id: docSnap.id,
-    cliente_id: data?.cliente_id,
-    modelo: data?.modelo,
-    placa: data?.placa,
-    cor: data?.cor,
-    user_id: data?.user_id,
-  };
-}
-
-function documentToLavagem(docSnap: DocumentSnapshot): Lavagem {
-  const data = docSnap.data();
-  return {
-    id: docSnap.id,
-    cliente_id: data?.cliente_id,
-    veiculo_id: data?.veiculo_id,
-    tipo_lavagem_id: data?.tipo_lavagem_id,
-    status: data?.status,
-    pagamento: data?.pagamento,
-    valor: data?.valor,
-    observacao: data?.observacao,
-    user_id: data?.user_id,
-    data: timestampToISOString(data?.data),
-    data_conclusao: timestampToISOString(data?.data_conclusao),
-  };
-}
-
-function documentToTipoLavagem(docSnap: DocumentSnapshot): TipoLavagem {
-  const data = docSnap.data();
-  return {
-    id: docSnap.id,
-    nome: data?.nome,
-    descricao: data?.descricao,
-    preco: data?.preco,
-  };
-}
-
-function documentToProduto(docSnap: DocumentSnapshot): Produto {
-  const data = docSnap.data();
-  return {
-    id: docSnap.id,
-    nome: data?.nome,
-    categoria: data?.categoria,
-    quantidade: data?.quantidade,
-    estoque_minimo: data?.estoque_minimo,
-    unidade: data?.unidade,
-    preco_unitario: data?.preco_unitario,
-    user_id: data?.user_id,
-  };
-}
-
-function documentToMovimentacao(docSnap: DocumentSnapshot): MovimentacaoEstoque {
-  const data = docSnap.data();
-  return {
-    id: docSnap.id,
-    produto_id: data?.produto_id,
-    tipo: data?.tipo,
-    quantidade: data?.quantidade,
-    observacao: data?.observacao,
-    user_id: data?.user_id,
-    data: timestampToISOString(data?.data),
-  };
-}
-
-export const firebaseDB: Database = {
+export const supabaseDB: Database = {
   async initialize() {
-    if (!isFirebaseConfigured()) {
-      console.warn('Firebase não configurado. Use localStorage.');
+    if (!isSupabaseConfigured()) {
+      console.warn('Supabase não configurado. Use localStorage.');
     }
   },
 
   async getClientes(userId: string) {
-    const db = getFirebaseDb();
-    const q = query(collection(db, 'clientes'), where('user_id', '==', userId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(documentToCliente);
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('clientes').select('*').eq('user_id', userId);
+    if (error) throw error;
+    return data as Cliente[];
   },
 
   async getCliente(id: string) {
-    const db = getFirebaseDb();
-    const docRef = doc(db, 'clientes', id);
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) return null;
-    return documentToCliente(docSnap);
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('clientes').select('*').eq('id', id).single();
+    if (error) return null;
+    return data as Cliente;
   },
 
   async createCliente(data) {
-    const db = getFirebaseDb();
-    const timestamp = Timestamp.now();
-    const docRef = await addDoc(collection(db, 'clientes'), {
-      ...data,
-      created_at: timestamp,
-    });
-    return { id: docRef.id, ...data, created_at: timestampToISOString(timestamp) };
+    const db = getSupabaseClient();
+    const timestamp = now();
+    const novo = { ...data, created_at: timestamp, updated_at: timestamp };
+    const { data: result, error } = await db.from('clientes').insert([novo]).select().single();
+    if (error) throw error;
+    return result as Cliente;
   },
 
   async updateCliente(id, data) {
-    const db = getFirebaseDb();
-    const docRef = doc(db, 'clientes', id);
-    await updateDoc(docRef, data);
-    return (await this.getCliente(id))!;
+    const db = getSupabaseClient();
+    const { data: result, error } = await db.from('clientes').update(data).eq('id', id).select().single();
+    if (error) throw error;
+    return result as Cliente;
   },
 
   async deleteCliente(id) {
-    const db = getFirebaseDb();
-    await deleteDoc(doc(db, 'clientes', id));
+    const db = getSupabaseClient();
+    const { error } = await db.from('clientes').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getVeiculos(userId: string) {
-    const db = getFirebaseDb();
-    const q = query(collection(db, 'veiculos'), where('user_id', '==', userId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(documentToVeiculo);
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('veiculos').select('*').eq('user_id', userId);
+    if (error) throw error;
+    return data as Veiculo[];
   },
 
   async getVeiculosByCliente(clienteId: string) {
-    const db = getFirebaseDb();
-    const q = query(collection(db, 'veiculos'), where('cliente_id', '==', clienteId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(documentToVeiculo);
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('veiculos').select('*').eq('cliente_id', clienteId);
+    if (error) throw error;
+    return data as Veiculo[];
   },
 
   async createVeiculo(data) {
-    const db = getFirebaseDb();
-    const docRef = await addDoc(collection(db, 'veiculos'), data);
-    return { id: docRef.id, ...data };
+    const db = getSupabaseClient();
+    const timestamp = now();
+    const novo = { ...data, updated_at: timestamp };
+    const { data: result, error } = await db.from('veiculos').insert([novo]).select().single();
+    if (error) throw error;
+    return result as Veiculo;
   },
 
   async deleteVeiculo(id) {
-    const db = getFirebaseDb();
-    await deleteDoc(doc(db, 'veiculos', id));
+    const db = getSupabaseClient();
+    const { error } = await db.from('veiculos').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getLavagens(userId: string) {
-    const db = getFirebaseDb();
-    const q = query(collection(db, 'lavagens'), where('user_id', '==', userId), orderBy('data', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(documentToLavagem);
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('lavagens').select('*').eq('user_id', userId).order('data', { ascending: false });
+    if (error) throw error;
+    return data as Lavagem[];
   },
 
   async getLavagensByCliente(clienteId: string) {
-    const db = getFirebaseDb();
-    const q = query(collection(db, 'lavagens'), where('cliente_id', '==', clienteId), orderBy('data', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(documentToLavagem);
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('lavagens').select('*').eq('cliente_id', clienteId).order('data', { ascending: false });
+    if (error) throw error;
+    return data as Lavagem[];
   },
 
   async createLavagem(data) {
-    const db = getFirebaseDb();
-    const timestamp = Timestamp.now();
-    const docRef = await addDoc(collection(db, 'lavagens'), {
-      ...data,
-      data: timestamp,
-      data_conclusao: null,
-    });
-    return { id: docRef.id, ...data, data: timestampToISOString(timestamp), data_conclusao: null };
+    const db = getSupabaseClient();
+    const timestamp = now();
+    const novo = { ...data, data: timestamp, data_conclusao: null, updated_at: timestamp };
+    const { data: result, error } = await db.from('lavagens').insert([novo]).select().single();
+    if (error) throw error;
+    return result as Lavagem;
   },
 
   async updateLavagem(id, data) {
-    const db = getFirebaseDb();
-    const docRef = doc(db, 'lavagens', id);
-    await updateDoc(docRef, data);
-    const docSnap = await getDoc(docRef);
-    return documentToLavagem(docSnap);
+    const db = getSupabaseClient();
+    const { data: result, error } = await db.from('lavagens').update(data).eq('id', id).select().single();
+    if (error) throw error;
+    return result as Lavagem;
   },
 
   async deleteLavagem(id) {
-    const db = getFirebaseDb();
-    await deleteDoc(doc(db, 'lavagens', id));
+    const db = getSupabaseClient();
+    const { error } = await db.from('lavagens').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getTiposLavagem() {
-    const db = getFirebaseDb();
-    const snapshot = await getDocs(collection(db, 'tipos_lavagem'));
-    if (snapshot.empty) {
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('tipos_lavagem').select('*');
+    if (error) throw error;
+    if (data.length === 0) {
       const novosTipos: TipoLavagem[] = [];
       for (const tipo of defaultTipos) {
-        const { id, ...data } = tipo;
-        const docRef = await addDoc(collection(db, 'tipos_lavagem'), data);
-        novosTipos.push({ id: docRef.id, ...data });
+        const { id, ...rest } = tipo;
+        const { data: result } = await db.from('tipos_lavagem').insert([rest]).select().single();
+        if (result) novosTipos.push(result as TipoLavagem);
       }
       return novosTipos;
     }
-    return snapshot.docs.map(documentToTipoLavagem);
+    return data as TipoLavagem[];
   },
 
   async createTipoLavagem(data) {
-    const db = getFirebaseDb();
-    const docRef = await addDoc(collection(db, 'tipos_lavagem'), data);
-    return { id: docRef.id, ...data };
+    const db = getSupabaseClient();
+    const { data: result, error } = await db.from('tipos_lavagem').insert([data]).select().single();
+    if (error) throw error;
+    return result as TipoLavagem;
   },
 
   async updateTipoLavagem(id, data) {
-    const db = getFirebaseDb();
-    const docRef = doc(db, 'tipos_lavagem', id);
-    await updateDoc(docRef, data);
-    const docSnap = await getDoc(docRef);
-    return documentToTipoLavagem(docSnap);
+    const db = getSupabaseClient();
+    const { data: result, error } = await db.from('tipos_lavagem').update(data).eq('id', id).select().single();
+    if (error) throw error;
+    return result as TipoLavagem;
   },
 
   async deleteTipoLavagem(id) {
-    const db = getFirebaseDb();
-    await deleteDoc(doc(db, 'tipos_lavagem', id));
+    const db = getSupabaseClient();
+    const { error } = await db.from('tipos_lavagem').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getProdutos(userId: string) {
-    const db = getFirebaseDb();
-    const q = query(collection(db, 'produtos'), where('user_id', '==', userId));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(documentToProduto);
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('produtos').select('*').eq('user_id', userId);
+    if (error) throw error;
+    return data as Produto[];
   },
 
   async createProduto(data) {
-    const db = getFirebaseDb();
-    const docRef = await addDoc(collection(db, 'produtos'), data);
-    return { id: docRef.id, ...data };
+    const db = getSupabaseClient();
+    const timestamp = now();
+    const novo = { ...data, updated_at: timestamp };
+    const { data: result, error } = await db.from('produtos').insert([novo]).select().single();
+    if (error) throw error;
+    return result as Produto;
   },
 
   async updateProduto(id, data) {
-    const db = getFirebaseDb();
-    const docRef = doc(db, 'produtos', id);
-    await updateDoc(docRef, data);
-    const docSnap = await getDoc(docRef);
-    return documentToProduto(docSnap);
+    const db = getSupabaseClient();
+    const { data: result, error } = await db.from('produtos').update(data).eq('id', id).select().single();
+    if (error) throw error;
+    return result as Produto;
   },
 
   async deleteProduto(id) {
-    const db = getFirebaseDb();
-    await deleteDoc(doc(db, 'produtos', id));
+    const db = getSupabaseClient();
+    const { error } = await db.from('produtos').delete().eq('id', id);
+    if (error) throw error;
   },
 
   async getMovimentacoes(userId: string) {
-    const db = getFirebaseDb();
-    const q = query(collection(db, 'movimentacoes'), where('user_id', '==', userId), orderBy('data', 'desc'));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(documentToMovimentacao);
+    const db = getSupabaseClient();
+    const { data, error } = await db.from('movimentacoes').select('*').eq('user_id', userId).order('data', { ascending: false });
+    if (error) throw error;
+    return data as MovimentacaoEstoque[];
   },
 
   async createMovimentacao(data) {
-    const db = getFirebaseDb();
-    const timestamp = Timestamp.now();
-    const docRef = await addDoc(collection(db, 'movimentacoes'), {
-      ...data,
-      data: timestamp,
-    });
-    return { id: docRef.id, ...data, data: timestampToISOString(timestamp) };
+    const db = getSupabaseClient();
+    const timestamp = now();
+    const novo = { ...data, data: timestamp, updated_at: timestamp };
+    const { data: result, error } = await db.from('movimentacoes').insert([novo]).select().single();
+    if (error) throw error;
+    return result as MovimentacaoEstoque;
   },
 };
 
 export function getDatabase(): Database {
   const type = getDatabaseType();
   switch (type) {
-    case 'firebase':
-      return firebaseDB;
+    case 'supabase':
+      return supabaseDB;
     default:
       return localStorageDB;
   }
@@ -534,11 +454,11 @@ export function getDatabaseType(): DatabaseType {
   const savedType = localStorage.getItem('t10_db_type') as DatabaseType | null;
   if (savedType) return savedType;
   const envType = import.meta.env.VITE_DB_TYPE as DatabaseType;
-  return envType || 'localstorage';
+  return envType === 'supabase' ? 'supabase' : 'localstorage';
 }
 
-export function isFirebaseActive(): boolean {
-  return getDatabaseType() === 'firebase';
+export function isSupabaseActive(): boolean {
+  return getDatabaseType() === 'supabase';
 }
 
 interface SyncResult {
@@ -547,7 +467,7 @@ interface SyncResult {
   errors: string[];
 }
 
-export async function syncLocalToFirebase(
+export async function syncLocalToSupabase(
   clientes: Cliente[],
   veiculos: Veiculo[],
   lavagens: Lavagem[],
@@ -557,44 +477,43 @@ export async function syncLocalToFirebase(
 ): Promise<SyncResult> {
   const result: SyncResult = { conflicts: [], synced: 0, errors: [] };
   
-  if (!isFirebaseConfigured()) {
-    result.errors.push('Firebase não configurado');
+  if (!isSupabaseConfigured()) {
+    result.errors.push('Supabase não configurado');
     return result;
   }
 
-  const db = getFirebaseDb();
+  const db = getSupabaseClient();
 
   for (const cliente of clientes) {
     try {
-      const existing = await getDoc(doc(db, 'clientes', cliente.id));
+      const { data: existing, error: findError } = await db.from('clientes').select('*').eq('id', cliente.id).single();
       
-      if (existing.exists()) {
-        const remoteData = existing.data();
-        const localUpdated = new Date(cliente.updated_at || cliente.created_at).getTime();
-        const remoteUpdated = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0;
+      if (existing) {
+        const localUpdated = new Date(cliente.updated_at || cliente.created_at || 0).getTime();
+        const remoteUpdated = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
         
         if (remoteUpdated > localUpdated) {
           result.conflicts.push({
             entityType: 'cliente',
             entityId: cliente.id,
             localData: cliente,
-            remoteData: { id: cliente.id, ...remoteData },
-            localUpdatedAt: cliente.updated_at || cliente.created_at,
-            remoteUpdatedAt: remoteData.updated_at || '',
+            remoteData: existing as Cliente,
+            localUpdatedAt: cliente.updated_at || cliente.created_at || '',
+            remoteUpdatedAt: existing.updated_at || '',
           });
         } else {
-          await updateDoc(doc(db, 'clientes', cliente.id), {
+          await db.from('clientes').update({
             ...cliente,
-            updated_at: Timestamp.now(),
-          });
+            updated_at: now(),
+          }).eq('id', cliente.id);
           result.synced++;
         }
       } else {
-        await addDoc(collection(db, 'clientes'), {
+        await db.from('clientes').insert([{
           ...cliente,
-          created_at: Timestamp.now(),
-          updated_at: Timestamp.now(),
-        });
+          created_at: cliente.created_at || now(),
+          updated_at: now(),
+        }]);
         result.synced++;
       }
     } catch (e) {
@@ -604,34 +523,33 @@ export async function syncLocalToFirebase(
 
   for (const veiculo of veiculos) {
     try {
-      const existing = await getDoc(doc(db, 'veiculos', veiculo.id));
+      const { data: existing } = await db.from('veiculos').select('*').eq('id', veiculo.id).single();
       
-      if (existing.exists()) {
-        const remoteData = existing.data();
+      if (existing) {
         const localUpdated = new Date(veiculo.updated_at || 0).getTime();
-        const remoteUpdated = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0;
+        const remoteUpdated = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
         
         if (remoteUpdated > localUpdated) {
           result.conflicts.push({
             entityType: 'veiculo',
             entityId: veiculo.id,
             localData: veiculo,
-            remoteData: { id: veiculo.id, ...remoteData },
+            remoteData: existing as Veiculo,
             localUpdatedAt: veiculo.updated_at || '',
-            remoteUpdatedAt: remoteData.updated_at || '',
+            remoteUpdatedAt: existing.updated_at || '',
           });
         } else {
-          await updateDoc(doc(db, 'veiculos', veiculo.id), {
+          await db.from('veiculos').update({
             ...veiculo,
-            updated_at: Timestamp.now(),
-          });
+            updated_at: now(),
+          }).eq('id', veiculo.id);
           result.synced++;
         }
       } else {
-        await addDoc(collection(db, 'veiculos'), {
+        await db.from('veiculos').insert([{
           ...veiculo,
-          updated_at: Timestamp.now(),
-        });
+          updated_at: now(),
+        }]);
         result.synced++;
       }
     } catch (e) {
@@ -641,35 +559,34 @@ export async function syncLocalToFirebase(
 
   for (const lavagem of lavagens) {
     try {
-      const existing = await getDoc(doc(db, 'lavagens', lavagem.id));
+      const { data: existing } = await db.from('lavagens').select('*').eq('id', lavagem.id).single();
       
-      if (existing.exists()) {
-        const remoteData = existing.data();
-        const localUpdated = new Date(lavagem.updated_at || lavagem.data).getTime();
-        const remoteUpdated = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : new Date(remoteData.data?.toDate?.() || 0).getTime();
+      if (existing) {
+        const localUpdated = new Date(lavagem.updated_at || lavagem.data || 0).getTime();
+        const remoteUpdated = existing.updated_at ? new Date(existing.updated_at).getTime() : new Date(existing.data || 0).getTime();
         
         if (remoteUpdated > localUpdated) {
           result.conflicts.push({
             entityType: 'lavagem',
             entityId: lavagem.id,
             localData: lavagem,
-            remoteData: { id: lavagem.id, ...remoteData },
-            localUpdatedAt: lavagem.updated_at || lavagem.data,
-            remoteUpdatedAt: remoteData.updated_at || '',
+            remoteData: existing as Lavagem,
+            localUpdatedAt: lavagem.updated_at || lavagem.data || '',
+            remoteUpdatedAt: existing.updated_at || '',
           });
         } else {
-          await updateDoc(doc(db, 'lavagens', lavagem.id), {
+          await db.from('lavagens').update({
             ...lavagem,
-            updated_at: Timestamp.now(),
-          });
+            updated_at: now(),
+          }).eq('id', lavagem.id);
           result.synced++;
         }
       } else {
-        await addDoc(collection(db, 'lavagens'), {
+        await db.from('lavagens').insert([{
           ...lavagem,
-          data: Timestamp.now(),
-          updated_at: Timestamp.now(),
-        });
+          data: lavagem.data || now(),
+          updated_at: now(),
+        }]);
         result.synced++;
       }
     } catch (e) {
@@ -679,34 +596,33 @@ export async function syncLocalToFirebase(
 
   for (const produto of produtos) {
     try {
-      const existing = await getDoc(doc(db, 'produtos', produto.id));
+      const { data: existing } = await db.from('produtos').select('*').eq('id', produto.id).single();
       
-      if (existing.exists()) {
-        const remoteData = existing.data();
+      if (existing) {
         const localUpdated = new Date(produto.updated_at || 0).getTime();
-        const remoteUpdated = remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0;
+        const remoteUpdated = existing.updated_at ? new Date(existing.updated_at).getTime() : 0;
         
         if (remoteUpdated > localUpdated) {
           result.conflicts.push({
             entityType: 'produto',
             entityId: produto.id,
             localData: produto,
-            remoteData: { id: produto.id, ...remoteData },
+            remoteData: existing as Produto,
             localUpdatedAt: produto.updated_at || '',
-            remoteUpdatedAt: remoteData.updated_at || '',
+            remoteUpdatedAt: existing.updated_at || '',
           });
         } else {
-          await updateDoc(doc(db, 'produtos', produto.id), {
+          await db.from('produtos').update({
             ...produto,
-            updated_at: Timestamp.now(),
-          });
+            updated_at: now(),
+          }).eq('id', produto.id);
           result.synced++;
         }
       } else {
-        await addDoc(collection(db, 'produtos'), {
+        await db.from('produtos').insert([{
           ...produto,
-          updated_at: Timestamp.now(),
-        });
+          updated_at: now(),
+        }]);
         result.synced++;
       }
     } catch (e) {
@@ -716,14 +632,14 @@ export async function syncLocalToFirebase(
 
   for (const mov of movimentacoes) {
     try {
-      const existing = await getDoc(doc(db, 'movimentacoes', mov.id));
+      const { data: existing } = await db.from('movimentacoes').select('*').eq('id', mov.id).single();
       
-      if (!existing.exists()) {
-        await addDoc(collection(db, 'movimentacoes'), {
+      if (!existing) {
+        await db.from('movimentacoes').insert([{
           ...mov,
-          data: Timestamp.now(),
-          updated_at: Timestamp.now(),
-        });
+          data: mov.data || now(),
+          updated_at: now(),
+        }]);
         result.synced++;
       }
     } catch (e) {
@@ -752,7 +668,7 @@ export function detectConflicts(
           entityId: local.id,
           localData: local,
           remoteData: remote,
-          localUpdatedAt: local.updated_at || local.created_at,
+          localUpdatedAt: local.updated_at || local.created_at || '',
           remoteUpdatedAt: remote.updated_at || '',
         });
       }

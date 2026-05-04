@@ -5,24 +5,24 @@
 
 ## Current Architecture
 
-- **Data Storage**: LocalStorage (browser-based) with encryption, Firebase ready
+- **Data Storage**: LocalStorage (browser-based) with encryption, Supabase ready
 - **Authentication**: Local credentials with HMAC signature validation
 - **Multi-user**: Role-based access (admin/user)
-- **Database Layer**: Abstraction layer supporting LocalStorage and Firebase
+- **Database Layer**: Abstraction layer supporting LocalStorage and Supabase
 - **Test Data**: Built-in seedTestData() for demonstrations
-- **Settings Page**: Admin-only database configuration interface
+- **Settings Page**: Admin-only database configuration interface (Supabase)
 - **Performance**: Code splitting with React.lazy + Suspense, memoization with useMemo
 
-## Sync Architecture (Firebase Integration)
+## Sync Architecture (Supabase Integration)
 
-O projeto implementa sincronização bidirecional entre dados locais e Firebase:
+O projeto implementa sincronização bidirecional entre dados locais e Supabase:
 
 ### Fluxo de Sincronização
 
-1. **Inicialização**: Ao abrir o app, os dados são carregados do Firebase (se configurado)
+1. **Inicialização**: Ao abrir o app, os dados são carregados do Supabase (se configurado)
 2. **Trabalho Local**: Todas as alterações ficam no estado local (AppContext)
 3. **Detecção de Conflitos**: Timestamps (`updated_at`) comparados para detectar alterações remotas
-4. **Sincronização**: Ao fechar a página (`beforeunload`), dados locais são enviados para Firebase
+4. **Sincronização**: Ao fechar a página (`beforeunload`), dados locais são enviados para o Supabase
 5. **Resolução de Conflitos**: Admin é notificado sobre conflitos e pode escolher qual versão manter
 
 ### Campos de Sincronização
@@ -43,14 +43,14 @@ A página de configurações (`/configuracoes`) mostra:
 
 ```typescript
 // Em src/services/database.ts
-syncLocalToFirebase(clientes, veiculos, lavagens, produtos, movimentacoes, userId)
+syncLocalToSupabase(clientes, veiculos, lavagens, produtos, movimentacoes, userId)
 // Retorna: { conflicts: Conflict[], synced: number, errors: string[] }
 
 detectConflicts(localClientes, remoteClientes)
 // Detecta conflitos por comparação de timestamps
 
 // Em src/contexts/AppContext.tsx
-syncToFirebase()  // Sincronização manual
+syncToSupabase()  // Sincronização manual
 resolveConflict(entityType, entityId, useLocal)  // Resolver conflito
 ```
 
@@ -76,13 +76,12 @@ npm run dev  # Porta: 8080
 Create a `.env` file based on `.env.example`:
 
 ```bash
-# Database Type: 'localstorage' or 'firebase'
+# Database Type: 'localstorage' or 'supabase'
 VITE_DB_TYPE=localstorage
 
-# Firebase Configuration (optional - for production)
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
+# Supabase Configuration (optional - for production)
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 
 # Storage Secret (for HMAC signing)
 VITE_STORAGE_SECRET=your_secure_secret
@@ -97,9 +96,9 @@ VITE_STORAGE_SECRET=your_secure_secret
 - Role-based access control (Admin vs User)
 - Data encryption in LocalStorage
 - Built-in test data for demonstrations
-- **Admin settings page for Firebase configuration**
+- **Admin settings page for Supabase configuration**
 - **Lazy loading of pages** for better performance
-- **Bidirectional Sync**: Auto-sync to Firebase on page close
+- **Bidirectional Sync**: Auto-sync to Supabase on page close
 - **Conflict Detection**: Timestamps-based conflict detection
 - **Manual Sync**: Button to force synchronization anytime
 - **Conflict Resolution**: Admin can choose local or remote version
@@ -116,7 +115,7 @@ VITE_STORAGE_SECRET=your_secure_secret
 - **User Authentication**: HMAC-signed sessions with timestamp validation
 - **Data Storage**: Encrypted LocalStorage with integrity verification
 - **Input Sanitization**: XSS protection on user inputs
-- **Firestore Rules**: Comprehensive security rules (see firestore.rules)
+- **Supabase RLS**: Row Level Security policies on PostgreSQL tables
 - **Settings Validation**: Input validation to prevent misconfiguration
 
 ## Settings Page
@@ -125,10 +124,10 @@ The system includes an admin-only settings page (`/configuracoes`) that allows:
 
 ### Database Configuration
 - **Local Mode**: Data stored in browser (ideal for testing)
-- **Firebase Mode**: Cloud data (ideal for production)
+- **Supabase Mode**: Cloud data (ideal for production)
 
 ### User-Friendly Interface
-- Visual selection between Local and Firebase
+- Visual selection between Local and Supabase
 - Real-time validation fields
 - Step-by-step tutorial to get credentials
 - Test connection button
@@ -136,9 +135,8 @@ The system includes an admin-only settings page (`/configuracoes`) that allows:
 - Tutorial displayed above credential fields
 
 ### Security Features
-- URL format validation (Firebase domain)
-- Project ID validation (lowercase letters, numbers, hyphens only)
-- API Key validation (minimum 10 characters)
+- URL format validation (Supabase URL)
+- Anon Key validation
 - Credentials stored securely in browser
 
 ## Test Data for Demonstrations
@@ -159,46 +157,26 @@ To use for presentation:
 ## Known Limitations
 
 1. **Browser Storage**: Dados locais ficam no localStorage do navegador (com criptografia)
-2. **Single Browser**: Dados não sincronizam entre dispositivos (a menos que Firebase esteja ativo)
+2. **Single Browser**: Dados não sincronizam entre dispositivos (a menos que o Supabase esteja ativo)
 
-## Firebase Configuration
+## Supabase Configuration
 
 ### Configuração via .env
 
 ```bash
-VITE_DB_TYPE=firebase
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=123456789
-VITE_FIREBASE_APP_ID=1:123456789:web:abc123
+VITE_DB_TYPE=supabase
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
 
 ### Configuração via Interface
 
-O admin pode configurar o Firebase através da página de configurações:
+O admin pode configurar o Supabase através da página de configurações:
 1. Acesse `/configuracoes` (requer acesso admin)
-2. Selecione "Firebase (Nuvem)"
-3. Preencha as credenciais do Firebase Console
+2. Selecione "Supabase (Nuvem)"
+3. Preencha as credenciais do Supabase Dashboard
 4. Clique em "Testar Conexão" para verificar
 5. Salve as configurações
-
-### Regras de Segurança Firestore
-
-No Firebase Console, configure as regras de segurança:
-
-```javascript
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{collection}/{document} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.user_id;
-    }
-  }
-}
-```
 
 ## Run Commands
 
