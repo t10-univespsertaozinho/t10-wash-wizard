@@ -13,7 +13,7 @@ This is a car wash management system. When making the code public, it's essentia
 The project uses `.gitignore` to block:
 - `.env` - production variables
 - `.env.local` - local variables
-- Any file with Firebase credentials
+- Any file with Supabase credentials
 
 ### 2. LocalStorage Security
 
@@ -40,23 +40,18 @@ When deploying, ensure:
 - sanitizeInput()       // XSS protection for user inputs
 ```
 
-### 3. Firebase Configuration (Production)
+### 3. Supabase Configuration (Production)
 
-When configuring Firebase for production:
+When configuring Supabase for production:
 
-1. **Firebase Console** → Project Settings → Add app
-2. **Authentication** → Enable Email/Password
-3. **Firestore Database** → Create database (Production mode)
-4. **Deploy Rules**: Use `firestore.rules` file
+1. **Supabase Dashboard** → Project Settings → API
+2. Get the Project URL and Anon Public Key
+3. **Database** → Create tables (`clientes`, `veiculos`, `lavagens`, `produtos`, `tipos_lavagem`, `movimentacoes`)
+4. **Deploy Rules**: Use RLS (Row Level Security) on Supabase
 
-```bash
-# Deploy rules to Firebase
-firebase deploy --only firestore:rules
-```
+### 4. Supabase RLS Security Rules
 
-### 4. Firestore Security Rules
-
-The project includes comprehensive Firestore rules in `firestore.rules`:
+The project relies on comprehensive Supabase Row Level Security (RLS) rules:
 
 | Collection | Read | Write |
 |------------|------|-------|
@@ -84,8 +79,8 @@ The project includes comprehensive Firestore rules in `firestore.rules`:
 ### 6. Security Checklist
 
 - [x] `.env` is in `.gitignore`
-- [x] No Firebase credentials in code
-- [x] Firestore rules prevent cross-user access
+- [x] No Supabase credentials in code
+- [x] Supabase RLS rules prevent cross-user access
 - [x] User sessions are HMAC-signed
 - [x] LocalStorage data is encrypted
 - [x] Input sanitization available
@@ -99,12 +94,11 @@ VITE_DB_TYPE=localstorage
 VITE_STORAGE_SECRET=your_secret_key
 ```
 
-### Firebase Mode
+### Supabase Mode
 ```bash
-VITE_DB_TYPE=firebase
-VITE_FIREBASE_API_KEY=...
-VITE_FIREBASE_AUTH_DOMAIN=...
-VITE_FIREBASE_PROJECT_ID=...
+VITE_DB_TYPE=supabase
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
 ```
 
 ## FAQ
@@ -112,7 +106,7 @@ VITE_FIREBASE_PROJECT_ID=...
 **Can I make the project public?**
 Yes, as long as:
 - No real credentials included
-- Firebase security rules configured
+- Supabase security RLS configured
 - Use test data for demos
 
 **How to test without exposing data?**
@@ -120,9 +114,9 @@ Use `localstorage` mode (default) or Firebase Emulator.
 
 **What if credentials leak?**
 1. Change passwords immediately
-2. Revoke API keys in Firebase Console
+2. Revoke API keys in Supabase Dashboard
 3. Check for unauthorized access
-4. Review Firestore logs
+4. Review PostgreSQL logs
 
 ## Vulnerability Mitigation
 
@@ -131,8 +125,28 @@ Use `localstorage` mode (default) or Firebase Emulator.
 | LocalStorage tampering | ✅ Mitigated with HMAC |
 | Privilege escalation | ✅ Server-side validation |
 | XSS injection | ✅ Sanitization available |
-| Firestore IDOR | ✅ Comprehensive rules |
+| Supabase IDOR | ✅ Comprehensive RLS rules |
 | Sensitive data exposure | ✅ Encryption implemented |
+
+## Sync Security
+
+A implementação de sincronização adiciona camadas adicionais de segurança:
+
+### Campos de Sincronização
+Cada entidade agora inclui:
+- `updated_at`: Timestamp da última modificação (protegido contra manipulação)
+- `_syncStatus`: Estado de sincronização (`synced` | `pending` | `conflict`)
+
+### Fluxo de Sync Seguro
+1. **Inicialização**: Dados são validados antes de serem carregados
+2. **Detecção de Conflitos**: Usa timestamps para identificar alterações remotas
+3. **Sincronização**: Apenas dados do usuário atual são sincronizados (user_id)
+4. **Resolução de Conflitos**: Admin decide qual versão manter
+
+### Configuração de Segurança para Sync
+- Supabase credentials nunca expostas no código
+- Dados são associados ao user_id em todas as operações
+- Sync automático apenas se houver alterações pendentes
 
 ## Data for Testing
 

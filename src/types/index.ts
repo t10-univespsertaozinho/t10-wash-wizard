@@ -4,6 +4,8 @@ export interface Cliente {
   telefone: string;
   user_id: string;
   created_at: string;
+  updated_at?: string;
+  _syncStatus?: 'synced' | 'pending' | 'conflict';
 }
 
 export interface Veiculo {
@@ -13,6 +15,8 @@ export interface Veiculo {
   placa: string;
   cor: string;
   user_id: string;
+  updated_at?: string;
+  _syncStatus?: 'synced' | 'pending' | 'conflict';
 }
 
 export interface TipoLavagem {
@@ -34,6 +38,8 @@ export interface Lavagem {
   user_id: string;
   data: string;
   data_conclusao: string | null;
+  updated_at?: string;
+  _syncStatus?: 'synced' | 'pending' | 'conflict';
 }
 
 export interface Produto {
@@ -45,6 +51,8 @@ export interface Produto {
   unidade: string;
   preco_unitario: number;
   user_id: string;
+  updated_at?: string;
+  _syncStatus?: 'synced' | 'pending' | 'conflict';
 }
 
 export interface MovimentacaoEstoque {
@@ -55,4 +63,19 @@ export interface MovimentacaoEstoque {
   observacao: string;
   user_id: string;
   data: string;
+  updated_at?: string;
+  _syncStatus?: 'synced' | 'pending' | 'conflict';
+}
+
+export type SyncStatus = 'synced' | 'pending' | 'conflict';
+
+export type EntityType = 'cliente' | 'veiculo' | 'lavagem' | 'produto' | 'movimentacao';
+
+export interface Conflict {
+  entityType: EntityType;
+  entityId: string;
+  localData: Cliente | Veiculo | Lavagem | Produto | MovimentacaoEstoque;
+  remoteData: Record<string, unknown>;
+  localUpdatedAt: string;
+  remoteUpdatedAt: string;
 }
