@@ -10,15 +10,15 @@ export default function Lavagens() {
   const sorted = [...filtered].sort((a, b) => b.data.localeCompare(a.data));
 
   const statusBadge = (s: string) => {
-    const map: Record<string, string> = { pendente: 'badge-pendente', em_andamento: 'badge-andamento', concluida: 'badge-concluida', cancelada: 'badge-cancelada' };
-    const labels: Record<string, string> = { pendente: 'Pendente', em_andamento: 'Em andamento', concluida: 'Concluída', cancelada: 'Cancelada' };
+    const map: Record<string, string> = { pendente: 'badge-pendente', em_progresso: 'badge-andamento', concluida: 'badge-concluida', cancelada: 'badge-cancelada' };
+    const labels: Record<string, string> = { pendente: 'Pendente', em_progresso: 'Em progresso', concluida: 'Concluída', cancelada: 'Cancelada' };
     return <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
   };
 
   const filters = [
     { key: 'todos', label: 'Todos' },
     { key: 'pendente', label: 'Pendente' },
-    { key: 'em_andamento', label: 'Em andamento' },
+    { key: 'em_progresso', label: 'Em progresso' },
     { key: 'concluida', label: 'Concluída' },
     { key: 'cancelada', label: 'Cancelada' },
   ];
@@ -63,7 +63,7 @@ export default function Lavagens() {
                   <td className="py-3 px-4 text-center">{statusBadge(l.status)}</td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {(l.status === 'pendente' || l.status === 'em_andamento') && (
+                      {(l.status === 'pendente' || l.status === 'em_progresso') && (
                         <button onClick={() => updateLavagemStatus(l.id, 'concluida')} className="p-1.5 rounded-lg hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"><Check size={15} /></button>
                       )}
                       {l.status === 'pendente' && (
