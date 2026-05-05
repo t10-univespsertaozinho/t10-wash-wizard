@@ -1,153 +1,40 @@
-# Wash Wizard - Security Guidelines
+# Wash Wizard Security Policy (Academic Version)
 
-## Overview
+## 1. Overview
 
-This is a car wash management system. When making the code public, it's essential to ensure that sensitive information is not exposed.
+This document outlines the security architecture and mechanisms implemented in the Wash Wizard project.
+In this academic version, the primary data source is a local SQLite database served by a Node.js backend. The frontend handles authentication locally with HMAC.
 
-## Security Implementation
+## 2. Authentication & Authorization
 
-### 1. Environment Variables
+### 2.1 Role-Based Access Control (RBAC)
+The system implements strict role-based access control:
+- **Admin**: Full access to all features (Clients, Washes, Inventory, Settings, CSV Backup/Restore).
+- **User (Operator)**: Restricted access to operational features (Clients, Washes). Cannot access Inventory, Settings, or Backup.
 
-**NEVER commit `.env` files with real credentials!**
+### 2.2 Local Session Security (HMAC)
+Since there is no complex Auth backend, the frontend simulates JWT-like behavior using Web Crypto API.
+- Sessions are stored in LocalStorage but signed with a SHA-256 HMAC signature.
+- Any tampering with the LocalStorage content invalidates the session.
+- Expiration: Sessions automatically expire after 30 days.
 
-The project uses `.gitignore` to block:
-- `.env` - production variables
-- `.env.local` - local variables
-- Any file with Supabase credentials
+## 3. Data Protection
 
-### 2. LocalStorage Security
+### 3.1 SQLite Database (Backend)
+The database `wash_wizard.db` is stored locally within the project folder. It is not committed to version control.
+The database schema (`backend/schema.sql`) enforces relational integrity (`PRAGMA foreign_keys = ON;`) to prevent orphan records.
 
-The application implements multiple security layers for LocalStorage mode:
+### 3.2 CSV Backup Integrity
+The application supports CSV import/export.
+- The import feature clears the database and replaces it with the CSV contents.
+- Strict ordering is maintained during import (users -> clientes -> veiculos -> etc) to satisfy foreign key constraints.
+- Foreign keys are temporarily disabled (`PRAGMA foreign_keys = OFF`) during the import transaction and re-enabled afterward.
 
-- **HMAC Signing**: User sessions are signed with HMAC to prevent tampering
-- **Timestamp Validation**: Signatures expire after 30 days
-- **Data Encryption**: Application data is encrypted before storage
+### 3.3 Input Validation (Frontend)
+- **Zod Validation**: All forms use React Hook Form integrated with Zod schemas to validate data before sending to the backend.
+- **XSS Protection**: React automatically escapes strings rendered in the DOM, mitigating XSS risks. Input sanitation is explicitly applied to text fields where applicable.
 
-### 3. Performance Best Practices
+## 4. API Security
 
-When deploying, ensure:
-
-- **Code Splitting**: Enabled via React.lazy + Suspense
-- **Lazy Loading**: Only necessary pages load on demand
-- **Memoization**: Dashboard calculations are memoized with useMemo
-
-```typescript
-// Security utilities in src/utils/security.ts
-- createSignedUser()    // Creates HMAC-signed user session
-- verifySignedUser()    // Verifies session integrity
-- encryptStorage()      // Encrypts data before storage
-- decryptStorage()      // Decrypts and validates data
-- sanitizeInput()       // XSS protection for user inputs
-```
-
-### 3. Supabase Configuration (Production)
-
-When configuring Supabase for production:
-
-1. **Supabase Dashboard** → Project Settings → API
-2. Get the Project URL and Anon Public Key
-3. **Database** → Create tables (`clientes`, `veiculos`, `lavagens`, `produtos`, `tipos_lavagem`, `movimentacoes`)
-4. **Deploy Rules**: Use RLS (Row Level Security) on Supabase
-
-### 4. Supabase RLS Security Rules
-
-The project relies on comprehensive Supabase Row Level Security (RLS) rules:
-
-| Collection | Read | Write |
-|------------|------|-------|
-| `clientes` | Owner or Admin | Owner or Admin |
-| `veiculos` | Via cliente owner | Via cliente owner |
-| `lavagens` | Via cliente owner | Via cliente owner |
-| `produtos` | Auth users | Admin only |
-| `movimentacoes` | Auth users | Admin only |
-| `tipos_lavagem` | Auth users | Admin only |
-| `users` | Own profile | Own profile (no role change) |
-
-### 5. Access Control
-
-| Route | Access |
-|-------|--------|
-| `/login` | Public |
-| `/` (Dashboard) | Authenticated |
-| `/clientes` | Authenticated |
-| `/lavagens` | Authenticated |
-| `/tipos-lavagem` | Admin only |
-| `/estoque` | Admin only |
-| `/novo-produto` | Admin only |
-| `/movimentacao` | Admin only |
-
-### 6. Security Checklist
-
-- [x] `.env` is in `.gitignore`
-- [x] No Supabase credentials in code
-- [x] Supabase RLS rules prevent cross-user access
-- [x] User sessions are HMAC-signed
-- [x] LocalStorage data is encrypted
-- [x] Input sanitization available
-- [x] Test data contains no real information
-
-## Environment Variables
-
-### LocalStorage Mode (Default)
-```bash
-VITE_DB_TYPE=localstorage
-VITE_STORAGE_SECRET=your_secret_key
-```
-
-### Supabase Mode
-```bash
-VITE_DB_TYPE=supabase
-VITE_SUPABASE_URL=...
-VITE_SUPABASE_ANON_KEY=...
-```
-
-## FAQ
-
-**Can I make the project public?**
-Yes, as long as:
-- No real credentials included
-- Supabase security RLS configured
-- Use test data for demos
-
-**How to test without exposing data?**
-Use `localstorage` mode (default) or Firebase Emulator.
-
-**What if credentials leak?**
-1. Change passwords immediately
-2. Revoke API keys in Supabase Dashboard
-3. Check for unauthorized access
-4. Review PostgreSQL logs
-
-## Vulnerability Mitigation
-
-| Vulnerability | Status |
-|---------------|--------|
-| LocalStorage tampering | ✅ Mitigated with HMAC |
-| Privilege escalation | ✅ Server-side validation |
-| XSS injection | ✅ Sanitization available |
-| Supabase IDOR | ✅ Comprehensive RLS rules |
-| Sensitive data exposure | ✅ Encryption implemented |
-
-## Sync Security
-
-A implementação de sincronização adiciona camadas adicionais de segurança:
-
-### Campos de Sincronização
-Cada entidade agora inclui:
-- `updated_at`: Timestamp da última modificação (protegido contra manipulação)
-- `_syncStatus`: Estado de sincronização (`synced` | `pending` | `conflict`)
-
-### Fluxo de Sync Seguro
-1. **Inicialização**: Dados são validados antes de serem carregados
-2. **Detecção de Conflitos**: Usa timestamps para identificar alterações remotas
-3. **Sincronização**: Apenas dados do usuário atual são sincronizados (user_id)
-4. **Resolução de Conflitos**: Admin decide qual versão manter
-
-### Configuração de Segurança para Sync
-- Supabase credentials nunca expostas no código
-- Dados são associados ao user_id em todas as operações
-- Sync automático apenas se houver alterações pendentes
-
-## Data for Testing
-
-The system includes demonstration data generated automatically (`seedTestData`). These are safe fictitious data for testing.
+- The Express backend uses the `cors` middleware to accept requests from the frontend.
+- While it lacks authentication middlewares (due to the academic/local scope of the project), production implementations must introduce JWT validation inside Express.

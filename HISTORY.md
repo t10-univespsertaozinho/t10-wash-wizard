@@ -8,6 +8,149 @@
 
 ---
 
+## 2026-05-05 — opencode/minimax-m2.5-free — Backend API Fix and Realistic Data Seed
+
+### Resumo
+
+Correção das APIs do backend para carregar dados automaticamente e geração de dados de exemplo realistas para apresentação do projeto acadêmico.
+
+### Arquivos modificados
+
+- `backend/server.js`
+  - Removido filtro por `user_id` das rotas GET para clientes, veículos, lavagens, produtos e movimentações
+  - Agora retorna todos os dados do banco sem filtragem por usuário
+  - Permite que o frontend carregue todos os dados automaticamente ao fazer login
+
+- `backend/db.js`
+  - Modificado para não executar schema.sql se o banco já existe
+  - Preserva os dados existentes ao reiniciar o servidor
+
+- `backend/seed.js`
+  - Atualizado para usar o banco na raiz do projeto (`../wash_wizard.db`)
+  - Script de população de dados com informações realistas
+
+- `frontend/src/contexts/AppContext.tsx`
+  - Modificada função `seedTestData` para chamar `loadData()` ao invés de gerar dados localmente
+  - Agora carrega os dados existentes do banco SQLite automaticamente
+
+### Dados de Exemplo para Apresentação
+
+- **25 clientes** com nomes e telefones variados
+- **60 lavagens** distribuídas nos últimos 90 dias (100% concluídas)
+- **10 produtos** de limpeza, todos com estoque abaixo do mínimo
+- **4 tipos de lavagem** (Lavagem Simples, Completa, Polimento, Lavagem a Seco)
+
+### Verificação
+
+- `npm run dev` → Backend porta 3001, Frontend porta 8080
+- APIs retornando dados corretamente
+- Login automático carrega os dados do banco SQLite
+
+---
+
+## 2026-05-05 — antigravity — Database Loading and Seed Fixes
+
+### Resumo
+
+Correção de problemas que impediam a renderização dos dados do banco SQLite no frontend e reparos no script de população de banco (seed).
+
+### Arquivos modificados
+
+- `frontend/.env` e `frontend/.env.example`
+  - Removidos caracteres literais `\n` que corrompiam a variável `VITE_API_URL` e causavam falhas silenciosas de rede no frontend.
+- `backend/seed.js`
+  - Encapsulamento de toda a lógica de seed dentro de `db.serialize()` para evitar condições de corrida assíncronas do `sqlite3` e erros de restrição de chave estrangeira (FOREIGN KEY constraint).
+  - Correção de tipografia (`plata` e `plate` para `placa`) na inserção de veículos, evitando falhas de `NOT NULL constraint`.
+  - Simplificação da lógica de usuários com `INSERT OR IGNORE` e tratamento assíncrono.
+- `backend/check-data.js` *(novo)*
+  - Script utilitário para checagem rápida da contagem de linhas no banco SQLite.
+
+### Verificação
+
+- Banco de dados SQLite populado com sucesso (25 clientes, 27 veículos, >100 lavagens).
+- Conexão e API restauradas. Frontend exibe os dados localmente.
+
+---
+
+## 2026-05-04 — opencode/minimax-m2.5-free — AppContext Fix and Vite 8 Upgrade
+
+### Resumo
+
+Correção de erros críticos que causavam tela branca no Dashboard e upgrade de dependências do frontend para Vite 8.x.
+
+### Arquivos modificados
+
+- `frontend/package.json`
+  - Upgrade Vite de 5.x para `^8.0.10`
+  - Substituído `@vitejs/plugin-react-swc` por `@vitejs/plugin-react@^5.0.0`
+  - Atualizado `lovable-tagger` de `^1.1.13` para `^1.3.0` (compatível com Vite 8)
+
+- `frontend/vite.config.ts`
+  - Atualizado import do plugin React
+  - Adicionado `open: true` para abrir navegador automaticamente
+  - Removido uso de `lovable-tagger` temporariamente e restaurado
+
+- `frontend/src/contexts/AppContext.tsx`
+  - Adicionada propriedade `produtosBaixoEstoque` (computed)
+  - Adicionadas funções: `getCliente`, `getVeiculosCliente`, `getLavagensCliente`, `getTipoLavagem`, `getProduto`
+  - Adicionadas funções: `updateLavagemStatus`, `seedTestData`
+  - Adicionados tipos necessários na interface `AppContextType`
+  - Corrigido problema de `undefined` que causava tela branca no Dashboard
+
+- `frontend/src/types/index.ts`
+  - Confirmada existência do campo `estoque_minimo` na interface `Produto`
+
+### Verificação
+
+- `npm run build` → build concluído com sucesso (22 arquivos gerados)
+- `npm run lint` → 0 erros (apenas warnings de componentes UI)
+- Frontend rodando na porta 8080, Backend na porta 3001
+
+---
+
+## 2026-05-04 — antigravity — Full-stack SQLite Migration (Academic Pivot)
+
+### Resumo
+
+Migração profunda da arquitetura do projeto "Wash Wizard" para atender aos requisitos da disciplina de Banco de Dados do Projeto Integrador (UNIVESP).
+O projeto agora abandona a camada "Nuvem/Supabase" e o LocalStorage Sync e se torna uma aplicação Full-Stack (Node.js + React) com foco num banco relacional (SQLite) de uso local, mantendo a proteção HMAC para sessões e importação/exportação de Backup em formato `.csv`.
+
+### Arquivos modificados e Criações
+
+- **Reestruturação Completa de Diretórios**
+  - Todos os arquivos do React/Vite foram movidos para `frontend/`.
+  - Uma nova pasta `backend/` foi criada.
+  - Orquestrador na raiz (`package.json`) configurado para usar `concurrently`.
+
+- **`backend/schema.sql`**
+  - Schema original em PostgreSQL (`tabela_sistema.sql`) inteiramente adaptado para compatibilidade no SQLite.
+  - Substituições: `uuid` -> `TEXT`, datas com timezone -> `TEXT` ISO 8601, restrições nativas.
+
+- **`backend/db.js` e `backend/server.js`**
+  - Criado o servidor Node.js/Express na porta 3001 com suporte a APIs RESTful.
+  - Criados os endpoints CRUD das 7 entidades usando a biblioteca `sqlite3`.
+  - Incluída rota robusta de Backup (`/api/backup/import` e `/api/backup/export`) manipulando lotes de CSV via `csv-parse` e respeitando transações/foreign keys.
+
+- **`frontend/src/services/database.ts`**
+  - Refatoração destrutiva: as implementações abstratas de Supabase e LocalStorage foram completamente removidas.
+  - Implementação única consumindo o backend Node.js (`fetch(API_URL)`).
+
+- **`frontend/src/contexts/AppContext.tsx`** e **`frontend/src/pages/Configuracoes.tsx`**
+  - Removido 100% da lógica de sincronicidade (Offline Sync), estados de pendência e criptografia pesada de armazenamento de dados.
+  - A interface de Configurações permite apenas interagir com o mecanismo de Backup CSV e Reset de Banco de Dados.
+
+### Justificativas (Academic Scope)
+
+- **Adoção do SQLite:** Escolhido como banco de dados relacional oficial do projeto acadêmico por simplificar a distribuição e dispensar ambientes complexos (Docker/Nuvem).
+- **Abandono do KISS/YAGNI para Cloud:** Lógicas avançadas de conciliação de conflitos (`beforeunload`, detectConflict) foram excluídas, pois exerciam *overengineering* para o escopo definido (um banco local sem offline-queue).
+
+### Verificação
+
+- `npm run install:all` finaliza com sucesso instalando os dois workspaces.
+- `npm run dev` orquestra ambos na porta 8080 e 3001 simultaneamente sem erros.
+
+---
+
 ## 2026-05-04 — antigravity — Supabase Migration and Optimizations
 
 ### Resumo

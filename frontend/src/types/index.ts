@@ -5,7 +5,7 @@ export interface Cliente {
   user_id: string;
   created_at: string;
   updated_at?: string;
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
+
 }
 
 export interface Veiculo {
@@ -16,7 +16,7 @@ export interface Veiculo {
   cor: string;
   user_id: string;
   updated_at?: string;
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
+
 }
 
 export interface TipoLavagem {
@@ -39,7 +39,7 @@ export interface Lavagem {
   data: string;
   data_conclusao: string | null;
   updated_at?: string;
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
+
 }
 
 export interface Produto {
@@ -52,7 +52,7 @@ export interface Produto {
   preco_unitario: number;
   user_id: string;
   updated_at?: string;
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
+
 }
 
 export interface MovimentacaoEstoque {
@@ -64,7 +64,7 @@ export interface MovimentacaoEstoque {
   user_id: string;
   data: string;
   updated_at?: string;
-  _syncStatus?: 'synced' | 'pending' | 'conflict';
+
 }
 
 export type SyncStatus = 'synced' | 'pending' | 'conflict';
