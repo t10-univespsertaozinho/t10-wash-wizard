@@ -8,6 +8,30 @@
 
 ---
 
+## 2026-05-05 — antigravity — Database Loading and Seed Fixes
+
+### Resumo
+
+Correção de problemas que impediam a renderização dos dados do banco SQLite no frontend e reparos no script de população de banco (seed).
+
+### Arquivos modificados
+
+- `frontend/.env` e `frontend/.env.example`
+  - Removidos caracteres literais `\n` que corrompiam a variável `VITE_API_URL` e causavam falhas silenciosas de rede no frontend.
+- `backend/seed.js`
+  - Encapsulamento de toda a lógica de seed dentro de `db.serialize()` para evitar condições de corrida assíncronas do `sqlite3` e erros de restrição de chave estrangeira (FOREIGN KEY constraint).
+  - Correção de tipografia (`plata` e `plate` para `placa`) na inserção de veículos, evitando falhas de `NOT NULL constraint`.
+  - Simplificação da lógica de usuários com `INSERT OR IGNORE` e tratamento assíncrono.
+- `backend/check-data.js` *(novo)*
+  - Script utilitário para checagem rápida da contagem de linhas no banco SQLite.
+
+### Verificação
+
+- Banco de dados SQLite populado com sucesso (25 clientes, 27 veículos, >100 lavagens).
+- Conexão e API restauradas. Frontend exibe os dados localmente.
+
+---
+
 ## 2026-05-04 — opencode/minimax-m2.5-free — AppContext Fix and Vite 8 Upgrade
 
 ### Resumo

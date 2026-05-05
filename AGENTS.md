@@ -25,6 +25,8 @@ The system uses an adapted SQLite schema `backend/schema.sql`.
 - Default date fields use `TEXT` storing ISO 8601 strings.
 - Numeric constraints apply to REAL types.
 - Foreign keys are enforced in SQLite (`PRAGMA foreign_keys = ON;`).
+- Database seed script relies on `db.serialize()` to guarantee synchronous setup execution, preventing foreign key constraint drops during parallel creation.
+- A comprehensive HTML documentation file is available at `documentacao.html` at the project root.
 
 ## Quick Start
 

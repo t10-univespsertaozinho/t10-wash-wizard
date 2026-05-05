@@ -5,6 +5,8 @@ Esta versão foi adaptada especificamente para o **Projeto Integrador Acadêmico
 
 ## Arquitetura do Projeto
 
+Consulte a **[Documentação Completa do Projeto em HTML](./documentacao.html)** para uma visão detalhada, diagramas e explicação da arquitetura.
+
 A aplicação está dividida em duas camadas principais:
 
 ```
