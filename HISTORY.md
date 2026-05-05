@@ -8,6 +8,46 @@
 
 ---
 
+## 2026-05-05 — opencode/minimax-m2.5-free — Backend API Fix and Realistic Data Seed
+
+### Resumo
+
+Correção das APIs do backend para carregar dados automaticamente e geração de dados de exemplo realistas para apresentação do projeto acadêmico.
+
+### Arquivos modificados
+
+- `backend/server.js`
+  - Removido filtro por `user_id` das rotas GET para clientes, veículos, lavagens, produtos e movimentações
+  - Agora retorna todos os dados do banco sem filtragem por usuário
+  - Permite que o frontend carregue todos os dados automaticamente ao fazer login
+
+- `backend/db.js`
+  - Modificado para não executar schema.sql se o banco já existe
+  - Preserva os dados existentes ao reiniciar o servidor
+
+- `backend/seed.js`
+  - Atualizado para usar o banco na raiz do projeto (`../wash_wizard.db`)
+  - Script de população de dados com informações realistas
+
+- `frontend/src/contexts/AppContext.tsx`
+  - Modificada função `seedTestData` para chamar `loadData()` ao invés de gerar dados localmente
+  - Agora carrega os dados existentes do banco SQLite automaticamente
+
+### Dados de Exemplo para Apresentação
+
+- **25 clientes** com nomes e telefones variados
+- **60 lavagens** distribuídas nos últimos 90 dias (100% concluídas)
+- **10 produtos** de limpeza, todos com estoque abaixo do mínimo
+- **4 tipos de lavagem** (Lavagem Simples, Completa, Polimento, Lavagem a Seco)
+
+### Verificação
+
+- `npm run dev` → Backend porta 3001, Frontend porta 8080
+- APIs retornando dados corretamente
+- Login automático carrega os dados do banco SQLite
+
+---
+
 ## 2026-05-05 — antigravity — Database Loading and Seed Fixes
 
 ### Resumo
