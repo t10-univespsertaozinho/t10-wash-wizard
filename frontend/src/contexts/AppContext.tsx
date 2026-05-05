@@ -191,29 +191,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const getProduto = (id: string) => state.produtos.find(p => p.id === id);
   const produtosBaixoEstoque = state.produtos.filter(p => p.quantidade <= p.estoque_minimo);
 
-  // Seed test data
+  // Seed test data - carrega dados existentes do banco SQLite
   const seedTestData = async () => {
-    if (!user) return;
-    // Generate test data - simplified version
-    const timestamp = new Date().toISOString();
-    const c1Id = crypto.randomUUID();
-    const c2Id = crypto.randomUUID();
-    
-    const novosClientes: Cliente[] = [
-      { id: c1Id, nome: 'João Silva', telefone: '(11) 98888-7777', user_id: user.id, created_at: timestamp },
-      { id: c2Id, nome: 'Maria Oliveira', telefone: '(11) 97777-6666', user_id: user.id, created_at: timestamp },
-    ];
-
-    const novosVeiculos: Veiculo[] = [
-      { id: crypto.randomUUID(), cliente_id: c1Id, modelo: 'Toyota Corolla', placa: 'ABC-1234', cor: 'Prata', user_id: user.id },
-      { id: crypto.randomUUID(), cliente_id: c2Id, modelo: 'Honda Civic', placa: 'XYZ-9876', cor: 'Preto', user_id: user.id },
-    ];
-
-    setState(s => ({
-      ...s,
-      clientes: [...s.clientes, ...novosClientes],
-      veiculos: [...s.veiculos, ...novosVeiculos],
-    }));
+    await loadData(); // Recarrega dados do banco SQLite
   };
 
   const addProduto = async (data: Omit<Produto, 'id' | 'updated_at'>) => {

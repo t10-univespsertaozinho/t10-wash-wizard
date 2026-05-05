@@ -10,6 +10,7 @@ const dbPath = path.resolve(__dirname, '../wash_wizard.db');
 const schemaPath = path.resolve(__dirname, 'schema.sql');
 
 // Conexão com o banco de dados
+const dbExists = fs.existsSync(dbPath);
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Erro ao abrir o banco de dados SQLite', err.message);
@@ -21,15 +22,19 @@ const db = new sqlite3.Database(dbPath, (err) => {
       if (err) console.error('Erro ao habilitar foreign keys:', err);
     });
 
-    // Inicializar schema se necessário
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    db.exec(schema, (err) => {
-      if (err) {
-        console.error('Erro ao executar o schema:', err);
-      } else {
-        console.log('Schema inicializado com sucesso.');
-      }
-    });
+    // Inicializar schema apenas se o banco não existir ou estiver vazio
+    if (!dbExists) {
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      db.exec(schema, (err) => {
+        if (err) {
+          console.error('Erro ao executar o schema:', err);
+        } else {
+          console.log('Schema inicializado com sucesso.');
+        }
+      });
+    } else {
+      console.log('Banco de dados já existe, schema ignorado.');
+    }
   }
 });
 

@@ -43,11 +43,8 @@ app.post('/api/users', async (req, res) => {
 // ==========================================
 app.get('/api/clientes', async (req, res) => {
   try {
-    const { user_id } = req.query;
-    let query = 'SELECT * FROM clientes';
-    let params = [];
-    if (user_id) { query += ' WHERE user_id = ?'; params.push(user_id); }
-    const rows = await all(query, params);
+    // Retorna todos os clientes (sem filtro por user_id para simplificar)
+    const rows = await all('SELECT * FROM clientes', []);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -84,11 +81,10 @@ app.delete('/api/clientes/:id', async (req, res) => {
 // ==========================================
 app.get('/api/veiculos', async (req, res) => {
   try {
-    const { user_id, cliente_id } = req.query;
-    let query = 'SELECT * FROM veiculos WHERE 1=1';
+    const { cliente_id } = req.query;
+    let query = 'SELECT * FROM veiculos';
     let params = [];
-    if (user_id) { query += ' AND user_id = ?'; params.push(user_id); }
-    if (cliente_id) { query += ' AND cliente_id = ?'; params.push(cliente_id); }
+    if (cliente_id) { query += ' WHERE cliente_id = ?'; params.push(cliente_id); }
     const rows = await all(query, params);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -153,11 +149,10 @@ app.delete('/api/tipos-lavagem/:id', async (req, res) => {
 // ==========================================
 app.get('/api/lavagens', async (req, res) => {
   try {
-    const { user_id, cliente_id } = req.query;
-    let query = 'SELECT * FROM lavagens WHERE 1=1';
+    const { cliente_id } = req.query;
+    let query = 'SELECT * FROM lavagens';
     let params = [];
-    if (user_id) { query += ' AND user_id = ?'; params.push(user_id); }
-    if (cliente_id) { query += ' AND cliente_id = ?'; params.push(cliente_id); }
+    if (cliente_id) { query += ' WHERE cliente_id = ?'; params.push(cliente_id); }
     query += ' ORDER BY data DESC';
     const rows = await all(query, params);
     res.json(rows);
@@ -208,11 +203,7 @@ app.delete('/api/lavagens/:id', async (req, res) => {
 // ==========================================
 app.get('/api/produtos', async (req, res) => {
   try {
-    const { user_id } = req.query;
-    let query = 'SELECT * FROM produtos';
-    let params = [];
-    if (user_id) { query += ' WHERE user_id = ?'; params.push(user_id); }
-    const rows = await all(query, params);
+    const rows = await all('SELECT * FROM produtos', []);
     res.json(rows);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -251,10 +242,8 @@ app.delete('/api/produtos/:id', async (req, res) => {
 // ==========================================
 app.get('/api/movimentacoes', async (req, res) => {
   try {
-    const { user_id } = req.query;
     let query = 'SELECT * FROM movimentacoes';
     let params = [];
-    if (user_id) { query += ' WHERE user_id = ?'; params.push(user_id); }
     query += ' ORDER BY data DESC';
     const rows = await all(query, params);
     res.json(rows);
