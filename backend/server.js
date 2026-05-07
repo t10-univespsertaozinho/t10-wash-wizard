@@ -108,6 +108,15 @@ app.delete('/api/veiculos/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.put('/api/veiculos/:id', async (req, res) => {
+  try {
+    const { modelo, placa, cor } = req.body;
+    await run('UPDATE veiculos SET modelo = ?, placa = ?, cor = ? WHERE id = ?', [modelo, placa, cor, req.params.id]);
+    const row = await get('SELECT * FROM veiculos WHERE id = ?', [req.params.id]);
+    res.json(row);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ==========================================
 // TIPOS_LAVAGEM API
 // ==========================================

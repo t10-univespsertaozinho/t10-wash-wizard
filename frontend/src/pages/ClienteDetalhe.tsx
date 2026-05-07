@@ -1,17 +1,25 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { useState } from 'react';
-import { Trash2, Plus, Car } from 'lucide-react';
+import { Trash2, Plus, Car, Pencil, X, Check } from 'lucide-react';
+import { usePlacaMask } from '@/hooks/usePlacaMask';
+import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 
 export default function ClienteDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { getCliente, getVeiculosCliente, getLavagensCliente, getTipoLavagem, addVeiculo, deleteVeiculo, veiculos } = useApp();
+  const { getCliente, getVeiculosCliente, getLavagensCliente, getTipoLavagem, addVeiculo, updateVeiculo, deleteVeiculo, veiculos } = useApp();
 
   const [showForm, setShowForm] = useState(false);
   const [modelo, setModelo] = useState('');
-  const [placa, setPlaca] = useState('');
+  const { value: placa, handleChange: handlePlacaChange, setValue: setPlaca } = usePlacaMask();
   const [cor, setCor] = useState('');
+  
+  const [editandoVeiculoId, setEditandoVeiculoId] = useState<string | null>(null);
+  const [editandoModelo, setEditandoModelo] = useState('');
+  const [editandoPlaca, setEditandoPlaca] = useState('');
+  const [editandoCor, setEditandoCor] = useState('');
+  const { value: editPlacaValue, handleChange: handleEditPlacaChange, setValue: setEditPlacaValue } = usePlacaMask();
 
   const cliente = getCliente(id!);
   if (!cliente) return <p className="text-muted-foreground">Cliente não encontrado.</p>;
@@ -22,8 +30,33 @@ export default function ClienteDetalhe() {
   const handleAddVeiculo = (e: React.FormEvent) => {
     e.preventDefault();
     if (!modelo.trim() || !placa.trim()) return;
-    addVeiculo({ cliente_id: id!, modelo: modelo.trim(), placa: placa.toUpperCase().trim(), cor: cor.trim() });
+    addVeiculo({ cliente_id: id!, modelo: modelo.trim(), placa: placa.trim(), cor: cor.trim() });
     setModelo(''); setPlaca(''); setCor(''); setShowForm(false);
+  };
+
+  const iniciarEdicaoVeiculo = (v: { id: string; modelo: string; placa: string; cor: string }) => {
+    setEditandoVeiculoId(v.id);
+    setEditandoModelo(v.modelo);
+    setEditandoPlaca(v.placa);
+    setEditandoCor(v.cor);
+    setEditPlacaValue(v.placa);
+  };
+
+  const cancelarEdicaoVeiculo = () => {
+    setEditandoVeiculoId(null);
+    setEditandoModelo('');
+    setEditandoPlaca('');
+    setEditandoCor('');
+  };
+
+  const salvarEdicaoVeiculo = async () => {
+    if (!editandoVeiculoId || !editandoModelo.trim() || !editandoPlaca.trim()) return;
+    await updateVeiculo(editandoVeiculoId, { 
+      modelo: editandoModelo.trim(), 
+      placa: editandoPlaca.trim(), 
+      cor: editandoCor.trim() 
+    });
+    cancelarEdicaoVeiculo();
   };
 
   const statusBadge = (s: string) => {
@@ -71,7 +104,7 @@ export default function ClienteDetalhe() {
         {showForm && (
           <form onSubmit={handleAddVeiculo} className="grid grid-cols-3 gap-3 mb-4">
             <input className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
-            <input className="input-t10 uppercase" placeholder="Placa" value={placa} onChange={e => setPlaca(e.target.value.toUpperCase())} required />
+            <input className="input-t10 uppercase font-mono" placeholder="ABC-1234 ou ABC1D23" value={placa} onChange={handlePlacaChange} maxLength={8} required />
             <div className="flex gap-2">
               <input className="input-t10" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
               <button type="submit" className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-sm hover:brightness-110 transition-all whitespace-nowrap">Salvar</button>
@@ -84,12 +117,45 @@ export default function ClienteDetalhe() {
           <tbody>
             {veiculosCliente.map(v => (
               <tr key={v.id} className="table-row-hover border-t border-border">
-                <td className="py-2 px-3 font-medium text-foreground">{v.modelo}</td>
-                <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
-                <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
-                <td className="py-2 px-3 text-right">
-                  <button onClick={() => deleteVeiculo(v.id)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={14} /></button>
-                </td>
+                {editandoVeiculoId === v.id ? (
+                  <>
+                    <td className="py-2 px-3">
+                      <input className="input-t10 text-sm py-1" value={editandoModelo} onChange={e => setEditandoModelo(e.target.value)} />
+                    </td>
+                    <td className="py-2 px-3">
+                      <input className="input-t10 text-sm py-1 uppercase font-mono" value={editPlacaValue} onChange={handleEditPlacaChange} maxLength={8} />
+                    </td>
+                    <td className="py-2 px-3">
+                      <input className="input-t10 text-sm py-1" value={editandoCor} onChange={e => setEditandoCor(e.target.value)} />
+                    </td>
+                    <td className="py-2 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={salvarEdicaoVeiculo} className="text-success hover:bg-success/10 p-1 rounded"><Check size={14} /></button>
+                        <button onClick={cancelarEdicaoVeiculo} className="text-muted-foreground hover:bg-secondary/60 p-1 rounded"><X size={14} /></button>
+                      </div>
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="py-2 px-3 font-medium text-foreground">{v.modelo}</td>
+                    <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
+                    <td className="py-2 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => iniciarEdicaoVeiculo(v)} className="text-muted-foreground hover:text-primary transition-colors p-1">
+                          <Pencil size={14} />
+                        </button>
+                        <ConfirmDialogButton
+                          title="Excluir Veículo"
+                          description={`Tem certeza que deseja excluir o veículo "${v.modelo}"? Esta ação não pode ser desfeita.`}
+                          onConfirm={() => deleteVeiculo(v.id)}
+                          icon={<Trash2 size={14} />}
+                          variant="ghost"
+                        />
+                      </div>
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
             {veiculosCliente.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>}

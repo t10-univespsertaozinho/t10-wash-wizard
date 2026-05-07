@@ -14,6 +14,7 @@ export interface Database {
   getVeiculos(userId: string): Promise<Veiculo[]>;
   getVeiculosByCliente(clienteId: string): Promise<Veiculo[]>;
   createVeiculo(userId: string, data: Omit<Veiculo, 'id' | 'user_id'>): Promise<Veiculo>;
+  updateVeiculo(id: string, data: Partial<Veiculo>): Promise<Veiculo>;
   deleteVeiculo(id: string): Promise<void>;
 
   getLavagens(userId: string): Promise<Lavagem[]>;
@@ -87,6 +88,10 @@ export const apiDB: Database = {
 
   async createVeiculo(userId: string, data) {
     return req(`/veiculos`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
+  },
+
+  async updateVeiculo(id, data) {
+    return req(`/veiculos/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
 
   async deleteVeiculo(id) {

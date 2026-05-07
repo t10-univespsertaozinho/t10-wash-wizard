@@ -24,6 +24,7 @@ interface AppContextType extends AppState {
   updateCliente: (id: string, c: Partial<Cliente>) => Promise<void>;
   deleteCliente: (id: string) => Promise<void>;
   addVeiculo: (v: Omit<Veiculo, 'id' | 'updated_at' | 'user_id'>) => Promise<Veiculo>;
+  updateVeiculo: (id: string, v: Partial<Veiculo>) => Promise<void>;
   deleteVeiculo: (id: string) => Promise<void>;
   addTipoLavagem: (t: Omit<TipoLavagem, 'id'>) => Promise<TipoLavagem>;
   updateTipoLavagem: (id: string, t: Partial<TipoLavagem>) => Promise<void>;
@@ -135,6 +136,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return result;
   };
 
+  const updateVeiculo = async (id: string, data: Partial<Veiculo>) => {
+    const db = getDatabase();
+    const result = await db.updateVeiculo(id, data);
+    setState(s => ({ ...s, veiculos: s.veiculos.map(v => v.id === id ? { ...v, ...result } : v) }));
+  };
+
   const deleteVeiculo = async (id: string) => {
     const db = getDatabase();
     await db.deleteVeiculo(id);
@@ -242,7 +249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getProduto,
       refreshData: loadData,
       addCliente, updateCliente, deleteCliente,
-      addVeiculo, deleteVeiculo, addTipoLavagem, updateTipoLavagem, deleteTipoLavagem,
+      addVeiculo, updateVeiculo, deleteVeiculo, addTipoLavagem, updateTipoLavagem, deleteTipoLavagem,
       addLavagem, updateLavagem, updateLavagemStatus, deleteLavagem,
       addProduto, updateProduto, deleteProduto,
       addMovimentacao,
