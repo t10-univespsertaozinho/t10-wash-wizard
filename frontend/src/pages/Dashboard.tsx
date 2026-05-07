@@ -96,7 +96,7 @@ export default function Dashboard() {
   }, [lavagens, tiposLavagem]);
 
   const recentClientes = useMemo(() => 
-    [...clientes].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5),
+    [...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).slice(0, 5),
   [clientes]);
 
   const statsCardsHoje = useMemo(() => [

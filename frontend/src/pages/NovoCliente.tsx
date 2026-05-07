@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
+import { useTelefoneMask } from '@/hooks/useTelefoneMask';
 
 export default function NovoCliente() {
   const { addCliente } = useApp();
   const navigate = useNavigate();
   const [nome, setNome] = useState('');
-  const [telefone, setTelefone] = useState('');
+  const { value: telefone, handleChange: handleTelefoneChange } = useTelefoneMask();
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,7 +33,7 @@ export default function NovoCliente() {
         </div>
         <div>
           <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Telefone / WhatsApp</label>
-          <input className="input-t10" value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(16) 99999-9999" />
+          <input className="input-t10" value={telefone} onChange={handleTelefoneChange} placeholder="16 99999-9999" maxLength={15} />
         </div>
         <button type="submit" className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm">
           Salvar Cliente

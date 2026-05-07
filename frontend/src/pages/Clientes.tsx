@@ -7,7 +7,7 @@ export default function Clientes() {
   const { clientes, veiculos, lavagens, deleteCliente } = useApp();
   const [busca, setBusca] = useState('');
 
-  const filtered = clientes.filter(c =>
+  const filtered = [...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase()) ||
     c.telefone.includes(busca)
   );
