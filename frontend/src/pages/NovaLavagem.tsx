@@ -44,7 +44,7 @@ export default function NovaLavagem() {
           <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Cliente</label>
           <select className="input-t10" value={clienteId} onChange={e => { setClienteId(e.target.value); setVeiculoId(''); }} required>
             <option value="">Selecione...</option>
-            {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            {[...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
         <div>

@@ -2,12 +2,13 @@ import { useApp } from '@/contexts/AppContext';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Eye, Pencil, Trash2 } from 'lucide-react';
+import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 
 export default function Clientes() {
   const { clientes, veiculos, lavagens, deleteCliente } = useApp();
   const [busca, setBusca] = useState('');
 
-  const filtered = clientes.filter(c =>
+  const filtered = [...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).filter(c =>
     c.nome.toLowerCase().includes(busca.toLowerCase()) ||
     c.telefone.includes(busca)
   );
@@ -42,7 +43,13 @@ export default function Clientes() {
                   <div className="flex items-center justify-end gap-1">
                     <Link to={`/clientes/${c.id}`} className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"><Eye size={15} /></Link>
                     <Link to={`/clientes/${c.id}/editar`} className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={15} /></Link>
-                    <button onClick={() => deleteCliente(c.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={15} /></button>
+                    <ConfirmDialogButton
+                        title="Excluir Cliente"
+                        description={`Tem certeza que deseja excluir o cliente "${c.nome}"? Todos os veículos e lavagens associadas também serão excluídos.`}
+                        onConfirm={() => deleteCliente(c.id)}
+                        icon={<Trash2 size={15} />}
+                        variant="ghost"
+                      />
                   </div>
                 </td>
               </tr>

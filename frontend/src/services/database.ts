@@ -7,18 +7,19 @@ export interface Database {
   
   getClientes(userId: string): Promise<Cliente[]>;
   getCliente(id: string): Promise<Cliente | null>;
-  createCliente(data: Omit<Cliente, 'id' | 'created_at'>): Promise<Cliente>;
+  createCliente(userId: string, data: Omit<Cliente, 'id' | 'created_at' | 'user_id'>): Promise<Cliente>;
   updateCliente(id: string, data: Partial<Cliente>): Promise<Cliente>;
   deleteCliente(id: string): Promise<void>;
 
   getVeiculos(userId: string): Promise<Veiculo[]>;
   getVeiculosByCliente(clienteId: string): Promise<Veiculo[]>;
-  createVeiculo(data: Omit<Veiculo, 'id'>): Promise<Veiculo>;
+  createVeiculo(userId: string, data: Omit<Veiculo, 'id' | 'user_id'>): Promise<Veiculo>;
+  updateVeiculo(id: string, data: Partial<Veiculo>): Promise<Veiculo>;
   deleteVeiculo(id: string): Promise<void>;
 
   getLavagens(userId: string): Promise<Lavagem[]>;
   getLavagensByCliente(clienteId: string): Promise<Lavagem[]>;
-  createLavagem(data: Omit<Lavagem, 'id' | 'data' | 'data_conclusao'>): Promise<Lavagem>;
+  createLavagem(userId: string, data: Omit<Lavagem, 'id' | 'data' | 'data_conclusao' | 'user_id'>): Promise<Lavagem>;
   updateLavagem(id: string, data: Partial<Lavagem>): Promise<Lavagem>;
   deleteLavagem(id: string): Promise<void>;
 
@@ -28,12 +29,12 @@ export interface Database {
   deleteTipoLavagem(id: string): Promise<void>;
 
   getProdutos(userId: string): Promise<Produto[]>;
-  createProduto(data: Omit<Produto, 'id'>): Promise<Produto>;
+  createProduto(userId: string, data: Omit<Produto, 'id' | 'user_id'>): Promise<Produto>;
   updateProduto(id: string, data: Partial<Produto>): Promise<Produto>;
   deleteProduto(id: string): Promise<void>;
 
   getMovimentacoes(userId: string): Promise<MovimentacaoEstoque[]>;
-  createMovimentacao(data: Omit<MovimentacaoEstoque, 'id' | 'data'>): Promise<MovimentacaoEstoque>;
+  createMovimentacao(userId: string, data: Omit<MovimentacaoEstoque, 'id' | 'data' | 'user_id'>): Promise<MovimentacaoEstoque>;
 }
 
 const req = async (endpoint: string, options: RequestInit = {}) => {
@@ -65,8 +66,8 @@ export const apiDB: Database = {
     return clientes.find((c: Cliente) => c.id === id) || null;
   },
 
-  async createCliente(data) {
-    return req(`/clientes`, { method: 'POST', body: JSON.stringify(data) });
+  async createCliente(userId: string, data) {
+    return req(`/clientes`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
   },
 
   async updateCliente(id, data) {
@@ -85,8 +86,12 @@ export const apiDB: Database = {
     return req(`/veiculos?cliente_id=${clienteId}`);
   },
 
-  async createVeiculo(data) {
-    return req(`/veiculos`, { method: 'POST', body: JSON.stringify(data) });
+  async createVeiculo(userId: string, data) {
+    return req(`/veiculos`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
+  },
+
+  async updateVeiculo(id, data) {
+    return req(`/veiculos/${id}`, { method: 'PUT', body: JSON.stringify(data) });
   },
 
   async deleteVeiculo(id) {
@@ -101,8 +106,8 @@ export const apiDB: Database = {
     return req(`/lavagens?cliente_id=${clienteId}`);
   },
 
-  async createLavagem(data) {
-    return req(`/lavagens`, { method: 'POST', body: JSON.stringify(data) });
+  async createLavagem(userId: string, data) {
+    return req(`/lavagens`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
   },
 
   async updateLavagem(id, data) {
@@ -133,8 +138,8 @@ export const apiDB: Database = {
     return req(`/produtos?user_id=${userId}`);
   },
 
-  async createProduto(data) {
-    return req(`/produtos`, { method: 'POST', body: JSON.stringify(data) });
+  async createProduto(userId: string, data) {
+    return req(`/produtos`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
   },
 
   async updateProduto(id, data) {
@@ -149,8 +154,12 @@ export const apiDB: Database = {
     return req(`/movimentacoes?user_id=${userId}`);
   },
 
-  async createMovimentacao(data) {
-    return req(`/movimentacoes`, { method: 'POST', body: JSON.stringify(data) });
+  async createMovimentacao(userId: string, data) {
+    return req(`/movimentacoes`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
+  },
+
+  async createMovimentacaoWithUpdate(userId: string, data) {
+    return req(`/movimentacoes`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
   },
 };
 

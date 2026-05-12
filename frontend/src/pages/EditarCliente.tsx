@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
+import { useTelefoneMask } from '@/hooks/useTelefoneMask';
 
 export default function EditarCliente() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getCliente, updateCliente } = useApp();
   const [nome, setNome] = useState('');
-  const [telefone, setTelefone] = useState('');
+  const { value: telefone, setValue: setTelefone, handleChange: handleTelefoneChange } = useTelefoneMask();
   const [loading, setLoading] = useState(true);
 
   const cliente = getCliente(id!);
@@ -15,10 +16,17 @@ export default function EditarCliente() {
   useEffect(() => {
     if (cliente) {
       setNome(cliente.nome);
-      setTelefone(cliente.telefone);
+      const numeros = cliente.telefone.replace(/\D/g, '');
+      const formatted = numeros.length > 0 
+        ? numeros.length <= 2 ? `(${numeros}`
+          : numeros.length <= 7 ? `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`
+          : numeros.length <= 11 ? `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`
+          : `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7, 11)}`
+        : '';
+      setTelefone(formatted);
     }
     setLoading(false);
-  }, [cliente]);
+  }, [cliente, setTelefone]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +49,7 @@ export default function EditarCliente() {
         </div>
         <div>
           <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Telefone / WhatsApp</label>
-          <input className="input-t10" value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(16) 99999-9999" />
+          <input className="input-t10" value={telefone} onChange={handleTelefoneChange} placeholder="16 99999-9999" maxLength={15} />
         </div>
         <div className="flex gap-3">
           <button type="button" onClick={() => navigate(`/clientes/${id}`)} className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm">

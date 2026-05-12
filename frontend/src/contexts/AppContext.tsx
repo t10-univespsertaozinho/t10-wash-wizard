@@ -20,22 +20,23 @@ interface AppContextType extends AppState {
   getLavagensCliente: (clienteId: string) => Lavagem[];
   getTipoLavagem: (id: string) => TipoLavagem | undefined;
   getProduto: (id: string) => Produto | undefined;
-  addCliente: (c: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>) => Promise<Cliente>;
+  addCliente: (c: Omit<Cliente, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => Promise<Cliente>;
   updateCliente: (id: string, c: Partial<Cliente>) => Promise<void>;
   deleteCliente: (id: string) => Promise<void>;
-  addVeiculo: (v: Omit<Veiculo, 'id' | 'updated_at'>) => Promise<Veiculo>;
+  addVeiculo: (v: Omit<Veiculo, 'id' | 'updated_at' | 'user_id'>) => Promise<Veiculo>;
+  updateVeiculo: (id: string, v: Partial<Veiculo>) => Promise<void>;
   deleteVeiculo: (id: string) => Promise<void>;
   addTipoLavagem: (t: Omit<TipoLavagem, 'id'>) => Promise<TipoLavagem>;
   updateTipoLavagem: (id: string, t: Partial<TipoLavagem>) => Promise<void>;
   deleteTipoLavagem: (id: string) => Promise<void>;
-  addLavagem: (l: Omit<Lavagem, 'id' | 'data' | 'data_conclusao' | 'updated_at'>) => Promise<Lavagem>;
+  addLavagem: (l: Omit<Lavagem, 'id' | 'data' | 'data_conclusao' | 'updated_at' | 'user_id'>) => Promise<Lavagem>;
   updateLavagem: (id: string, l: Partial<Lavagem>) => Promise<void>;
   updateLavagemStatus: (id: string, status: Lavagem['status']) => Promise<void>;
   deleteLavagem: (id: string) => Promise<void>;
-  addProduto: (p: Omit<Produto, 'id' | 'updated_at'>) => Promise<Produto>;
+  addProduto: (p: Omit<Produto, 'id' | 'updated_at' | 'user_id'>) => Promise<Produto>;
   updateProduto: (id: string, p: Partial<Produto>) => Promise<void>;
   deleteProduto: (id: string) => Promise<void>;
-  addMovimentacao: (m: Omit<MovimentacaoEstoque, 'id' | 'data' | 'updated_at'>) => Promise<MovimentacaoEstoque>;
+  addMovimentacao: (m: Omit<MovimentacaoEstoque, 'id' | 'data' | 'updated_at' | 'user_id'>) => Promise<MovimentacaoEstoque>;
   refreshData: () => Promise<void>;
   seedTestData: () => Promise<void>;
 }
@@ -102,9 +103,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     loadData();
   }, [loadData]);
 
-  const addCliente = async (data: Omit<Cliente, 'id' | 'created_at' | 'updated_at'>) => {
+  const addCliente = async (data: Omit<Cliente, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
     const db = getDatabase();
-    const result = await db.createCliente(data);
+    const result = await db.createCliente(user.id, data);
     setState(s => ({ ...s, clientes: [...s.clientes, result] }));
     return result;
   };
@@ -126,11 +128,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const addVeiculo = async (data: Omit<Veiculo, 'id' | 'updated_at'>) => {
+  const addVeiculo = async (data: Omit<Veiculo, 'id' | 'updated_at' | 'user_id'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
     const db = getDatabase();
-    const result = await db.createVeiculo(data);
+    const result = await db.createVeiculo(user.id, data);
     setState(s => ({ ...s, veiculos: [...s.veiculos, result] }));
     return result;
+  };
+
+  const updateVeiculo = async (id: string, data: Partial<Veiculo>) => {
+    const db = getDatabase();
+    const result = await db.updateVeiculo(id, data);
+    setState(s => ({ ...s, veiculos: s.veiculos.map(v => v.id === id ? { ...v, ...result } : v) }));
   };
 
   const deleteVeiculo = async (id: string) => {
@@ -158,9 +167,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, tiposLavagem: s.tiposLavagem.filter(t => t.id !== id) }));
   };
 
-  const addLavagem = async (data: Omit<Lavagem, 'id' | 'data' | 'data_conclusao' | 'updated_at'>) => {
+  const addLavagem = async (data: Omit<Lavagem, 'id' | 'data' | 'data_conclusao' | 'updated_at' | 'user_id'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
     const db = getDatabase();
-    const result = await db.createLavagem(data);
+    const result = await db.createLavagem(user.id, data);
     setState(s => ({ ...s, lavagens: [result, ...s.lavagens] }));
     return result;
   };
@@ -196,9 +206,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await loadData(); // Recarrega dados do banco SQLite
   };
 
-  const addProduto = async (data: Omit<Produto, 'id' | 'updated_at'>) => {
+  const addProduto = async (data: Omit<Produto, 'id' | 'updated_at' | 'user_id'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
     const db = getDatabase();
-    const result = await db.createProduto(data);
+    const result = await db.createProduto(user.id, data);
     setState(s => ({ ...s, produtos: [...s.produtos, result] }));
     return result;
   };
@@ -215,14 +226,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setState(s => ({ ...s, produtos: s.produtos.filter(p => p.id !== id) }));
   };
 
-  const addMovimentacao = async (data: Omit<MovimentacaoEstoque, 'id' | 'data' | 'updated_at'>) => {
+  const addMovimentacao = async (data: Omit<MovimentacaoEstoque, 'id' | 'data' | 'updated_at' | 'user_id'>) => {
+    if (!user) throw new Error('Usuário não autenticado');
     const db = getDatabase();
-    const result = await db.createMovimentacao(data);
+    const response = await db.createMovimentacao(user.id, data);
+    const movimentacao = response.movimentacao || response;
+    const produtoAtualizado = response.produto;
+    
     setState(s => ({ 
       ...s, 
-      movimentacoes: [result, ...s.movimentacoes] 
+      movimentacoes: [movimentacao, ...s.movimentacoes],
+      produtos: produtoAtualizado 
+        ? s.produtos.map(p => p.id === produtoAtualizado.id ? produtoAtualizado : p)
+        : s.produtos
     }));
-    return result;
+    return movimentacao;
   };
 
   return (
@@ -237,7 +255,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       getProduto,
       refreshData: loadData,
       addCliente, updateCliente, deleteCliente,
-      addVeiculo, deleteVeiculo, addTipoLavagem, updateTipoLavagem, deleteTipoLavagem,
+      addVeiculo, updateVeiculo, deleteVeiculo, addTipoLavagem, updateTipoLavagem, deleteTipoLavagem,
       addLavagem, updateLavagem, updateLavagemStatus, deleteLavagem,
       addProduto, updateProduto, deleteProduto,
       addMovimentacao,

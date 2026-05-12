@@ -1,6 +1,7 @@
 import { useApp } from '@/contexts/AppContext';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Trash2, Plus, ArrowLeftRight } from 'lucide-react';
+import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 
 export default function Estoque() {
   const { produtos, produtosBaixoEstoque, deleteProduto } = useApp();
@@ -54,7 +55,13 @@ export default function Estoque() {
                 <td className="py-3 px-4 text-center">{statusBadge(p)}</td>
                 <td className="py-3 px-4 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <button onClick={() => deleteProduto(p.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={15} /></button>
+                    <ConfirmDialogButton
+                      title="Excluir Produto"
+                      description={`Tem certeza que deseja excluir o produto "${p.nome}"?`}
+                      onConfirm={() => deleteProduto(p.id)}
+                      icon={<Trash2 size={15} />}
+                      variant="ghost"
+                    />
                   </div>
                 </td>
               </tr>
