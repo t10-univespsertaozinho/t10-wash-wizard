@@ -4,9 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wash Wizard - Documentação Oficial</title>
+    <title>Wash Wizard - Documentação Técnica</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
         mermaid.initialize({
@@ -28,13 +28,14 @@
             background-color: #f8fafc;
             color: #0f172a;
         }
-
+        code, pre {
+            font-family: 'JetBrains Mono', monospace;
+        }
         .glass-header {
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(226, 232, 240, 0.8);
         }
-
         .section-card {
             background: #ffffff;
             border-radius: 1rem;
@@ -42,23 +43,55 @@
             border: 1px solid #e2e8f0;
             transition: all 0.3s ease;
         }
-
         .section-card:hover {
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
             transform: translateY(-2px);
         }
-
         .gradient-text {
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-image: linear-gradient(90deg, #2563eb, #3b82f6, #06b6d4);
         }
-
         .mermaid {
             display: flex;
             justify-content: center;
             margin: 2rem 0;
+        }
+        .endpoint-box {
+            background: #1e293b;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-size: 0.75rem;
+        }
+        .method-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        .method-get { background: #10b981; color: white; }
+        .method-post { background: #3b82f6; color: white; }
+        .method-put { background: #f59e0b; color: white; }
+        .method-delete { background: #ef4444; color: white; }
+        .table-schema {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        .table-schema th {
+            background: #1e293b;
+            color: white;
+            padding: 0.75rem;
+            text-align: left;
+        }
+        .table-schema td {
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .table-schema tr:hover {
+            background: #f8fafc;
         }
     </style>
 </head>
@@ -67,88 +100,99 @@
 
     <!-- Navbar -->
     <nav class="fixed w-full z-50 glass-header px-6 py-4">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center space-x-3">
-                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
                 </svg>
-                <span class="text-xl font-bold text-slate-800 tracking-tight">Wash Wizard <span
-                        class="text-blue-600">Docs</span></span>
+                <span class="text-xl font-bold text-slate-800 tracking-tight">Wash Wizard</span>
+                <span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">Docs</span>
             </div>
-            <ul class="hidden md:flex space-x-8 text-sm font-medium text-slate-600">
+            <ul class="hidden lg:flex space-x-6 text-sm font-medium text-slate-600">
                 <li><a href="#visao-geral" class="hover:text-blue-600 transition-colors">Visão Geral</a></li>
                 <li><a href="#arquitetura" class="hover:text-blue-600 transition-colors">Arquitetura</a></li>
-                <li><a href="#modelagem" class="hover:text-blue-600 transition-colors">Banco de Dados</a></li>
+                <li><a href="#banco-dados" class="hover:text-blue-600 transition-colors">Banco de Dados</a></li>
+                <li><a href="#api" class="hover:text-blue-600 transition-colors">API REST</a></li>
                 <li><a href="#seguranca" class="hover:text-blue-600 transition-colors">Segurança</a></li>
+                <li><a href="#instalacao" class="hover:text-blue-600 transition-colors">Instalação</a></li>
             </ul>
         </div>
     </nav>
 
     <!-- Hero Section -->
-    <header class="pt-32 pb-20 px-6 bg-gradient-to-br from-slate-50 to-blue-50 border-b border-slate-200">
-        <div class="max-w-4xl mx-auto text-center">
-            <h1 class="text-5xl font-extrabold mb-6 tracking-tight text-slate-900">
-                Documentação <span class="gradient-text">Técnica Profissional</span>
+    <header class="pt-32 pb-16 px-6 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 border-b border-slate-200">
+        <div class="max-w-5xl mx-auto text-center">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-4 tracking-tight text-slate-900">
+                Documentação <span class="gradient-text">Técnica</span>
             </h1>
-            <p class="text-xl text-slate-600 mb-8 leading-relaxed max-w-3xl mx-auto">
-                Visão arquitetural, modelagem de dados e decisões de design do sistema <strong>Wash Wizard</strong>. Uma
-                solução acadêmica e empresarial de alta performance.
+            <p class="text-lg text-slate-600 mb-6 max-w-3xl mx-auto">
+                Sistema de gestão empresarial para lava-rápidos. Documentação arquitetural, modelagem de dados e especificação técnica.
             </p>
-            <div class="flex justify-center space-x-4">
-                <span
-                    class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Node.js 18+
-                </span>
-                <span
-                    class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> React 18
-                </span>
-                <span
-                    class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-slate-500 mr-2"></span> SQLite Local
-                </span>
+            <div class="flex flex-wrap justify-center gap-3">
+                <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">Node.js 18+</span>
+                <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">React 18</span>
+                <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">TypeScript</span>
+                <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">SQLite 3</span>
+                <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">Express</span>
             </div>
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-6 py-16 space-y-24">
+    <main class="max-w-7xl mx-auto px-6 py-16 space-y-24">
 
         <!-- Visão Geral -->
         <section id="visao-geral" class="scroll-mt-24">
             <div class="flex items-center mb-8">
                 <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mr-4">
                     <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </div>
-                <h2 class="text-3xl font-bold text-slate-900">Visão Geral do Sistema</h2>
+                <h2 class="text-3xl font-bold text-slate-900">1. Visão Geral do Sistema</h2>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-8">
+            <div class="grid md:grid-cols-2 gap-6">
                 <div class="section-card p-8">
-                    <h3 class="text-xl font-semibold mb-4 text-slate-800">Objetivo do Projeto</h3>
-                    <p class="text-slate-600 leading-relaxed">
-                        O Wash Wizard é um software ERP modular construído originalmente para atender aos rígidos
-                        requisitos do <strong>Projeto Integrador da UNIVESP</strong>. Ele provê gestão completa para
-                        lava-rápidos, substituindo planilhas por um workflow digital automatizado que cobre controle de
-                        frota, gestão de pátio (lavagens), controle de almoxarifado (estoque) e business intelligence
-                        (dashboard financeiro).
+                    <h3 class="text-lg font-semibold mb-3 text-slate-800">1.1 Descrição do Projeto</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">
+                        O Wash Wizard é um sistema ERP (Enterprise Resource Planning) modular desenvolvido para gestão de lava-rápidos. 
+                        O sistema automatiza o workflow operacional incluindo controle de clientes e frotas, gestão de lavagens, 
+                        controle de estoque de produtos e dashboard financeiro com métricas de negócio.
                     </p>
                 </div>
                 <div class="section-card p-8">
-                    <h3 class="text-xl font-semibold mb-4 text-slate-800">Evolução Arquitetural</h3>
-                    <p class="text-slate-600 leading-relaxed">
-                        Em sua versão final (acadêmica e offline), o sistema migrou de uma arquitetura Base-as-a-Service
-                        (BaaS) com Firebase/Supabase para um ecossistema <strong>100% On-Premise / Local</strong>
-                        utilizando Node.js e SQLite. Essa transição garante maior governança de dados, velocidade de
-                        resposta (latência zero) e total independência de conexão com a internet durante a operação
-                        comercial.
+                    <h3 class="text-lg font-semibold mb-3 text-slate-800">1.2 Escopo e Aplicação</h3>
+                    <p class="text-slate-600 leading-relaxed text-sm">
+                        Desenvolvido como projeto acadêmico para a UNIVESP - Engenharia de Computação, o sistema opera em modo 
+                        local/offline utilizando SQLite como banco de dados relacional, garantindo total independência de conexão 
+                        com internet durante a operação comercial.
                     </p>
+                </div>
+                <div class="section-card p-8">
+                    <h3 class="text-lg font-semibold mb-3 text-slate-800">1.3 Funcionalidades Principais</h3>
+                    <ul class="text-slate-600 text-sm space-y-2">
+                        <li>• Gestão de clientes e veículos (CRUD completo)</li>
+                        <li>• Registro e acompanhamento de lavagens</li>
+                        <li>• Cadastro de tipos de lavagem com preços</li>
+                        <li>• Controle de estoque de produtos</li>
+                        <li>• Movimentações de entrada/saída de estoque</li>
+                        <li>• Dashboard financeiro com gráficos</li>
+                        <li>• Backup e restore via CSV</li>
+                    </ul>
+                </div>
+                <div class="section-card p-8">
+                    <h3 class="text-lg font-semibold mb-3 text-slate-800">1.4 Usuários do Sistema</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start">
+                            <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded mr-3">ADMIN</span>
+                            <span class="text-sm text-slate-600">Administrador com acesso completo: clientes, lavagens, estoque, configurações e backup.</span>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="bg-slate-100 text-slate-800 text-xs font-bold px-2 py-1 rounded mr-3">OPERADOR</span>
+                            <span class="text-sm text-slate-600">Operador com acesso restrito: clientes e lavagens (visualização e registro).</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -158,203 +202,557 @@
             <div class="flex items-center mb-8">
                 <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center mr-4">
                     <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
-                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                     </svg>
                 </div>
-                <h2 class="text-3xl font-bold text-slate-900">Arquitetura de Software</h2>
+                <h2 class="text-3xl font-bold text-slate-900">2. Arquitetura de Software</h2>
             </div>
 
             <div class="section-card p-8 mb-8">
-                <p class="text-slate-600 mb-6 text-center max-w-3xl mx-auto">
-                    O diagrama abaixo ilustra o fluxo de dados em rede local do sistema, demonstrando a separação de
-                    responsabilidades (SoC) entre o Client-Side (React/Vite) e o Server-Side (Node.js/Express).
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">2.1 Diagrama de Arquitetura</h3>
+                <p class="text-slate-600 mb-4 text-sm">
+                    Arquitetura client-server em três camadas com separação de responsabilidades:
                 </p>
-
                 <div class="mermaid bg-slate-50 p-6 rounded-lg border border-slate-200">
-                    graph TD;
-                    User(["Usuário Final"]) -->|"Interage"| Frontend["Frontend: React 18 SPA"]
-                    Frontend -->|"Rotas Lazy-loaded"| UI["Componentes UI / Tailwind"]
-                    Frontend -->|"React Query"| API_Client["Módulo Database Fetch"]
-
-                    API_Client -->|"HTTP / JSON - Porta 3001"| Backend["Backend: Express REST API"]
-
-                    Backend -->|"Middlewares"| Auth["Autenticação & CORS"]
-                    Backend -->|"Controladores"| Logic["Lógica de Negócios / ETL"]
-                    Logic -->|"Query Builder"| DB_Driver["Módulo SQLite / db.js"]
-
-                    DB_Driver -->|"Leitura / Escrita (I/O)"| DB[("SQLite: wash_wizard.db")]
-
-                    Logic -->|"Exportação"| CSV["Módulo de Backup CSV"]
-                    CSV -.->|"Download/Upload"| User
+                    graph TD
+                    User(["Usuário"]) -->|"Interface Gráfica"| Frontend["Frontend<br/>React 18 + Vite<br/>Porta 8080"]
+                    Frontend -->|"HTTP/JSON"| Backend["Backend<br/>Node.js + Express<br/>Porta 3001"]
+                    Backend -->|"SQLite Driver"| Database[("SQLite<br/>wash_wizard.db")]
+                    Frontend -->|"localStorage"| Session["Sessão HMAC<br/>Assinada"]
+                    Backend -->|"Multer"| CSV["Backup CSV"]
                 </div>
             </div>
 
             <div class="grid md:grid-cols-3 gap-6">
-                <div class="section-card p-6 bg-blue-50/50 border-blue-100">
-                    <h4 class="font-bold text-blue-900 mb-2">Frontend (Porta 8080)</h4>
+                <div class="section-card p-6 border-l-4 border-l-blue-500">
+                    <h4 class="font-bold text-slate-900 mb-3">2.2 Frontend (Client)</h4>
                     <ul class="text-sm text-slate-600 space-y-2">
-                        <li>• SPA baseada em React 18 e Vite</li>
-                        <li>• Estilização com Tailwind CSS e shadcn/ui</li>
-                        <li>• Performance melhorada com Code Splitting (Lazy/Suspense)</li>
+                        <li><strong>Framework:</strong> React 18 + TypeScript</li>
+                        <li><strong>Build Tool:</strong> Vite 8.x</li>
+                        <li><strong>UI:</strong> Tailwind CSS + shadcn/ui</li>
+                        <li><strong>Estado:</strong> React Context + TanStack Query</li>
+                        <li><strong>Routing:</strong> React Router DOM v6</li>
+                        <li><strong>Gráficos:</strong> Recharts</li>
+                        <li><strong>Code Splitting:</strong> Lazy/Suspense</li>
                     </ul>
                 </div>
-                <div class="section-card p-6 bg-indigo-50/50 border-indigo-100">
-                    <h4 class="font-bold text-indigo-900 mb-2">Backend (Porta 3001)</h4>
+                <div class="section-card p-6 border-l-4 border-l-indigo-500">
+                    <h4 class="font-bold text-slate-900 mb-3">2.3 Backend (Server)</h4>
                     <ul class="text-sm text-slate-600 space-y-2">
-                        <li>• REST API em Node.js e Express</li>
-                        <li>• Arquitetura Stateless e Assíncrona</li>
-                        <li>• Processamento de arquivos com Multer/CSV</li>
+                        <li><strong>Runtime:</strong> Node.js 18+</li>
+                        <li><strong>Framework:</strong> Express.js</li>
+                        <li><strong>Database:</strong> SQLite3 (sqlite3)</li>
+                        <li><strong>Parser:</strong> csv-parse / csv-stringify</li>
+                        <li><strong>Upload:</strong> Multer</li>
+                        <li><strong>CORS:</strong> Enabled</li>
+                        <li><strong>Porta:</strong> 3001</li>
                     </ul>
                 </div>
-                <div class="section-card p-6 bg-slate-50/50 border-slate-200">
-                    <h4 class="font-bold text-slate-900 mb-2">Persistência</h4>
+                <div class="section-card p-6 border-l-4 border-l-emerald-500">
+                    <h4 class="font-bold text-slate-900 mb-3">2.4 Banco de Dados</h4>
                     <ul class="text-sm text-slate-600 space-y-2">
-                        <li>• Banco de dados relacional SQLite 3</li>
-                        <li>• PRAGMA foreign_keys ativo rigorosamente</li>
-                        <li>• Backups baseados em serialização DUMP/CSV</li>
+                        <li><strong>SGDB:</strong> SQLite 3</li>
+                        <li><strong>Arquivo:</strong> wash_wizard.db</li>
+                        <li><strong>Constraints:</strong> Foreign Keys ON</li>
+                        <li><strong>Transações:</strong> Suportadas</li>
+                        <li><strong>Backup:</strong> CSV Export/Import</li>
+                        <li><strong>Schema:</strong> schema.sql</li>
+                        <li><strong>Seed:</strong> seed.js</li>
                     </ul>
                 </div>
             </div>
+
+            <div class="section-card p-8 mt-6">
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">2.5 Estrutura de Diretórios</h3>
+                <pre class="bg-slate-900 text-green-400 p-4 rounded-lg text-xs overflow-x-auto"><code>wash-wizard/
+├── frontend/                    # Aplicação React
+│   ├── src/
+│   │   ├── components/         # Componentes reutilizáveis
+│   │   │   └── ui/             # shadcn/ui components
+│   │   ├── contexts/           # React Context (Auth, App)
+│   │   ├── hooks/              # Custom hooks
+│   │   ├── pages/              # Páginas da aplicação
+│   │   ├── services/          # Database API client
+│   │   ├── types/             # TypeScript types
+│   │   └── utils/             # Utilitários (security)
+│   ├── package.json
+│   └── vite.config.ts
+├── backend/                     # Servidor Node.js
+│   ├── server.js              # API REST
+│   ├── db.js                  # Configuração SQLite
+│   ├── schema.sql             # DDL do banco
+│   ├── seed.js                # Dados de exemplo
+│   └── package.json
+├── package.json               # Orquestrador (concurrently)
+├── docs.html                  # Esta documentação
+└── wash_wizard.db             # Banco de dados (gerado)</code></pre>
+            </div>
         </section>
 
-        <!-- Modelagem -->
-        <section id="modelagem" class="scroll-mt-24">
+        <!-- Banco de Dados -->
+        <section id="banco-dados" class="scroll-mt-24">
             <div class="flex items-center mb-8">
                 <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center mr-4">
                     <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4">
-                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path>
                     </svg>
                 </div>
-                <h2 class="text-3xl font-bold text-slate-900">Modelagem do Banco de Dados</h2>
+                <h2 class="text-3xl font-bold text-slate-900">3. Modelagem do Banco de Dados</h2>
             </div>
 
-            <div class="section-card p-8">
-                <p class="text-slate-600 mb-6 text-center max-w-3xl mx-auto">
-                    O esquema relacional é implementado utilizando Constraints e Foreign Keys. Originalmente projetado
-                    para PostgreSQL, os datatypes foram transpilados para SQLite (UUIDs e Datetimes utilizando TEXT
-                    formatado).
-                </p>
-
+            <div class="section-card p-8 mb-8">
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">3.1 Diagrama Entidade-Relacionamento</h3>
                 <div class="mermaid bg-slate-50 p-6 rounded-lg border border-slate-200">
                     erDiagram
-                    USERS ||--o{ CLIENTES : cria
+                    USERS ||--o{ CLIENTES : "cria"
                     USERS {
-                    TEXT id PK
-                    TEXT email
-                    TEXT role
-                    TEXT created_at
+                        text id PK
+                        text email
+                        text nome
+                        text role
+                        text created_at
                     }
-
-                    CLIENTES ||--o{ VEICULOS : possui
+                    CLIENTES ||--o{ VEICULOS : "possui"
                     CLIENTES {
-                    TEXT id PK
-                    TEXT nome
-                    TEXT telefone
-                    TEXT created_at
+                        text id PK
+                        text user_id FK
+                        text nome
+                        text telefone
+                        text created_at
                     }
-
-                    VEICULOS ||--o{ LAVAGENS : agenda
+                    VEICULOS ||--o{ LAVAGENS : "gera"
                     VEICULOS {
-                    TEXT id PK
-                    TEXT placa
-                    TEXT modelo
-                    TEXT cor
-                    TEXT cliente_id FK
+                        text id PK
+                        text cliente_id FK
+                        text placa
+                        text modelo
+                        text cor
+                        text created_at
                     }
-
-                    TIPOS_LAVAGEM ||--o{ LAVAGENS : categoriza
+                    TIPOS_LAVAGEM ||--o{ LAVAGENS : "categoriza"
                     TIPOS_LAVAGEM {
-                    TEXT id PK
-                    TEXT nome
-                    REAL preco_base
+                        text id PK
+                        text nome
+                        text descricao
+                        real preco
+                        text created_at
                     }
-
                     LAVAGENS {
-                    TEXT id PK
-                    TEXT veiculo_id FK
-                    TEXT tipo_lavagem_id FK
-                    TEXT status "PENDENTE, CONCLUIDO"
-                    REAL valor_total
-                    TEXT data_registro
+                        text id PK
+                        text cliente_id FK
+                        text veiculo_id FK
+                        text tipo_lavagem_id FK
+                        text status
+                        real valor
+                        text data
+                        text pagamento
+                        text observacao
+                        text data_conclusao
                     }
-
-                    PRODUTOS ||--o{ MOVIMENTACOES : sofre
+                    PRODUTOS ||--o{ MOVIMENTACOES : "registra"
                     PRODUTOS {
-                    TEXT id PK
-                    TEXT nome
-                    REAL quantidade_atual
-                    REAL quantidade_minima
-                    TEXT unidade_medida
+                        text id PK
+                        text nome
+                        int quantidade
+                        int estoque_minimo
+                        text categoria
+                        text unidade
+                        real preco_unitario
+                        text created_at
                     }
-
                     MOVIMENTACOES {
-                    TEXT id PK
-                    TEXT produto_id FK
-                    TEXT tipo "ENTRADA, SAIDA"
-                    REAL quantidade
+                        text id PK
+                        text produto_id FK
+                        text tipo
+                        int quantidade
+                        text observacao
+                        text data
                     }
+                </div>
+            </div>
+
+            <div class="section-card p-8 overflow-x-auto">
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">3.2 Especificação das Tabelas</h3>
+                
+                <h4 class="font-bold text-slate-700 mt-6 mb-3">users</h4>
+                <table class="table-schema mb-6">
+                    <thead>
+                        <tr>
+                            <th>Coluna</th>
+                            <th>Tipo</th>
+                            <th>Constraints</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID do usuário</td></tr>
+                        <tr><td>email</td><td>TEXT</td><td>NOT NULL</td><td>E-mail do usuário</td></tr>
+                        <tr><td>nome</td><td>TEXT</td><td>-</td><td>Nome completo</td></tr>
+                        <tr><td>role</td><td>TEXT</td><td>CHECK(admin,operador)</td><td>Perfil de acesso</td></tr>
+                        <tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td>Data ISO 8601</td></tr>
+                    </tbody>
+                </table>
+
+                <h4 class="font-bold text-slate-700 mb-3">clientes</h4>
+                <table class="table-schema mb-6">
+                    <thead>
+                        <tr>
+                            <th>Coluna</th>
+                            <th>Tipo</th>
+                            <th>Constraints</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID do cliente</td></tr>
+                        <tr><td>user_id</td><td>TEXT</td><td>FK → users</td><td>Proprietário do registro</td></tr>
+                        <tr><td>nome</td><td>TEXT</td><td>NOT NULL</td><td>Nome completo</td></tr>
+                        <tr><td>telefone</td><td>TEXT</td><td>-</td><td>Formato (XX) XXXXX-XXXX</td></tr>
+                        <tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td>Data de cadastro</td></tr>
+                    </tbody>
+                </table>
+
+                <h4 class="font-bold text-slate-700 mb-3">veiculos</h4>
+                <table class="table-schema mb-6">
+                    <thead>
+                        <tr>
+                            <th>Coluna</th>
+                            <th>Tipo</th>
+                            <th>Constraints</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID do veículo</td></tr>
+                        <tr><td>cliente_id</td><td>TEXT</td><td>FK → clientes</td><td>Proprietário</td></tr>
+                        <tr><td>placa</td><td>TEXT</td><td>NOT NULL</td><td>Padrão Mercosul/Antigo</td></tr>
+                        <tr><td>modelo</td><td>TEXT</td><td>NOT NULL</td><td>Modelo do veículo</td></tr>
+                        <tr><td>cor</td><td>TEXT</td><td>-</td><td>Cor do veículo</td></tr>
+                        <tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td>Data de registro</td></tr>
+                    </tbody>
+                </table>
+
+                <h4 class="font-bold text-slate-700 mb-3">tipos_lavagem</h4>
+                <table class="table-schema mb-6">
+                    <thead>
+                        <tr>
+                            <th>Coluna</th>
+                            <th>Tipo</th>
+                            <th>Constraints</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID do tipo</td></tr>
+                        <tr><td>nome</td><td>TEXT</td><td>NOT NULL</td><td>Nome do serviço</td></tr>
+                        <tr><td>descricao</td><td>TEXT</td><td>-</td><td>Descrição do serviço</td></tr>
+                        <tr><td>preco</td><td>REAL</td><td>NOT NULL</td><td>Preço em reais</td></tr>
+                        <tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td>Data de criação</td></tr>
+                    </tbody>
+                </table>
+
+                <h4 class="font-bold text-slate-700 mb-3">lavagens</h4>
+                <table class="table-schema mb-6">
+                    <thead>
+                        <tr>
+                            <th>Coluna</th>
+                            <th>Tipo</th>
+                            <th>Constraints</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID da lavagem</td></tr>
+                        <tr><td>cliente_id</td><td>TEXT</td><td>FK → clientes</td><td>Cliente solicitante</td></tr>
+                        <tr><td>veiculo_id</td><td>TEXT</td><td>FK → veiculos</td><td>Veículo a lavar</td></tr>
+                        <tr><td>tipo_lavagem_id</td><td>TEXT</td><td>FK → tipos_lavagem</td><td>Tipo de serviço</td></tr>
+                        <tr><td>status</td><td>TEXT</td><td>CHECK</td><td>pendente|em_progresso|concluida|cancelada</td></tr>
+                        <tr><td>valor</td><td>REAL</td><td>NOT NULL</td><td>Valor total</td></tr>
+                        <tr><td>data</td><td>TEXT</td><td>NOT NULL</td><td>Data do registro</td></tr>
+                        <tr><td>pagamento</td><td>TEXT</td><td>-</td><td>Forma de pagamento</td></tr>
+                        <tr><td>observacao</td><td>TEXT</td><td>-</td><td>Notas adicionais</td></tr>
+                        <tr><td>data_conclusao</td><td>TEXT</td><td>-</td><td>Data de conclusão</td></tr>
+                    </tbody>
+                </table>
+
+                <h4 class="font-bold text-slate-700 mb-3">produtos</h4>
+                <table class="table-schema mb-6">
+                    <thead>
+                        <tr>
+                            <th>Coluna</th>
+                            <th>Tipo</th>
+                            <th>Constraints</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID do produto</td></tr>
+                        <tr><td>nome</td><td>TEXT</td><td>NOT NULL</td><td>Nome do produto</td></tr>
+                        <tr><td>quantidade</td><td>INTEGER</td><td>DEFAULT 0</td><td>Estoque atual</td></tr>
+                        <tr><td>estoque_minimo</td><td>INTEGER</td><td>DEFAULT 5</td><td>Mínimo para alerta</td></tr>
+                        <tr><td>categoria</td><td>TEXT</td><td>-</td><td>Categoria do produto</td></tr>
+                        <tr><td>unidade</td><td>TEXT</td><td>-</td><td>un, L, kg, etc</td></tr>
+                        <tr><td>preco_unitario</td><td>REAL</td><td>-</td><td>Preço por unidade</td></tr>
+                        <tr><td>created_at</td><td>TEXT</td><td>NOT NULL</td><td>Data de cadastro</td></tr>
+                    </tbody>
+                </table>
+
+                <h4 class="font-bold text-slate-700 mb-3">movimentacoes</h4>
+                <table class="table-schema">
+                    <thead>
+                        <tr>
+                            <th>Coluna</th>
+                            <th>Tipo</th>
+                            <th>Constraints</th>
+                            <th>Descrição</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>id</td><td>TEXT</td><td>PK</td><td>UUID da movimentação</td></tr>
+                        <tr><td>produto_id</td><td>TEXT</td><td>FK → produtos</td><td>Produto movimentado</td></tr>
+                        <tr><td>tipo</td><td>TEXT</td><td>CHECK</td><td>entrada|saida</td></tr>
+                        <tr><td>quantidade</td><td>INTEGER</td><td>NOT NULL</td><td>Quantidade movimentada</td></tr>
+                        <tr><td>observacao</td><td>TEXT</td><td>-</td><td>Notas da movimentação</td></tr>
+                        <tr><td>data</td><td>TEXT</td><td>NOT NULL</td><td>Data e hora</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- API REST -->
+        <section id="api" class="scroll-mt-24">
+            <div class="flex items-center mb-8">
+                <div class="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center mr-4">
+                    <svg class="w-6 h-6 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-900">4. API REST</h2>
+            </div>
+
+            <div class="section-card p-8 mb-6">
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">4.1 Endpoints Principais</h3>
+                
+                <div class="space-y-4">
+                    <div class="endpoint-box text-white">
+                        <div class="flex items-center mb-2">
+                            <span class="method-badge method-get mr-3">GET</span>
+                            <code class="text-green-400">/api/clientes</code>
+                            <span class="text-slate-400 text-xs ml-4">Lista todos os clientes</span>
+                        </div>
+                    </div>
+                    <div class="endpoint-box text-white">
+                        <div class="flex items-center mb-2">
+                            <span class="method-badge method-post mr-3">POST</span>
+                            <code class="text-green-400">/api/clientes</code>
+                            <span class="text-slate-400 text-xs ml-4">Cria novo cliente</span>
+                        </div>
+                        <div class="text-xs text-slate-400">
+                            Body: { "user_id", "nome", "telefone" }
+                        </div>
+                    </div>
+                    <div class="endpoint-box text-white">
+                        <div class="flex items-center mb-2">
+                            <span class="method-badge method-put mr-3">PUT</span>
+                            <code class="text-green-400">/api/clientes/:id</code>
+                            <span class="text-slate-400 text-xs ml-4">Atualiza cliente</span>
+                        </div>
+                    </div>
+                    <div class="endpoint-box text-white">
+                        <div class="flex items-center mb-2">
+                            <span class="method-badge method-delete mr-3">DELETE</span>
+                            <code class="text-green-400">/api/clientes/:id</code>
+                            <span class="text-slate-400 text-xs ml-4">Remove cliente</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="section-card p-6">
+                    <h4 class="font-bold text-slate-800 mb-3">4.2 Recursos de Veículos</h4>
+                    <ul class="text-sm text-slate-600 space-y-1">
+                        <li><code class="bg-slate-100 px-1 rounded">GET</code> /api/veiculos</li>
+                        <li><code class="bg-slate-100 px-1 rounded">GET</code> /api/veiculos?cliente_id=X</li>
+                        <li><code class="bg-slate-100 px-1 rounded">POST</code> /api/veiculos</li>
+                        <li><code class="bg-slate-100 px-1 rounded">PUT</code> /api/veiculos/:id</li>
+                        <li><code class="bg-slate-100 px-1 rounded">DELETE</code> /api/veiculos/:id</li>
+                    </ul>
+                </div>
+                <div class="section-card p-6">
+                    <h4 class="font-bold text-slate-800 mb-3">4.3 Recursos de Lavagens</h4>
+                    <ul class="text-sm text-slate-600 space-y-1">
+                        <li><code class="bg-slate-100 px-1 rounded">GET</code> /api/lavagens</li>
+                        <li><code class="bg-slate-100 px-1 rounded">POST</code> /api/lavagens</li>
+                        <li><code class="bg-slate-100 px-1 rounded">PUT</code> /api/lavagens/:id</li>
+                        <li><code class="bg-slate-100 px-1 rounded">DELETE</code> /api/lavagens/:id</li>
+                    </ul>
+                </div>
+                <div class="section-card p-6">
+                    <h4 class="font-bold text-slate-800 mb-3">4.4 Recursos de Estoque</h4>
+                    <ul class="text-sm text-slate-600 space-y-1">
+                        <li><code class="bg-slate-100 px-1 rounded">GET</code> /api/produtos</li>
+                        <li><code class="bg-slate-100 px-1 rounded">POST</code> /api/produtos</li>
+                        <li><code class="bg-slate-100 px-1 rounded">PUT</code> /api/produtos/:id</li>
+                        <li><code class="bg-slate-100 px-1 rounded">DELETE</code> /api/produtos/:id</li>
+                    </ul>
+                </div>
+                <div class="section-card p-6">
+                    <h4 class="font-bold text-slate-800 mb-3">4.5 Movimentações</h4>
+                    <ul class="text-sm text-slate-600 space-y-1">
+                        <li><code class="bg-slate-100 px-1 rounded">GET</code> /api/movimentacoes</li>
+                        <li><code class="bg-slate-100 px-1 rounded">POST</code> /api/movimentacoes <span class="text-xs text-blue-600">(atualiza estoque)</span></li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="section-card p-8 mt-6">
+                <h4 class="font-bold text-slate-800 mb-3">4.6 Backup e Restore</h4>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                        <h5 class="font-semibold text-emerald-800 mb-2">Exportação CSV</h5>
+                        <code class="text-xs text-emerald-700">GET /api/backup/export</code>
+                        <p class="text-xs text-emerald-600 mt-1">Exporta todas as tabelas em arquivos CSV separados</p>
+                    </div>
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <h5 class="font-semibold text-amber-800 mb-2">Importação CSV</h5>
+                        <code class="text-xs text-amber-700">POST /api/backup/import</code>
+                        <p class="text-xs text-amber-600 mt-1">Importa dados de CSV (com ordem de dependências)</p>
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- Segurança e Controle -->
-        <section id="seguranca" class="scroll-mt-24 pb-20">
+        <!-- Segurança -->
+        <section id="seguranca" class="scroll-mt-24">
             <div class="flex items-center mb-8">
                 <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center mr-4">
                     <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
-                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
                     </svg>
                 </div>
-                <h2 class="text-3xl font-bold text-slate-900">Segurança & AppSec</h2>
+                <h2 class="text-3xl font-bold text-slate-900">5. Segurança</h2>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-8">
+            <div class="grid md:grid-cols-2 gap-6">
                 <div class="section-card p-8">
-                    <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
-                        <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span> Client-Side Crypto (HMAC)
-                    </h3>
-                    <p class="text-slate-600 mb-4">
-                        Apesar de ser uma simulação acadêmica, a integridade da sessão é resguardada por mecanismos
-                        reais. Os dados de usuário guardados em <code>localStorage</code> recebem uma Assinatura HMAC
-                        (Hash-based Message Authentication Code) gerada pela <strong>Web Crypto API</strong>.
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">5.1 Controle de Acesso (RBAC)</h3>
+                    <p class="text-slate-600 text-sm mb-4">
+                        O sistema implementa Role-Based Access Control com dois perfis: Administrador (acesso completo) e Operador (acesso restrito às operações do dia-a-dia).
                     </p>
-                    <div class="bg-slate-800 rounded-md p-4 mt-4">
-                        <code class="text-green-400 text-sm font-mono block">
-                            // Se o JSON for adulterado:<br/>
-                            const isValid = await verifyHMAC(data, signature);<br/>
-                            if (!isValid) throw new AuthError('Sessão Inválida');
-                        </code>
-                    </div>
+                    <table class="table-schema text-xs">
+                        <thead>
+                            <tr><th>Recurso</th><th>Admin</th><th>Operador</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>Dashboard</td><td>✓</td><td>✓</td></tr>
+                            <tr><td>Clientes</td><td>✓</td><td>✓</td></tr>
+                            <tr><td>Lavagens</td><td>✓</td><td>✓</td></tr>
+                            <tr><td>Estoque</td><td>✓</td><td>✗</td></tr>
+                            <tr><td>Configurações</td><td>✓</td><td>✗</td></tr>
+                            <tr><td>Backup</td><td>✓</td><td>✗</td></tr>
+                        </tbody>
+                    </table>
                 </div>
 
                 <div class="section-card p-8">
-                    <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
-                        <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> RBAC (Role-Based Access Control)
-                    </h3>
-                    <p class="text-slate-600 mb-4">
-                        O sistema prevê isolamento horizontal e vertical baseado em perfis. A verificação ocorre no
-                        roteamento React e nas regras de negócio (API).
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">5.2 Integridade de Sessão (HMAC)</h3>
+                    <p class="text-slate-600 text-sm mb-4">
+                        Sessões armazenadas no LocalStorage são protegidas por assinatura HMAC-SHA256. Qualquer manipulação dos dados invalida a sessão automaticamente.
                     </p>
-                    <ul class="space-y-3">
-                        <li class="flex items-start">
-                            <span
-                                class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded mt-0.5 mr-3">ADMIN</span>
-                            <span class="text-sm text-slate-600">Acesso sistêmico: Exportação de CSVs, Tipos de Lavagem
-                                e Estoque de Produtos.</span>
-                        </li>
-                        <li class="flex items-start">
-                            <span
-                                class="bg-slate-100 text-slate-800 text-xs font-bold px-2 py-1 rounded mt-0.5 mr-3">USER</span>
-                            <span class="text-sm text-slate-600">Acesso operacional: Inserção de Clientes, Veículos,
-                                Workflow de Lavagens.</span>
-                        </li>
+                    <ul class="text-sm text-slate-600 space-y-2">
+                        <li>• Assinatura: SHA-256 HMAC</li>
+                        <li>• Expiração: 30 dias</li>
+                        <li>• Validação: Web Crypto API</li>
+                        <li>• Armazenamento: localStorage (signed JSON)</li>
                     </ul>
+                </div>
+
+                <div class="section-card p-8">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">5.3 Validação de Dados</h3>
+                    <ul class="text-sm text-slate-600 space-y-2">
+                        <li>• Máscara de telefone: formato (XX) XXXXX-XXXX</li>
+                        <li>• Máscara de placa: Mercosul (ABC1D23) ou Antigo (ABC1234)</li>
+                        <li>• Sanitização XSS em inputs de texto</li>
+                        <li>• Foreign Keys: Integridade referencial ativada</li>
+                        <li>• Transações: Suportadas pelo SQLite</li>
+                    </ul>
+                </div>
+
+                <div class="section-card p-8">
+                    <h3 class="text-lg font-bold text-slate-800 mb-4">5.4 Backup e Consistência</h3>
+                    <ul class="text-sm text-slate-600 space-y-2">
+                        <li>• Formato CSV com encoding UTF-8</li>
+                        <li>• Ordem de dependências preservada</li>
+                        <li>• Foreign keys desabilitados durante import</li>
+                        <li>• Transação atômica para restore</li>
+                        <li>• Validação de estoque em movimentações</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Instalação -->
+        <section id="instalacao" class="scroll-mt-24 pb-20">
+            <div class="flex items-center mb-8">
+                <div class="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center mr-4">
+                    <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-900">6. Instalação e Configuração</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+                <div class="section-card p-8">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800">6.1 Requisitos</h3>
+                    <ul class="text-slate-600 text-sm space-y-2">
+                        <li>• Node.js v18 ou superior</li>
+                        <li>• NPM (instalado com Node.js)</li>
+                        <li>• Sistema operacional: Windows, macOS ou Linux</li>
+                    </ul>
+                </div>
+                <div class="section-card p-8">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800">6.2 Instalação</h3>
+                    <pre class="bg-slate-900 text-green-400 p-4 rounded-lg text-xs"><code># Clonar repositório
+git clone https://github.com/t10-univespsertaozinho/t10-wash-wizard.git
+cd t10-wash-wizard
+
+# Instalar dependências
+npm run install:all
+
+# Iniciar desenvolvimento
+npm run dev
+
+# Builds de produção
+npm run build</code></pre>
+                </div>
+            </div>
+
+            <div class="section-card p-8 mt-6">
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">6.3 Credenciais Padrão</h3>
+                <table class="table-schema">
+                    <thead>
+                        <tr><th>Perfil</th><th>E-mail</th><th>Senha</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Admin</td><td>admin@washwizard.com</td><td>admin123</td></tr>
+                        <tr><td>Operador</td><td>user@washwizard.com</td><td>user123</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section-card p-8 mt-6">
+                <h3 class="text-lg font-semibold mb-4 text-slate-800">6.4 URLs de Acesso</h3>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <h5 class="font-semibold text-blue-800 mb-1">Frontend</h5>
+                        <code class="text-lg text-blue-600">http://localhost:8080</code>
+                    </div>
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-lg p-4">
+                        <h5 class="font-semibold text-indigo-800 mb-1">Backend API</h5>
+                        <code class="text-lg text-indigo-600">http://localhost:3001/api</code>
+                    </div>
                 </div>
             </div>
         </section>
@@ -362,12 +760,13 @@
     </main>
 
     <footer class="bg-slate-900 border-t border-slate-800 py-12">
-        <div class="max-w-6xl mx-auto px-6 text-center">
+        <div class="max-w-7xl mx-auto px-6 text-center">
             <h2 class="text-xl font-bold text-white mb-2">Wash Wizard</h2>
-            <p class="text-slate-400 mb-6 text-sm">Projeto Integrador UNIVESP • Versão Acadêmica e Local</p>
-            <div class="border-t border-slate-800 pt-8 mt-8">
-                <p class="text-slate-500 text-sm">
-                    &copy; 2026 Grupo Acadêmico T10. Todos os direitos reservados.
+            <p class="text-slate-400 mb-4 text-sm">Sistema de Gestão para Lava-rápidos</p>
+            <p class="text-slate-500 text-xs mb-2">Projeto Integrador UNIVESP • Engenharia de Computação</p>
+            <div class="border-t border-slate-800 pt-6 mt-6">
+                <p class="text-slate-500 text-xs">
+                    © 2026 Grupo T10. Todos os direitos reservados.
                 </p>
             </div>
         </div>
