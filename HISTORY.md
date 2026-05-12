@@ -8,6 +8,84 @@
 
 ---
 
+## 2026-05-12 — opencode/minimax-m2.5-free — Bug Fixes, Stock Management and Data Security
+
+### Resumo
+
+Correções críticas de bugs e implementação de melhorias solicitadas para o sistema de gestão, incluindo segurança de exclusão de dados e gestão automatizada de estoque.
+
+### Correções Implementadas
+
+1. **Cadastro de Clientes**
+   - Adicionado `user_id` nas requisições de criação de clientes
+   - Corrigido problema de "cliente não encontrado" após cadastro
+   - Implementado `await` e tratamento de erros em `NovoCliente.tsx`
+
+2. **Ordenação Alfabética**
+   - Clientes: ordenados alfabeticamente (A-Z) na listagem
+   - NovaLavagem: dropdown de clientes em ordem alfabética
+   - Dashboard: "Clientes Recentes" em ordem alfabética
+   - Lavagens: mantida ordenação por data (recente → antigo)
+
+3. **Máscara de Telefone**
+   - Hook `useTelefoneMask` criado em `frontend/src/hooks/useTelefoneMask.ts`
+   - Formato automático: `(XX) XXXXX-XXXX`
+   - Aplicado em `NovoCliente.tsx` e `EditarCliente.tsx`
+
+4. **Máscara de Placa Mercosul/Antigo**
+   - Hook `usePlacaMask` criado em `frontend/src/hooks/usePlacaMask.ts`
+   - Padrão Mercosul: `ABC1D23` (7 caracteres)
+   - Padrão Antigo: `ABC1234` (8 caracteres)
+   - Normalização do banco de dados (hífen removido de todas as placas)
+
+### Novas Funcionalidades
+
+5. **Edição de Veículos**
+   - Endpoint `PUT /api/veiculos/:id` adicionado no backend
+   - Função `updateVeiculo` adicionada no `database.ts` e `AppContext`
+   - Botão de editar (lápis) na lista de veículos em `ClienteDetalhe.tsx`
+   - Edição inline com botões confirmar/cancelar
+
+6. **Segurança de Exclusão de Dados**
+   - Componente `ConfirmDialog` reutilizável criado em `frontend/src/components/ConfirmDialog.tsx`
+   - Popup de confirmação antes de apagar clientes, veículos e produtos
+   - Implementado com Radix UI AlertDialog
+   - Trava o dashboard até confirmação do usuário
+   - Aplicado em: `Clientes.tsx`, `ClienteDetalhe.tsx`, `Estoque.tsx`
+
+7. **Gestão de Estoque Automatizada**
+   - Estoque atualizado automaticamente ao registrar movimentação
+   - Validação no backend: impede saída maior que estoque disponível
+   - Toast de alerta quando estoque atinge mínimo ou abaixo
+   - Interface de movimentação simplificada (`Movimentacao.tsx`)
+   - Produtos com estoque baixo aparecem primeiro no select
+
+### Arquivos Modificados/Criados
+
+| Arquivo | Ação |
+|---------|------|
+| `backend/server.js` | Criado PUT veiculos; updated movimentacao com update de estoque |
+| `backend/seed.js` | Placas sem hífen (27 veículos atualizados) |
+| `frontend/src/hooks/useTelefoneMask.ts` | **Novo** - Máscara de telefone |
+| `frontend/src/hooks/usePlacaMask.ts` | **Novo** - Máscara de placa Mercosul/Antigo |
+| `frontend/src/components/ConfirmDialog.tsx` | **Novo** - Dialog de confirmação |
+| `frontend/src/pages/NovoCliente.tsx` | Atualizado com máscara de telefone |
+| `frontend/src/pages/EditarCliente.tsx` | Atualizado com máscara de telefone |
+| `frontend/src/pages/ClienteDetalhe.tsx` | Edição de veículos, máscara de placa |
+| `frontend/src/pages/Clientes.tsx` | Popup confirmação delete |
+| `frontend/src/pages/Estoque.tsx` | Popup confirmação delete |
+| `frontend/src/pages/Movimentacao.tsx` | Interface simplificada |
+| `frontend/src/services/database.ts` | Added updateVeiculo |
+| `frontend/src/contexts/AppContext.tsx` | updateVeiculo, addMovimentacao com update |
+
+### Verificação
+
+- `npm run build` → Build concluído com sucesso (24 arquivos gerados)
+- Funcionalidades testadas manualmente
+- Banco de dados resetado com novo formato de placas
+
+---
+
 ## 2026-05-05 — opencode/minimax-m2.5-free — Backend API Fix and Realistic Data Seed
 
 ### Resumo

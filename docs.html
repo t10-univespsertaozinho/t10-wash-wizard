@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wash Wizard - Documentação Oficial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#eff6ff',
+                primaryTextColor: '#1e3a8a',
+                primaryBorderColor: '#bfdbfe',
+                lineColor: '#3b82f6',
+                secondaryColor: '#f8fafc',
+                tertiaryColor: '#fff'
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+
+        .glass-header {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .section-card {
+            background: #ffffff;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e2e8f0;
+            transition: all 0.3s ease;
+        }
+
+        .section-card:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .gradient-text {
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-image: linear-gradient(90deg, #2563eb, #3b82f6, #06b6d4);
+        }
+
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            margin: 2rem 0;
+        }
+    </style>
+</head>
+
+<body class="antialiased">
+
+    <!-- Navbar -->
+    <nav class="fixed w-full z-50 glass-header px-6 py-4">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path>
+                </svg>
+                <span class="text-xl font-bold text-slate-800 tracking-tight">Wash Wizard <span
+                        class="text-blue-600">Docs</span></span>
+            </div>
+            <ul class="hidden md:flex space-x-8 text-sm font-medium text-slate-600">
+                <li><a href="#visao-geral" class="hover:text-blue-600 transition-colors">Visão Geral</a></li>
+                <li><a href="#arquitetura" class="hover:text-blue-600 transition-colors">Arquitetura</a></li>
+                <li><a href="#modelagem" class="hover:text-blue-600 transition-colors">Banco de Dados</a></li>
+                <li><a href="#seguranca" class="hover:text-blue-600 transition-colors">Segurança</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="pt-32 pb-20 px-6 bg-gradient-to-br from-slate-50 to-blue-50 border-b border-slate-200">
+        <div class="max-w-4xl mx-auto text-center">
+            <h1 class="text-5xl font-extrabold mb-6 tracking-tight text-slate-900">
+                Documentação <span class="gradient-text">Técnica Profissional</span>
+            </h1>
+            <p class="text-xl text-slate-600 mb-8 leading-relaxed max-w-3xl mx-auto">
+                Visão arquitetural, modelagem de dados e decisões de design do sistema <strong>Wash Wizard</strong>. Uma
+                solução acadêmica e empresarial de alta performance.
+            </p>
+            <div class="flex justify-center space-x-4">
+                <span
+                    class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> Node.js 18+
+                </span>
+                <span
+                    class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> React 18
+                </span>
+                <span
+                    class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-slate-500 mr-2"></span> SQLite Local
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-6 py-16 space-y-24">
+
+        <!-- Visão Geral -->
+        <section id="visao-geral" class="scroll-mt-24">
+            <div class="flex items-center mb-8">
+                <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center mr-4">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-900">Visão Geral do Sistema</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="section-card p-8">
+                    <h3 class="text-xl font-semibold mb-4 text-slate-800">Objetivo do Projeto</h3>
+                    <p class="text-slate-600 leading-relaxed">
+                        O Wash Wizard é um software ERP modular construído originalmente para atender aos rígidos
+                        requisitos do <strong>Projeto Integrador da UNIVESP</strong>. Ele provê gestão completa para
+                        lava-rápidos, substituindo planilhas por um workflow digital automatizado que cobre controle de
+                        frota, gestão de pátio (lavagens), controle de almoxarifado (estoque) e business intelligence
+                        (dashboard financeiro).
+                    </p>
+                </div>
+                <div class="section-card p-8">
+                    <h3 class="text-xl font-semibold mb-4 text-slate-800">Evolução Arquitetural</h3>
+                    <p class="text-slate-600 leading-relaxed">
+                        Em sua versão final (acadêmica e offline), o sistema migrou de uma arquitetura Base-as-a-Service
+                        (BaaS) com Firebase/Supabase para um ecossistema <strong>100% On-Premise / Local</strong>
+                        utilizando Node.js e SQLite. Essa transição garante maior governança de dados, velocidade de
+                        resposta (latência zero) e total independência de conexão com a internet durante a operação
+                        comercial.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Arquitetura -->
+        <section id="arquitetura" class="scroll-mt-24">
+            <div class="flex items-center mb-8">
+                <div class="w-10 h-10 rounded-lg bg-indigo-100 flex items-center justify-center mr-4">
+                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                        </path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-900">Arquitetura de Software</h2>
+            </div>
+
+            <div class="section-card p-8 mb-8">
+                <p class="text-slate-600 mb-6 text-center max-w-3xl mx-auto">
+                    O diagrama abaixo ilustra o fluxo de dados em rede local do sistema, demonstrando a separação de
+                    responsabilidades (SoC) entre o Client-Side (React/Vite) e o Server-Side (Node.js/Express).
+                </p>
+
+                <div class="mermaid bg-slate-50 p-6 rounded-lg border border-slate-200">
+                    graph TD;
+                    User(["Usuário Final"]) -->|"Interage"| Frontend["Frontend: React 18 SPA"]
+                    Frontend -->|"Rotas Lazy-loaded"| UI["Componentes UI / Tailwind"]
+                    Frontend -->|"React Query"| API_Client["Módulo Database Fetch"]
+
+                    API_Client -->|"HTTP / JSON - Porta 3001"| Backend["Backend: Express REST API"]
+
+                    Backend -->|"Middlewares"| Auth["Autenticação & CORS"]
+                    Backend -->|"Controladores"| Logic["Lógica de Negócios / ETL"]
+                    Logic -->|"Query Builder"| DB_Driver["Módulo SQLite / db.js"]
+
+                    DB_Driver -->|"Leitura / Escrita (I/O)"| DB[("SQLite: wash_wizard.db")]
+
+                    Logic -->|"Exportação"| CSV["Módulo de Backup CSV"]
+                    CSV -.->|"Download/Upload"| User
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="section-card p-6 bg-blue-50/50 border-blue-100">
+                    <h4 class="font-bold text-blue-900 mb-2">Frontend (Porta 8080)</h4>
+                    <ul class="text-sm text-slate-600 space-y-2">
+                        <li>• SPA baseada em React 18 e Vite</li>
+                        <li>• Estilização com Tailwind CSS e shadcn/ui</li>
+                        <li>• Performance melhorada com Code Splitting (Lazy/Suspense)</li>
+                    </ul>
+                </div>
+                <div class="section-card p-6 bg-indigo-50/50 border-indigo-100">
+                    <h4 class="font-bold text-indigo-900 mb-2">Backend (Porta 3001)</h4>
+                    <ul class="text-sm text-slate-600 space-y-2">
+                        <li>• REST API em Node.js e Express</li>
+                        <li>• Arquitetura Stateless e Assíncrona</li>
+                        <li>• Processamento de arquivos com Multer/CSV</li>
+                    </ul>
+                </div>
+                <div class="section-card p-6 bg-slate-50/50 border-slate-200">
+                    <h4 class="font-bold text-slate-900 mb-2">Persistência</h4>
+                    <ul class="text-sm text-slate-600 space-y-2">
+                        <li>• Banco de dados relacional SQLite 3</li>
+                        <li>• PRAGMA foreign_keys ativo rigorosamente</li>
+                        <li>• Backups baseados em serialização DUMP/CSV</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Modelagem -->
+        <section id="modelagem" class="scroll-mt-24">
+            <div class="flex items-center mb-8">
+                <div class="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center mr-4">
+                    <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4">
+                        </path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-900">Modelagem do Banco de Dados</h2>
+            </div>
+
+            <div class="section-card p-8">
+                <p class="text-slate-600 mb-6 text-center max-w-3xl mx-auto">
+                    O esquema relacional é implementado utilizando Constraints e Foreign Keys. Originalmente projetado
+                    para PostgreSQL, os datatypes foram transpilados para SQLite (UUIDs e Datetimes utilizando TEXT
+                    formatado).
+                </p>
+
+                <div class="mermaid bg-slate-50 p-6 rounded-lg border border-slate-200">
+                    erDiagram
+                    USERS ||--o{ CLIENTES : cria
+                    USERS {
+                    TEXT id PK
+                    TEXT email
+                    TEXT role
+                    TEXT created_at
+                    }
+
+                    CLIENTES ||--o{ VEICULOS : possui
+                    CLIENTES {
+                    TEXT id PK
+                    TEXT nome
+                    TEXT telefone
+                    TEXT created_at
+                    }
+
+                    VEICULOS ||--o{ LAVAGENS : agenda
+                    VEICULOS {
+                    TEXT id PK
+                    TEXT placa
+                    TEXT modelo
+                    TEXT cor
+                    TEXT cliente_id FK
+                    }
+
+                    TIPOS_LAVAGEM ||--o{ LAVAGENS : categoriza
+                    TIPOS_LAVAGEM {
+                    TEXT id PK
+                    TEXT nome
+                    REAL preco_base
+                    }
+
+                    LAVAGENS {
+                    TEXT id PK
+                    TEXT veiculo_id FK
+                    TEXT tipo_lavagem_id FK
+                    TEXT status "PENDENTE, CONCLUIDO"
+                    REAL valor_total
+                    TEXT data_registro
+                    }
+
+                    PRODUTOS ||--o{ MOVIMENTACOES : sofre
+                    PRODUTOS {
+                    TEXT id PK
+                    TEXT nome
+                    REAL quantidade_atual
+                    REAL quantidade_minima
+                    TEXT unidade_medida
+                    }
+
+                    MOVIMENTACOES {
+                    TEXT id PK
+                    TEXT produto_id FK
+                    TEXT tipo "ENTRADA, SAIDA"
+                    REAL quantidade
+                    }
+                </div>
+            </div>
+        </section>
+
+        <!-- Segurança e Controle -->
+        <section id="seguranca" class="scroll-mt-24 pb-20">
+            <div class="flex items-center mb-8">
+                <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center mr-4">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z">
+                        </path>
+                    </svg>
+                </div>
+                <h2 class="text-3xl font-bold text-slate-900">Segurança & AppSec</h2>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="section-card p-8">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                        <span class="w-2 h-2 rounded-full bg-red-500 mr-2"></span> Client-Side Crypto (HMAC)
+                    </h3>
+                    <p class="text-slate-600 mb-4">
+                        Apesar de ser uma simulação acadêmica, a integridade da sessão é resguardada por mecanismos
+                        reais. Os dados de usuário guardados em <code>localStorage</code> recebem uma Assinatura HMAC
+                        (Hash-based Message Authentication Code) gerada pela <strong>Web Crypto API</strong>.
+                    </p>
+                    <div class="bg-slate-800 rounded-md p-4 mt-4">
+                        <code class="text-green-400 text-sm font-mono block">
+                            // Se o JSON for adulterado:<br/>
+                            const isValid = await verifyHMAC(data, signature);<br/>
+                            if (!isValid) throw new AuthError('Sessão Inválida');
+                        </code>
+                    </div>
+                </div>
+
+                <div class="section-card p-8">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4 flex items-center">
+                        <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> RBAC (Role-Based Access Control)
+                    </h3>
+                    <p class="text-slate-600 mb-4">
+                        O sistema prevê isolamento horizontal e vertical baseado em perfis. A verificação ocorre no
+                        roteamento React e nas regras de negócio (API).
+                    </p>
+                    <ul class="space-y-3">
+                        <li class="flex items-start">
+                            <span
+                                class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded mt-0.5 mr-3">ADMIN</span>
+                            <span class="text-sm text-slate-600">Acesso sistêmico: Exportação de CSVs, Tipos de Lavagem
+                                e Estoque de Produtos.</span>
+                        </li>
+                        <li class="flex items-start">
+                            <span
+                                class="bg-slate-100 text-slate-800 text-xs font-bold px-2 py-1 rounded mt-0.5 mr-3">USER</span>
+                            <span class="text-sm text-slate-600">Acesso operacional: Inserção de Clientes, Veículos,
+                                Workflow de Lavagens.</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-slate-900 border-t border-slate-800 py-12">
+        <div class="max-w-6xl mx-auto px-6 text-center">
+            <h2 class="text-xl font-bold text-white mb-2">Wash Wizard</h2>
+            <p class="text-slate-400 mb-6 text-sm">Projeto Integrador UNIVESP • Versão Acadêmica e Local</p>
+            <div class="border-t border-slate-800 pt-8 mt-8">
+                <p class="text-slate-500 text-sm">
+                    &copy; 2026 Grupo Acadêmico T10. Todos os direitos reservados.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+</body>
+
+</html>
