@@ -104,7 +104,7 @@ export default function ClienteDetalhe() {
         {showForm && (
           <form onSubmit={handleAddVeiculo} className="grid grid-cols-3 gap-3 mb-4">
             <input className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
-            <input className="input-t10 uppercase font-mono" placeholder="ABC-1234 ou ABC1D23" value={placa} onChange={handlePlacaChange} maxLength={8} required />
+            <input className="input-t10 uppercase font-mono" placeholder="ABC1D23 ou ABC1234" value={placa} onChange={handlePlacaChange} maxLength={8} required />
             <div className="flex gap-2">
               <input className="input-t10" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
               <button type="submit" className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-sm hover:brightness-110 transition-all whitespace-nowrap">Salvar</button>

@@ -117,6 +117,13 @@ app.put('/api/veiculos/:id', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+app.post('/api/veiculos/migrate-plates', async (req, res) => {
+  try {
+    const result = await run("UPDATE veiculos SET placa = REPLACE(placa, '-', '')");
+    res.json({ success: true, message: 'Placas normalizadas com sucesso' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // ==========================================
 // TIPOS_LAVAGEM API
 // ==========================================
@@ -262,12 +269,37 @@ app.get('/api/movimentacoes', async (req, res) => {
 app.post('/api/movimentacoes', async (req, res) => {
   try {
     const { produto_id, tipo, quantidade, observacao, user_id } = req.body;
+    
+    // Buscar estoque atual do produto
+    const produto = await get('SELECT quantidade, estoque_minimo FROM produtos WHERE id = ?', [produto_id]);
+    if (!produto) {
+      return res.status(404).json({ error: 'Produto não encontrado' });
+    }
+
+    // Se for saída, verificar se tem estoque suficiente
+    if (tipo === 'saida' && produto.quantidade < quantidade) {
+      return res.status(400).json({ error: `Estoque insuficiente. Disponível: ${produto.quantidade}` });
+    }
+
+    // Calcular nova quantidade
+    const novaQuantidade = tipo === 'entrada' 
+      ? produto.quantidade + quantidade 
+      : produto.quantidade - quantidade;
+
+    // Atualizar estoque do produto
+    await run('UPDATE produtos SET quantidade = ? WHERE id = ?', [novaQuantidade, produto_id]);
+
+    // Buscar produto atualizado
+    const produtoAtualizado = await get('SELECT * FROM produtos WHERE id = ?', [produto_id]);
+
+    // Inserir movimentação
     const id = genId();
     await run(`INSERT INTO movimentacoes (id, produto_id, tipo, quantidade, observacao, user_id, data) 
                VALUES (?, ?, ?, ?, ?, ?, ?)`, 
       [id, produto_id, tipo, quantidade, observacao, user_id, now()]);
+    
     const row = await get('SELECT * FROM movimentacoes WHERE id = ?', [id]);
-    res.json(row);
+    res.json({ movimentacao: row, produto: produtoAtualizado });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

@@ -157,6 +157,10 @@ export const apiDB: Database = {
   async createMovimentacao(userId: string, data) {
     return req(`/movimentacoes`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
   },
+
+  async createMovimentacaoWithUpdate(userId: string, data) {
+    return req(`/movimentacoes`, { method: 'POST', body: JSON.stringify({ ...data, user_id: userId }) });
+  },
 };
 
 export function getDatabase(): Database {

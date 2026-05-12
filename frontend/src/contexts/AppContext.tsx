@@ -229,12 +229,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addMovimentacao = async (data: Omit<MovimentacaoEstoque, 'id' | 'data' | 'updated_at' | 'user_id'>) => {
     if (!user) throw new Error('Usuário não autenticado');
     const db = getDatabase();
-    const result = await db.createMovimentacao(user.id, data);
+    const response = await db.createMovimentacao(user.id, data);
+    const movimentacao = response.movimentacao || response;
+    const produtoAtualizado = response.produto;
+    
     setState(s => ({ 
       ...s, 
-      movimentacoes: [result, ...s.movimentacoes] 
+      movimentacoes: [movimentacao, ...s.movimentacoes],
+      produtos: produtoAtualizado 
+        ? s.produtos.map(p => p.id === produtoAtualizado.id ? produtoAtualizado : p)
+        : s.produtos
     }));
-    return result;
+    return movimentacao;
   };
 
   return (
