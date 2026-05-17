@@ -41,6 +41,32 @@ O sistema provê o controle ponta-a-ponta do fluxo operacional:
 
 ---
 
+## 📸 Telas da Aplicação (Demonstração)
+
+Abaixo estão algumas capturas de tela ilustrando a interface da solução, desenvolvida para proporcionar uma ótima experiência e facilidade de gestão:
+
+### Dashboard Principal
+Visão financeira e operacional com métricas e gráficos dinâmicos.
+<div align="center">
+  <img src="./docs_assets/dashboard_1.png" width="48%" />
+  <img src="./docs_assets/dashboard_2.png" width="48%" />
+</div>
+
+### Gestão de Lavagens
+Painel para acompanhamento de status de serviços.
+<div align="center">
+  <img src="./docs_assets/tela_gestao_lavagens.png" width="100%" />
+</div>
+
+### Gestão de Clientes
+Listagem completa e painel de edição detalhado do cliente e seus veículos.
+<div align="center">
+  <img src="./docs_assets/tela_todos_clientes.png" width="48%" />
+  <img src="./docs_assets/tela_edicao_cliente.png" width="48%" />
+</div>
+
+---
+
 ## 📐 Arquitetura de Software
 
 A aplicação utiliza o padrão **Client-Server** num repositório *Monorepo*, orquestrado por scripts inter-dependentes.
