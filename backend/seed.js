@@ -179,9 +179,9 @@ for (let m = 0; m < 6; m++) {
 
 // Adicionar algumas lavagens pendentes e em andamento recentes
 lavagens.push(
-  { id: 'lav-100', cliente_id: 'cli-001', veiculo_id: 'vei-001', tipo_lavagem_id: 'tl-001', status: 'pendente', valor: 25.00, data: getNow(), user_id: adminId, pagamento: 'Pendente', observacao: '', data_conclusao: null },
-  { id: 'lav-101', cliente_id: 'cli-002', veiculo_id: 'vei-002', tipo_lavagem_id: 'tl-002', status: 'pendente', valor: 45.00, data: getNow(), user_id: adminId, pagamento: 'Pendente', observacao: '', data_conclusao: null },
-  { id: 'lav-102', cliente_id: 'cli-005', veiculo_id: 'vei-005', tipo_lavagem_id: 'tl-003', status: 'em_progresso', valor: 80.00, data: getNow(), user_id: adminId, pagamento: 'PIX', observacao: 'Cliente aguardando', data_conclusao: null },
+  { id: 'lav-900', cliente_id: 'cli-001', veiculo_id: 'vei-001', tipo_lavagem_id: 'tl-001', status: 'pendente', valor: 25.00, data: getNow(), user_id: adminId, pagamento: 'Pendente', observacao: '', data_conclusao: null },
+  { id: 'lav-901', cliente_id: 'cli-002', veiculo_id: 'vei-002', tipo_lavagem_id: 'tl-002', status: 'pendente', valor: 45.00, data: getNow(), user_id: adminId, pagamento: 'Pendente', observacao: '', data_conclusao: null },
+  { id: 'lav-902', cliente_id: 'cli-005', veiculo_id: 'vei-005', tipo_lavagem_id: 'tl-003', status: 'em_progresso', valor: 80.00, data: getNow(), user_id: adminId, pagamento: 'PIX', observacao: 'Cliente aguardando', data_conclusao: null },
 );
 
 const insertLavagem = db.prepare('INSERT INTO lavagens (id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, user_id, pagamento, observacao, data_conclusao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
