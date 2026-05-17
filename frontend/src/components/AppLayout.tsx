@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import {
   LayoutDashboard, Droplets, List, Tags, Users, UserPlus,
-  Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings
+  Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings, Car
 } from 'lucide-react';
 
 const navItemsAdmin = [
@@ -13,6 +13,7 @@ const navItemsAdmin = [
   { to: '/tipos-lavagem', label: 'Tipos de Lavagem', icon: Tags },
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
+  { to: '/veiculos', label: 'Veículos', icon: Car },
   { to: '/estoque', label: 'Estoque', icon: Package },
   { to: '/movimentacao', label: 'Movimentação', icon: ArrowLeftRight },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
@@ -24,6 +25,7 @@ const navItemsUser = [
   { to: '/lavagens', label: 'Lavagens', icon: Droplets },
   { to: '/clientes', label: 'Clientes', icon: Users },
   { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
+  { to: '/veiculos', label: 'Veículos', icon: Car },
 ];
 
 const pageTitle: Record<string, string> = {
@@ -33,6 +35,7 @@ const pageTitle: Record<string, string> = {
   '/tipos-lavagem': 'Tipos de Lavagem',
   '/clientes': 'Clientes',
   '/novo-cliente': 'Novo Cliente',
+  '/veiculos': 'Veículos',
   '/estoque': 'Estoque',
   '/movimentacao': 'Movimentação',
   '/novo-produto': 'Novo Produto',
