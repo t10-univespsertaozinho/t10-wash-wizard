@@ -17,6 +17,7 @@ const Clientes = lazy(() => import("@/pages/Clientes"));
 const NovoCliente = lazy(() => import("@/pages/NovoCliente"));
 const ClienteDetalhe = lazy(() => import("@/pages/ClienteDetalhe"));
 const EditarCliente = lazy(() => import("@/pages/EditarCliente"));
+const Veiculos = lazy(() => import("@/pages/Veiculos"));
 const Lavagens = lazy(() => import("@/pages/Lavagens"));
 const NovaLavagem = lazy(() => import("@/pages/NovaLavagem"));
 const TiposLavagem = lazy(() => import("@/pages/TiposLavagem"));
@@ -83,6 +84,7 @@ const App = () => (
                       <Route path="/novo-cliente" element={<NovoCliente />} />
                       <Route path="/clientes/:id" element={<ClienteDetalhe />} />
                       <Route path="/clientes/:id/editar" element={<EditarCliente />} />
+                      <Route path="/veiculos" element={<Veiculos />} />
                       <Route path="/lavagens" element={<Lavagens />} />
                       <Route path="/nova-lavagem" element={<NovaLavagem />} />
                     </Route>
