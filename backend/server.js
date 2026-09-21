@@ -17,12 +17,25 @@ const app = express();
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:8080' }));
 app.use(express.json());
 
+// Nota sobre isolamento por usuário: este é um sistema de um único lava-rápido,
+// não multi-tenant. Toda a equipe autenticada (admin e operadores) compartilha
+// intencionalmente a mesma base de clientes/veículos/lavagens/produtos — por
+// isso as rotas GET não filtram por user_id. O que É garantido é que nenhuma
+// rota confia em um user_id vindo do cliente: toda gravação usa req.user.id,
+// extraído do token JWT validado pelo middleware requireAuth.
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 const genId = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
 const publicUserFields = 'id, email, nome, role, created_at';
+
+// Loga o erro real no servidor, mas nunca expõe detalhes internos (ex: mensagens do SQLite) ao cliente.
+function handleServerError(res, err) {
+  console.error(err);
+  res.status(500).json({ error: 'Erro interno do servidor' });
+}
 
 // ==========================================
 // AUTH API (rotas públicas)
@@ -42,7 +55,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
     res.json({ token, user: { id: user.id, nome: user.nome, email: user.email, role: user.role } });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.get('/api/auth/me', requireAuth, async (req, res) => {
@@ -50,7 +63,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
     const user = await get(`SELECT ${publicUserFields} FROM users WHERE id = ?`, [req.user.id]);
     if (!user) return res.status(401).json({ error: 'Usuário não encontrado' });
     res.json(user);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 // A partir daqui, todas as rotas de /api exigem autenticação
@@ -63,7 +76,7 @@ app.get('/api/users', requireAdmin, async (req, res) => {
   try {
     const users = await all(`SELECT ${publicUserFields} FROM users`);
     res.json(users);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.post('/api/users', requireAdmin, async (req, res) => {
@@ -75,7 +88,7 @@ app.post('/api/users', requireAdmin, async (req, res) => {
     await run('INSERT INTO users (id, email, nome, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)', [newId, email, nome, role || 'operador', passwordHash, now()]);
     const user = await get(`SELECT ${publicUserFields} FROM users WHERE id = ?`, [newId]);
     res.json(user);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 // ==========================================
@@ -86,7 +99,7 @@ app.get('/api/clientes', async (req, res) => {
     // Retorna todos os clientes (sem filtro por user_id para simplificar)
     const rows = await all('SELECT * FROM clientes', []);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.post('/api/clientes', async (req, res) => {
@@ -97,7 +110,7 @@ app.post('/api/clientes', async (req, res) => {
     await run('INSERT INTO clientes (id, user_id, nome, telefone, created_at) VALUES (?, ?, ?, ?, ?)', [id, req.user.id, nome, telefone, created_at]);
     const row = await get('SELECT * FROM clientes WHERE id = ?', [id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.put('/api/clientes/:id', async (req, res) => {
@@ -106,14 +119,14 @@ app.put('/api/clientes/:id', async (req, res) => {
     await run('UPDATE clientes SET nome = ?, telefone = ? WHERE id = ?', [nome, telefone, req.params.id]);
     const row = await get('SELECT * FROM clientes WHERE id = ?', [req.params.id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.delete('/api/clientes/:id', async (req, res) => {
   try {
     await run('DELETE FROM clientes WHERE id = ?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 // ==========================================
@@ -127,7 +140,7 @@ app.get('/api/veiculos', async (req, res) => {
     if (cliente_id) { query += ' WHERE cliente_id = ?'; params.push(cliente_id); }
     const rows = await all(query, params);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.post('/api/veiculos', async (req, res) => {
@@ -138,14 +151,14 @@ app.post('/api/veiculos', async (req, res) => {
       [id, cliente_id, req.user.id, placa, marca, cor, modelo, now()]);
     const row = await get('SELECT * FROM veiculos WHERE id = ?', [id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.delete('/api/veiculos/:id', async (req, res) => {
   try {
     await run('DELETE FROM veiculos WHERE id = ?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.put('/api/veiculos/:id', async (req, res) => {
@@ -154,14 +167,14 @@ app.put('/api/veiculos/:id', async (req, res) => {
     await run('UPDATE veiculos SET modelo = ?, placa = ?, cor = ? WHERE id = ?', [modelo, placa, cor, req.params.id]);
     const row = await get('SELECT * FROM veiculos WHERE id = ?', [req.params.id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.post('/api/veiculos/migrate-plates', requireAdmin, async (req, res) => {
   try {
     const result = await run("UPDATE veiculos SET placa = REPLACE(placa, '-', '')");
     res.json({ success: true, message: 'Placas normalizadas com sucesso' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 // ==========================================
@@ -171,7 +184,7 @@ app.get('/api/tipos-lavagem', async (req, res) => {
   try {
     const rows = await all('SELECT * FROM tipos_lavagem');
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.post('/api/tipos-lavagem', requireAdmin, async (req, res) => {
@@ -181,7 +194,7 @@ app.post('/api/tipos-lavagem', requireAdmin, async (req, res) => {
     await run('INSERT INTO tipos_lavagem (id, nome, descricao, preco, created_at) VALUES (?, ?, ?, ?, ?)', [id, nome, descricao, preco, now()]);
     const row = await get('SELECT * FROM tipos_lavagem WHERE id = ?', [id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.put('/api/tipos-lavagem/:id', requireAdmin, async (req, res) => {
@@ -190,19 +203,21 @@ app.put('/api/tipos-lavagem/:id', requireAdmin, async (req, res) => {
     await run('UPDATE tipos_lavagem SET nome = ?, descricao = ?, preco = ? WHERE id = ?', [nome, descricao, preco, req.params.id]);
     const row = await get('SELECT * FROM tipos_lavagem WHERE id = ?', [req.params.id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.delete('/api/tipos-lavagem/:id', requireAdmin, async (req, res) => {
   try {
     await run('DELETE FROM tipos_lavagem WHERE id = ?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 // ==========================================
 // LAVAGENS API
 // ==========================================
+const STATUS_LAVAGEM = ['pendente', 'em_progresso', 'concluida', 'cancelada'];
+
 app.get('/api/lavagens', async (req, res) => {
   try {
     const { cliente_id } = req.query;
@@ -212,46 +227,61 @@ app.get('/api/lavagens', async (req, res) => {
     query += ' ORDER BY data DESC';
     const rows = await all(query, params);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.post('/api/lavagens', async (req, res) => {
   try {
     const { cliente_id, veiculo_id, tipo_lavagem_id, status, valor, pagamento, observacao } = req.body;
+    const statusFinal = status || 'pendente';
+    if (!STATUS_LAVAGEM.includes(statusFinal)) {
+      return res.status(400).json({ error: `Status inválido. Use um dos: ${STATUS_LAVAGEM.join(', ')}` });
+    }
     const id = genId();
-    await run(`INSERT INTO lavagens (id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, user_id, pagamento, observacao)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, cliente_id, veiculo_id, tipo_lavagem_id, status || 'pendente', valor, now(), req.user.id, pagamento || 'Pendente', observacao]);
+    const dataConclusao = statusFinal === 'concluida' ? now() : null;
+    await run(`INSERT INTO lavagens (id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, user_id, pagamento, observacao, data_conclusao)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, cliente_id, veiculo_id, tipo_lavagem_id, statusFinal, valor, now(), req.user.id, pagamento || 'Pendente', observacao, dataConclusao]);
     const row = await get('SELECT * FROM lavagens WHERE id = ?', [id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.put('/api/lavagens/:id', async (req, res) => {
   try {
     const { status, valor, pagamento, observacao, data_conclusao } = req.body;
+    if (status !== undefined && !STATUS_LAVAGEM.includes(status)) {
+      return res.status(400).json({ error: `Status inválido. Use um dos: ${STATUS_LAVAGEM.join(', ')}` });
+    }
+
     const updates = [];
     const params = [];
     if (status !== undefined) { updates.push('status = ?'); params.push(status); }
     if (valor !== undefined) { updates.push('valor = ?'); params.push(valor); }
     if (pagamento !== undefined) { updates.push('pagamento = ?'); params.push(pagamento); }
     if (observacao !== undefined) { updates.push('observacao = ?'); params.push(observacao); }
-    if (data_conclusao !== undefined) { updates.push('data_conclusao = ?'); params.push(data_conclusao); }
-    
+
+    // data_conclusao é preenchida automaticamente ao concluir a lavagem, nunca recebida do cliente
+    if (status === 'concluida') {
+      updates.push('data_conclusao = ?'); params.push(now());
+    } else if (data_conclusao !== undefined) {
+      updates.push('data_conclusao = ?'); params.push(data_conclusao);
+    }
+
     if (updates.length > 0) {
       params.push(req.params.id);
       await run(`UPDATE lavagens SET ${updates.join(', ')} WHERE id = ?`, params);
     }
     const row = await get('SELECT * FROM lavagens WHERE id = ?', [req.params.id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.delete('/api/lavagens/:id', async (req, res) => {
   try {
     await run('DELETE FROM lavagens WHERE id = ?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 // ==========================================
@@ -261,7 +291,7 @@ app.get('/api/produtos', async (req, res) => {
   try {
     const rows = await all('SELECT * FROM produtos', []);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.post('/api/produtos', requireAdmin, async (req, res) => {
@@ -273,7 +303,7 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
       [id, nome, quantidade || 0, estoque_minimo || 5, categoria || 'Outros', unidade || 'un', preco_unitario || 0, req.user.id, now()]);
     const row = await get('SELECT * FROM produtos WHERE id = ?', [id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.put('/api/produtos/:id', requireAdmin, async (req, res) => {
@@ -283,14 +313,14 @@ app.put('/api/produtos/:id', requireAdmin, async (req, res) => {
       [nome, quantidade, estoque_minimo, categoria, unidade, preco_unitario, req.params.id]);
     const row = await get('SELECT * FROM produtos WHERE id = ?', [req.params.id]);
     res.json(row);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 app.delete('/api/produtos/:id', requireAdmin, async (req, res) => {
   try {
     await run('DELETE FROM produtos WHERE id = ?', [req.params.id]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 // ==========================================
@@ -303,44 +333,59 @@ app.get('/api/movimentacoes', async (req, res) => {
     query += ' ORDER BY data DESC';
     const rows = await all(query, params);
     res.json(rows);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
+const TIPOS_MOVIMENTACAO = ['entrada', 'saida'];
+
 app.post('/api/movimentacoes', requireAdmin, async (req, res) => {
+  const { produto_id, tipo, observacao } = req.body;
+  const quantidade = Number(req.body.quantidade);
+
+  if (!TIPOS_MOVIMENTACAO.includes(tipo)) {
+    return res.status(400).json({ error: `Campo 'tipo' inválido. Use um dos: ${TIPOS_MOVIMENTACAO.join(', ')}` });
+  }
+  if (!Number.isFinite(quantidade) || quantidade <= 0) {
+    return res.status(400).json({ error: 'A quantidade deve ser um número positivo.' });
+  }
+
   try {
-    const { produto_id, tipo, quantidade, observacao } = req.body;
-    
-    // Buscar estoque atual do produto
-    const produto = await get('SELECT quantidade, estoque_minimo FROM produtos WHERE id = ?', [produto_id]);
-    if (!produto) {
-      return res.status(404).json({ error: 'Produto não encontrado' });
+    // BEGIN IMMEDIATE trava a escrita já no início da transação, evitando que duas
+    // movimentações concorrentes leiam o mesmo estoque antigo e gerem um "lost update".
+    await exec('BEGIN IMMEDIATE TRANSACTION;');
+    try {
+      const produto = await get('SELECT quantidade FROM produtos WHERE id = ?', [produto_id]);
+      if (!produto) {
+        await exec('ROLLBACK;');
+        return res.status(404).json({ error: 'Produto não encontrado' });
+      }
+
+      if (tipo === 'saida' && produto.quantidade < quantidade) {
+        await exec('ROLLBACK;');
+        return res.status(400).json({ error: `Estoque insuficiente. Disponível: ${produto.quantidade}` });
+      }
+
+      const novaQuantidade = tipo === 'entrada'
+        ? produto.quantidade + quantidade
+        : produto.quantidade - quantidade;
+
+      await run('UPDATE produtos SET quantidade = ? WHERE id = ?', [novaQuantidade, produto_id]);
+
+      const id = genId();
+      await run(`INSERT INTO movimentacoes (id, produto_id, tipo, quantidade, observacao, user_id, data)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, produto_id, tipo, quantidade, observacao, req.user.id, now()]);
+
+      await exec('COMMIT;');
+
+      const produtoAtualizado = await get('SELECT * FROM produtos WHERE id = ?', [produto_id]);
+      const row = await get('SELECT * FROM movimentacoes WHERE id = ?', [id]);
+      res.json({ movimentacao: row, produto: produtoAtualizado });
+    } catch (e) {
+      await exec('ROLLBACK;');
+      throw e;
     }
-
-    // Se for saída, verificar se tem estoque suficiente
-    if (tipo === 'saida' && produto.quantidade < quantidade) {
-      return res.status(400).json({ error: `Estoque insuficiente. Disponível: ${produto.quantidade}` });
-    }
-
-    // Calcular nova quantidade
-    const novaQuantidade = tipo === 'entrada' 
-      ? produto.quantidade + quantidade 
-      : produto.quantidade - quantidade;
-
-    // Atualizar estoque do produto
-    await run('UPDATE produtos SET quantidade = ? WHERE id = ?', [novaQuantidade, produto_id]);
-
-    // Buscar produto atualizado
-    const produtoAtualizado = await get('SELECT * FROM produtos WHERE id = ?', [produto_id]);
-
-    // Inserir movimentação
-    const id = genId();
-    await run(`INSERT INTO movimentacoes (id, produto_id, tipo, quantidade, observacao, user_id, data)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [id, produto_id, tipo, quantidade, observacao, req.user.id, now()]);
-    
-    const row = await get('SELECT * FROM movimentacoes WHERE id = ?', [id]);
-    res.json({ movimentacao: row, produto: produtoAtualizado });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { handleServerError(res, err); }
 });
 
 // ==========================================
@@ -369,7 +414,7 @@ app.get('/api/backup/export', requireAdmin, async (req, res) => {
     }
     res.json(backup);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    handleServerError(res, err);
   }
 });
 
@@ -437,7 +482,7 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
 
     res.json({ success: true, records: importedCount, warnings: [] });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    handleServerError(res, err);
   }
 });
 
@@ -458,7 +503,7 @@ app.post('/api/backup/reset', requireAdmin, async (req, res) => {
     }
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    handleServerError(res, err);
   }
 });
 
