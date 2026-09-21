@@ -1,143 +1,132 @@
-# Wash Wizard — Política de Segurança (Versão Acadêmica)
+# Wash Wizard — Política de Segurança
 
-> **Versão:** 1.0  
-> **Última atualização:** 2026-05-12  
+> **Versão:** 2.0
+> **Última atualização:** 2026-09-21
 > **Escopo:** Projeto Integrador UNIVESP — Engenharia de Computação
 
 ---
 
 ## 1. Visão Geral
 
-Este documento descreve a arquitetura de segurança implementada no sistema Wash Wizard. O projeto utiliza uma abordagem de segurança em camadas, combinando proteção no frontend (autenticação HMAC) e no backend (validação de dados), com um banco de dados SQLite local como repositório principal.
+Este documento descreve a arquitetura de segurança implementada no sistema Wash Wizard. O backend (Node.js/Express) é a fronteira de confiança: toda autenticação, autorização e validação de dados é aplicada e reforçada ali — o frontend é tratado como não confiável, nunca como a única linha de defesa.
 
 ### 1.1 Princípios de Segurança
 
-- **Defesa em profundidade:** Múltiplas camadas de proteção
-- **Mínimo privilégio:** Usuários têm acesso apenas ao necessário
-- **Validação no cliente e servidor:** Dupla validação de inputs
-- **Integridade referencial:** Foreign keys no banco de dados
+- **Defesa em profundidade:** múltiplas camadas de proteção (autenticação, autorização, validação de entrada, sanitização de erros)
+- **Mínimo privilégio:** usuários têm acesso apenas ao necessário para seu papel
+- **Validação no cliente e no servidor:** o frontend valida por UX, mas o backend é quem decide — nenhuma validação de negócio depende só do cliente
+- **Integridade referencial:** foreign keys no banco de dados
 
 ---
 
-## 2. Controle de Acesso (RBAC)
+## 2. Autenticação (JWT)
 
-### 2.1 Perfis de Usuário
+### 2.1 Arquitetura
 
-O sistema implementa controle de acesso baseado em papéis (Role-Based Access Control):
+O backend emite e valida os tokens de sessão — não há autenticação simulada no cliente.
+
+```
+┌──────────┐   POST /api/auth/login    ┌─────────────┐   token JWT   ┌──────────┐
+│ Frontend │ ───(email, senha)───────> │   Backend   │ ─────────────>│ Frontend │
+└──────────┘                           │ (bcrypt +   │               └──────────┘
+                                        │  JWT sign)  │                    │
+                                        └─────────────┘                    │
+                                                                            v
+                                                            Authorization: Bearer <token>
+                                                            em toda chamada subsequente
+```
+
+- **Login:** `POST /api/auth/login` recebe `{ email, senha }`, busca o usuário pelo e-mail e compara a senha com `password_hash` (bcrypt) armazenado em `users`. Se válido, assina um JWT (`jsonwebtoken`) contendo `{ id, email, role }`.
+- **Expiração:** o token expira em 8 horas (`JWT_EXPIRES_IN` em `backend/config.js`).
+- **Segredo:** `JWT_SECRET` vem de `backend/.env`. Se não for definido, o servidor gera um segredo aleatório a cada inicialização (com aviso no console) — funcional para desenvolvimento local, mas **`JWT_SECRET` deve ser definido explicitamente em qualquer ambiente que precise manter sessões entre reinicializações do servidor**.
+- **Sessão no frontend:** o token é guardado em `localStorage` (`t10_token`). Ao carregar a aplicação, o frontend chama `GET /api/auth/me` com o token salvo para revalidar a sessão no servidor antes de considerar o usuário autenticado — não confia apenas no que está salvo localmente.
+- **Logout:** remove o token do `localStorage`. Não há invalidação de token no servidor (JWT é stateless); a expiração de 8h é o limite superior de uma sessão comprometida.
+
+### 2.2 Middleware de Autenticação e Autorização
+
+Implementado em `backend/middleware/auth.js`:
+
+```javascript
+requireAuth(req, res, next)   // Exige um JWT válido no header Authorization; popula req.user
+requireAdmin(req, res, next)  // Exige req.user.role === 'admin' (usado após requireAuth)
+```
+
+`requireAuth` é aplicado a **todas** as rotas de `/api/*`, exceto `POST /api/auth/login` (rota de login, necessariamente pública). `requireAdmin` é aplicado individualmente às rotas administrativas (ver matriz na seção 3).
+
+Toda gravação no banco usa `req.user.id` (extraído do token validado) para o campo `user_id` — nenhuma rota confia em um `user_id` enviado no corpo da requisição, o que impediria um usuário autenticado de forjar ações em nome de outro.
+
+---
+
+## 3. Controle de Acesso (RBAC)
+
+### 3.1 Perfis de Usuário
 
 | Perfil | Descrição | Permissões |
 |--------|-----------|------------|
-| **Admin** | Administrador do sistema | Acesso total a todas as funcionalidades |
-| **Operador** | Funcionário operacional | Acesso restrito a funcionalidades do dia-a-dia |
-
-### 2.2 Matriz de Permissões
-
-| Recurso | Admin | Operador |
-|---------|:-----:|:--------:|
-| Dashboard | ✓ | ✓ |
-| Clientes (listar, adicionar, editar) | ✓ | ✓ |
-| Lavagens (registrar, visualizar) | ✓ | ✓ |
-| Tipos de Lavagem | ✓ | ✗ |
-| Estoque | ✓ | ✗ |
-| Movimentações | ✓ | ✗ |
-| Configurações | ✓ | ✗ |
-| Backup/Restore | ✓ | ✗ |
-
-### 2.3 Implementação de RBAC
+| **admin** | Administrador do sistema | Acesso total a todas as funcionalidades |
+| **operador** | Funcionário operacional | Acesso restrito às funcionalidades do dia-a-dia |
 
 ```typescript
 // frontend/src/contexts/AuthContext.tsx
-interface AppUser {
+export type UserRole = 'admin' | 'operador';
+export interface AppUser {
   id: string;
   nome: string;
   email: string;
-  role: 'admin' | 'user';
+  role: UserRole;
 }
 ```
 
-- O perfil é armazenado na sessão do usuário
-- Rotas protegidas verificam o perfil antes de renderizar
-- Componentes condicionais mostram/escondem funcionalidades
+### 3.2 Matriz de Permissões
+
+O controle é reforçado **nas duas pontas**: o frontend esconde/bloqueia rotas por papel (`ProtectedRoute adminOnly` em `App.tsx`), e o backend aplica `requireAdmin` nos mesmos endpoints — um usuário `operador` não consegue contornar a restrição chamando a API diretamente.
+
+| Recurso | Rota(s) da API | admin | operador |
+|---------|-----------------|:-----:|:--------:|
+| Dashboard, Clientes, Veículos, Lavagens (listar/criar/editar/excluir) | `/api/clientes*`, `/api/veiculos*`, `/api/lavagens*` | ✓ | ✓ |
+| Tipos de Lavagem (criar/editar/excluir) — leitura é liberada para todos | `POST/PUT/DELETE /api/tipos-lavagem*` | ✓ | ✗ |
+| Estoque (produtos) — leitura é liberada para todos | `POST/PUT/DELETE /api/produtos*` | ✓ | ✗ |
+| Movimentações de estoque | `POST /api/movimentacoes` | ✓ | ✗ |
+| Normalização de placas | `POST /api/veiculos/migrate-plates` | ✓ | ✗ |
+| Gestão de usuários | `GET/POST /api/users` | ✓ | ✗ |
+| Backup/Restore | `/api/backup/export`, `/api/backup/import`, `/api/backup/reset` | ✓ | ✗ |
+
+> Nota de escopo: este é um sistema de um único lava-rápido, não multi-tenant — toda a equipe autenticada compartilha intencionalmente a mesma base de clientes/veículos/lavagens/produtos. RBAC aqui controla **o que cada papel pode fazer**, não isolamento de dados por usuário.
 
 ---
 
-## 3. Segurança de Sessões (HMAC)
+## 4. Segurança de Rede (CORS)
 
-### 3.1 Arquitetura
-
-Por ser um projeto acadêmico sem autenticação backendcomplexa, o frontend implementa sessões HMAC-signed:
-
-```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Usuário   │ →   │  LocalStorage │ →  │  Verificação  │
-│   Login     │     │  (Signed)     │     │  HMAC        │
-└─────────────┘     └─────────────┘     └─────────────┘
+```javascript
+// backend/server.js
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:8080' }));
 ```
 
-### 3.2 Funções de Segurança (`src/utils/security.ts`)
-
-```typescript
-// Criação de sessão signed
-createSignedUser(user: AppUser): Promise<SignedUser>
-
-// Verificação de integridade
-verifySignedUser(signed: SignedUser): Promise<AppUser | null>
-
-// Criptografia de dados
-encryptStorage(data: string): Promise<string>
-decryptStorage(data: string): Promise<string>
-
-// Sanitização de inputs
-sanitizeInput(input: string): string
-```
-
-### 3.3 Características de Segurança
-
-- **Assinatura SHA-256:** Qualquer alteração no LocalStorage invalida a sessão
-- **Timestamp de expiração:** Sessões expiram após 30 dias
-- **Verificação automática:** Ao carregar a página, a integridade é verificada
-- **Logout limpo:** Remove sessão e dados do LocalStorage
-
-### 3.4 Validação de Sessão
-
-```typescript
-// frontend/src/contexts/AuthContext.tsx
-const verifySession = async () => {
-  const savedUser = localStorage.getItem('t10_user');
-  if (savedUser) {
-    const signed = JSON.parse(savedUser) as SignedUser;
-    const verified = await verifySignedUser(signed);
-    if (verified) {
-      const { _signature, _timestamp, ...userData } = verified;
-      setAppUser(userData);
-    }
-  }
-};
-```
+O backend aceita requisições apenas da origem configurada em `FRONTEND_URL` (`backend/.env`). Nenhuma outra origem recebe os headers `Access-Control-Allow-Origin` necessários para que um navegador libere a leitura da resposta — isso impede que uma página maliciosa hospedada em outro domínio use o token de um usuário logado para chamar a API em nome dele (CSRF via fetch/XHR).
 
 ---
 
-## 4. Validação de Entrada
+## 5. Validação de Entrada
 
-### 4.1 Máscaras de Input
+### 5.1 Backend (autoridade final)
 
-O sistema implementa máscaras automáticas para garantir formatação correta:
+O backend valida e rejeita entradas inválidas com `400` antes de tocar no banco, em vez de deixar a constraint do SQLite estourar como erro genérico:
 
-**Telefone:** `(XX) XXXXX-XXXX`
-```typescript
-// frontend/src/hooks/useTelefoneMask.ts
-formatTelefone(input) → (XX) XXXXX-XXXX
-```
+| Recurso | Validações aplicadas |
+|---|---|
+| Veículos | `cliente_id`, `modelo` e `placa` obrigatórios e não vazios |
+| Lavagens | `cliente_id`, `veiculo_id`, `tipo_lavagem_id` obrigatórios; `status` restrito ao enum (`pendente`, `em_progresso`, `concluida`, `cancelada`); `valor` numérico e ≥ 0 |
+| Movimentações de estoque | `tipo` restrito a `entrada`/`saida`; `quantidade` numérica e > 0; saída bloqueada se maior que o estoque disponível |
+| Import de backup (CSV) | Nome de cada coluna do cabeçalho validado contra uma allowlist por tabela antes de compor a query `INSERT` (ver seção 7.2) |
 
-**Placa de Veículo:** Aceita padrões Mercosul e Antigo
-```typescript
-// frontend/src/hooks/usePlacaMask.ts
-// Mercosul: ABC1D23 (7 caracteres)
-// Antigo: ABC1234 (8 caracteres)
-formatPlaca(input) → Normaliza para formato sem hífen
-```
+`data_conclusao` de uma lavagem nunca é aceita do cliente — é preenchida automaticamente pelo servidor no momento em que o `status` muda para `concluida`.
 
-### 4.2 Sanitização XSS
+### 5.2 Máscaras de Input (Frontend)
+
+**Telefone:** `(XX) XXXXX-XXXX` — `frontend/src/hooks/useTelefoneMask.ts`
+**Placa de Veículo:** aceita padrões Mercosul (`ABC1D23`) e Antigo (`ABC1234`) — `frontend/src/hooks/usePlacaMask.ts`
+
+### 5.3 Sanitização XSS
 
 ```typescript
 // frontend/src/utils/security.ts
@@ -150,34 +139,29 @@ sanitizeInput(input: string): string {
 }
 ```
 
-### 4.3 Validação no Backend
-
-O backend valida todos os inputs recebidos:
-
-```javascript
-// backend/server.js
-app.post('/api/movimentacoes', async (req, res) => {
-  // Validação de estoque
-  if (tipo === 'saida' && produto.quantidade < quantidade) {
-    return res.status(400).json({ error: 'Estoque insuficiente' });
-  }
-});
-```
-
 ---
 
-## 5. Proteção de Dados
+## 6. Proteção de Dados
 
-### 5.1 Banco de Dados SQLite
+### 6.1 Senhas
 
-O banco `wash_wizard.db` é armazenado localmente e **não é commitado** no versionamento.
+Senhas nunca são armazenadas em texto plano. `users.password_hash` guarda o hash gerado por `bcryptjs` (fator de custo 10). A rota `GET /api/users` seleciona explicitamente as colunas públicas (nunca `SELECT *`), garantindo que o hash jamais é incluído em uma resposta da API.
+
+### 6.2 Banco de Dados SQLite
+
+O banco `wash_wizard.db` é armazenado localmente e **não é commitado** no versionamento (`.gitignore`). O schema (`backend/schema.sql`), por outro lado, **é versionado** — é a definição de código do banco, necessária para inicializar um ambiente do zero.
 
 **Estrutura de segurança:**
 - Integridade referencial ativada: `PRAGMA foreign_keys = ON;`
 - Prevenção de registros órfãos
-- Transações para operações críticas
+- `CHECK` constraints no schema para enums (`status`, `role`, `tipo`) e valores não-negativos (`valor`, `quantidade`, `preco`)
+- Transações para operações críticas (ver seção 6.3)
 
-### 5.2 Schema de Relacionamentos
+### 6.3 Transações e Condições de Corrida
+
+A movimentação de estoque (`POST /api/movimentacoes`) envolve ler o estoque atual, calcular o novo valor e gravar — uma sequência clássica sujeita a *lost update* se duas requisições concorrentes lerem o mesmo valor antes de qualquer uma escrever. Essa rota executa a leitura, a atualização do produto e a inserção da movimentação dentro de uma única transação `BEGIN IMMEDIATE`, que trava a escrita já no início, serializando movimentações concorrentes sobre o mesmo produto.
+
+### 6.4 Schema de Relacionamentos
 
 ```
 users (1) ──── (N) clientes (1) ──── (N) veiculos (1) ──── (N) lavagens
@@ -188,56 +172,40 @@ users (1) ──── (N) clientes (1) ──── (N) veiculos (1) ───�
         └──────────── (N) tipos_lavagem
 ```
 
-### 5.3 Foreign Keys
-
-```sql
--- backend/schema.sql
-CREATE TABLE clientes (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  nome TEXT NOT NULL,
-  telefone TEXT,
-  created_at TEXT NOT NULL,
-  FOREIGN KEY(user_id) REFERENCES users(id)
-);
-```
-
 ---
 
-## 6. Backup e Restore
+## 7. Backup e Restore
 
-### 6.1 Exportação CSV
+### 7.1 Exportação CSV
 
-O sistema permite exportar todos os dados em formato CSV:
+`GET /api/backup/export` (admin) exporta todas as tabelas em CSV, na ordem `users → clientes → veiculos → tipos_lavagem → produtos → lavagens → movimentacoes`, encoding UTF-8.
 
-1.依次导出：users → clientes → veiculos → tipos_lavagem → produtos → lavagens → movimentacoes
-2. Arquivos `.csv` por tabela
-3. Encoding UTF-8
-
-### 6.2 Importação com Integridade
+### 7.2 Importação com Integridade e Prevenção de SQL Injection
 
 ```javascript
 // backend/server.js
-app.post('/api/backup/import', async (req, res) => {
-  await exec('PRAGMA foreign_keys = OFF;');
-  await exec('BEGIN TRANSACTION;');
-  try {
-    // Limpa tabelas em ordem
-    for (const table of tables) {
-      await exec(`DELETE FROM ${table};`);
-    }
-    // Insere dados em ordem de dependência
-    await exec('COMMIT;');
-  } catch (e) {
-    await exec('ROLLBACK;');
-    throw e;
-  } finally {
-    await exec('PRAGMA foreign_keys = ON;');
+const TABLE_COLUMNS = {
+  clientes: ['id', 'user_id', 'nome', 'telefone', 'created_at'],
+  // ...allowlist por tabela...
+};
+
+app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
+  // ...
+  const columns = Object.keys(records[0]);
+  const colunasInvalidas = columns.filter(c => !TABLE_COLUMNS[table].includes(c));
+  if (colunasInvalidas.length > 0) {
+    throw new Error(`Colunas inválidas em ${table}.csv: ${colunasInvalidas.join(', ')}`);
   }
+  const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
+  // ...
 });
 ```
 
-### 6.3 Ordem de Dependências
+O nome das colunas do CSV importado **não pode** ser passado para valores parametrizados (`?`) do SQLite, pois nomes de coluna fazem parte da estrutura da query, não de seus valores — por isso, antes deste controle, um cabeçalho de CSV malicioso (ex: `telefone); DROP TABLE clientes;--`) seria concatenado diretamente na query `INSERT`. Cada coluna do cabeçalho é validada contra uma allowlist fixa por tabela antes de montar a query; qualquer coluna fora da lista rejeita o import inteiro e reverte a transação (`ROLLBACK`), sem tocar o banco.
+
+A rota inteira exige `requireAdmin` — importar ou resetar o banco não é uma operação de usuário comum.
+
+### 7.3 Ordem de Dependências
 
 ```
 1. users (sem dependências)
@@ -251,55 +219,25 @@ app.post('/api/backup/import', async (req, res) => {
 
 ---
 
-## 7. Segurança da API
+## 8. Sanitização de Erros
 
-### 7.1 Configuração CORS
+Nenhuma resposta de erro (`500`) expõe a mensagem interna do driver SQLite ao cliente:
 
 ```javascript
 // backend/server.js
-app.use(cors({
-  origin: 'http://localhost:8080',
-  methods: ['GET', 'POST', 'PUT', 'DELETE']
-}));
+function handleServerError(res, err) {
+  console.error(err);                                     // detalhe completo só no log do servidor
+  res.status(500).json({ error: 'Erro interno do servidor' }); // mensagem genérica ao cliente
+}
 ```
 
-### 7.2 Validação de Inputs
-
-Todos os endpoints validam os inputs recebidos:
-
-```javascript
-// Exemplo: POST /api/clientes
-app.post('/api/clientes', async (req, res) => {
-  try {
-    const { user_id, nome, telefone } = req.body;
-    if (!nome?.trim()) {
-      return res.status(400).json({ error: 'Nome é obrigatório' });
-    }
-    // ... inserção
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-```
-
-### 7.3 Recomendações para Produção
-
-Para ambientes de produção, recomenda-se:
-
-1. **JWT Authentication:** Substituir HMAC por tokens JWT no backend
-2. **HTTPS:** Configurar certificado SSL
-3. **Rate Limiting:** Limitar requisições por IP
-4. **CORS:** Configurar origens específicas
-5. **Logging:** Implementar logs de auditoria
-6. **Validação Zod no Backend:** Replicar validações do frontend
+Isso evita vazar detalhes de schema, nomes de tabela/coluna ou stack traces que ajudariam um atacante a mapear a estrutura do banco a partir de respostas de erro.
 
 ---
 
-## 8. Notificações de Segurança
+## 9. Notificações de Segurança (Aplicação)
 
-### 8.1 Alertas de Estoque Baixo
-
-O sistema notifica quando produtos atingem estoque mínimo:
+### 9.1 Alertas de Estoque Baixo
 
 ```typescript
 // frontend/src/pages/Movimentacao.tsx
@@ -308,47 +246,34 @@ if (novoEstoque <= estoqueMinimo && tipo === 'saida') {
 }
 ```
 
-### 8.2 Toast Notifications
+### 9.2 Toast Notifications
 
-O sistema utiliza `sonner` para feedback visual:
-- **Sucesso:** Operações concluídas
-- **Erro:** Falhas de validação
-- **Aviso:** Alertas de estoque
+O sistema utiliza `sonner` para feedback visual de sucesso, erro e alertas de estoque.
 
 ---
 
-## 9. Limitações e Escopo Acadêmico
+## 10. Limitações Conhecidas e Fora de Escopo
 
-### 9.1 Escopo Atual
+Este é um sistema de porte acadêmico com um backend real de autenticação/autorização — as limitações abaixo são deliberadas para este escopo, não lacunas de segurança não tratadas:
 
-- Autenticação simulada via HMAC no frontend
-- Banco de dados local (SQLite)
-- Sem middleware de autenticação no backend
+- **HTTPS:** não configurado neste repositório; é responsabilidade do ambiente de deploy (reverse proxy com TLS).
+- **Rate limiting:** não implementado — não há proteção contra força bruta no login além do custo do bcrypt.
+- **Logs de auditoria:** erros são logados no console do servidor, mas não há trilha de auditoria estruturada (quem fez o quê, quando).
+- **Revogação de token:** JWT é stateless; não há lista de revogação — um token comprometido permanece válido até expirar (8h) ou até o `JWT_SECRET` ser rotacionado.
+- **Two-Factor Authentication (2FA):** não implementado.
+- **Isolamento multi-tenant:** não existe — é uma decisão de produto (loja única), não uma limitação técnica pendente.
 
-### 9.2 Não Implementado (Produção)
+### 10.1 Recomendação para um ambiente de produção real
 
-- Autenticação JWT no backend
-- HTTPS
-- Rate limiting
-- Logs de auditoria
-- Criptografia de banco de dados
-- Two-Factor Authentication (2FA)
-
-### 9.3 Recomendação
-
-Para ambientes de produção, é obrigatória a implementação de:
-- Autenticação backend com JWT
-- HTTPS com certificado válido
-- Validação de inputs no backend (replicar Zod schemas)
-- Rate limiting para prevenir ataques
+Se este sistema saísse do escopo acadêmico para produção real, o próximo investimento de segurança deveria ser, nesta ordem: HTTPS obrigatório, rate limiting no login, rotação de `JWT_SECRET` fora do código-fonte (secret manager), e logs de auditoria estruturados.
 
 ---
 
-## 10. Referências
+## 11. Referências
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
 - [SQLite Foreign Keys](https://www.sqlite.org/foreignkeys.html)
-- [HMAC - Wikipedia](https://en.wikipedia.org/wiki/HMAC)
+- [JWT — jwt.io](https://jwt.io/)
 - [Node.js Security Best Practices](https://nodejs.dev/learn/nodejs-security-best-practices)
 
 ---

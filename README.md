@@ -24,7 +24,8 @@ O **Wash Wizard** é um sistema *full-stack* robusto desenvolvido para otimizar 
 5. [Guia de Inicialização](#-guia-de-inicialização)
 6. [Gerenciamento de Banco de Dados e Backups](#-gerenciamento-de-banco-de-dados-e-backups)
 7. [Segurança e Autenticação](#-segurança-e-autenticação)
-8. [Autores e Licença](#-autores-e-licença)
+8. [Próximos Passos](#-próximos-passos)
+9. [Autores e Licença](#-autores-e-licença)
 
 ---
 
@@ -37,7 +38,7 @@ O sistema provê o controle ponta-a-ponta do fluxo operacional:
 - **Gestão de Estoque:** Controle de inventário, produtos e alertas automáticos de baixo estoque.
 - **Dashboard Financeiro:** Visualização gráfica de faturamento, tickets médios e estatísticas com métricas interativas (via Recharts).
 - **Sistema de Backup Resiliente:** Importação e exportação modular de dados via CSV.
-- **RBAC (Role-Based Access Control):** Controles estritos entre níveis operacionais (Admin vs Usuário Padrão).
+- **RBAC (Role-Based Access Control):** Controles estritos entre níveis operacionais (Admin vs Operador), reforçados no backend.
 
 ---
 
@@ -80,7 +81,7 @@ A aplicação utiliza o padrão **Client-Server** num repositório *Monorepo*, o
 ### Decisões Arquiteturais:
 - **Code-Splitting & Lazy Loading:** Para aprimorar os tempos de carregamento, o React faz uso intensivo do `Suspense` e `React.lazy()` no roteamento.
 - **Memoização de Componentes:** Uso rigoroso de `useMemo` para mitigar re-renderizações desnecessárias em painéis analíticos complexos.
-- **Roteamento Protegido:** Validação criptográfica de sessão antes da liberação de rotas.
+- **Roteamento Protegido:** O frontend só libera rotas com uma sessão validada contra `GET /api/auth/me`; o backend reforça a mesma regra de forma independente em cada endpoint (ver [Segurança e Autenticação](#-segurança-e-autenticação)).
 
 ---
 
@@ -96,6 +97,7 @@ A aplicação utiliza o padrão **Client-Server** num repositório *Monorepo*, o
 ### Backend
 - **Node.js + Express** (Servidor HTTP, Middlewares, Roteamento)
 - **SQLite3** (Motor de Banco de Dados Relacional Embutido)
+- **jsonwebtoken & bcryptjs** (Autenticação JWT e hash de senhas)
 - **Multer & CSV-Parse** (Processamento e ETL de arquivos de backup)
 
 ---
@@ -113,14 +115,19 @@ wash-wizard/
 │   └── package.json        
 ├── backend/                # RESTful API (Server-Side)
 │   ├── server.js           # Ponto de entrada, Middlewares e Rotas
-│   ├── db.js               # Conexões e migrações do SQLite
-│   ├── schema.sql          # DDL e Constraints adaptados do Postgres
+│   ├── db.js               # Conexões e inicialização do SQLite
+│   ├── config.js           # Segredo JWT e configurações de auth
+│   ├── middleware/auth.js  # requireAuth / requireAdmin
+│   ├── schema.sql          # DDL e Constraints (versionado no repo — ver nota abaixo)
 │   └── package.json        
 ├── backups/                # Diretório automatizado para exports CSV
 ├── docs.html               # Documentação interativa
+├── ROADMAP.md              # Planejamento da próxima fase (Data Science / Analytics)
 ├── package.json            # Orquestrador Root (Scripts concurrently)
-└── wash_wizard.db          # Arquivo do Banco de Dados Relacional
+└── wash_wizard.db          # Arquivo do Banco de Dados Relacional (gerado localmente, não versionado)
 ```
+
+> **`backend/schema.sql` é versionado no repositório**, ao contrário do arquivo `.db` em si. É a partir dele que `backend/db.js` inicializa o banco do zero (`CREATE TABLE ... IF NOT EXISTS`) na primeira execução, garantindo que um clone limpo do projeto suba sem depender de um dump de dados.
 
 ---
 
@@ -142,8 +149,15 @@ cd t10-wash-wizard
 # 2. Instale todas as dependências da infraestrutura
 npm run install:all
 
-# 3. Configure as variáveis de ambiente (se aplicável)
+# 3. Configure as variáveis de ambiente
 cp frontend/.env.example frontend/.env
+cp backend/.env.example backend/.env
+# Edite backend/.env e defina um JWT_SECRET próprio (obrigatório fora de um ambiente
+# de desenvolvimento descartável — sem ele, o servidor gera um segredo aleatório a
+# cada boot e invalida sessões existentes a cada restart)
+
+# 4. Gere o banco local com dados de exemplo (usuários admin/operador inclusos)
+cd backend && node seed.js && cd ..
 ```
 
 ### Inicialização e Ambiente de Desenvolvimento
@@ -173,16 +187,29 @@ Visando portabilidade dos dados, a aplicação dispõe de rotinas de serializaç
 
 ## 🔒 Segurança e Autenticação
 
-Embora operando em escopo acadêmico local, práticas de AppSec foram emuladas rigorosamente:
-- **Client-Side Crypto:** Os tokens de sessão persistidos localmente são validados usando *Web Crypto API* (assinaturas HMAC). Manipulações na sessão do browser invalidam os acessos imediatamente.
-- **RBAC (Role-Based Access Control):**
-  - **Público:** `/login`
-  - **Usuário Padrão:** Acesso à gestão de Clientes, Lavagens e Dashboard `(/)`
-  - **Administrador:** Acesso a Tipos de Lavagem, Inventário e Configurações (Sistema de Backup e Gestão Sistêmica).
+A autenticação e a autorização são reforçadas pelo **backend**, não apenas simuladas no cliente:
 
-**Credenciais Acadêmicas Simuladas:**
-- `admin@washwizard.com` / `admin123` (Acesso Total)
-- `user@washwizard.com` / `user123` (Acesso Limitado)
+- **Autenticação JWT:** `POST /api/auth/login` valida a senha contra o hash `bcrypt` armazenado em `users.password_hash` e emite um token JWT (expira em 8h). Toda rota de `/api/*` — exceto o login — exige o header `Authorization: Bearer <token>`, validado pelo middleware `requireAuth`.
+- **RBAC (Role-Based Access Control):** aplicado tanto no roteamento do frontend quanto em cada endpoint do backend (`requireAdmin`), então um usuário `operador` não contorna a restrição chamando a API diretamente.
+  - **Público:** `/login`
+  - **Operador:** Acesso à gestão de Clientes, Veículos, Lavagens e Dashboard `(/)`
+  - **Admin:** Acesso adicional a Tipos de Lavagem, Estoque, Movimentações, Usuários e Configurações (Sistema de Backup)
+- **CORS restrito:** o backend só aceita requisições da origem definida em `FRONTEND_URL`.
+- **Outras proteções:** allowlist de colunas no import de CSV (previne SQL Injection via cabeçalho malicioso), transações atômicas nas movimentações de estoque, e mensagens de erro genéricas ao cliente (o detalhe real do SQLite fica só no log do servidor).
+
+Detalhes completos, incluindo a matriz de permissões por rota, estão em [`SECURITY.md`](./SECURITY.md).
+
+**Credenciais de exemplo (geradas por `backend/seed.js`, senhas configuráveis via `backend/.env`):**
+- `admin@washwizard.com` / `admin123` (perfil `admin`)
+- `operador@washwizard.com` / `operador123` (perfil `operador`)
+
+---
+
+## 🧭 Próximos Passos
+
+A próxima fase do projeto foca em **Data Science e Analytics Avançado** sobre o histórico já registrado (lavagens, clientes, estoque): pipelines de ETL para um datamart analítico (Parquet/DuckDB), métricas como churn, LTV e tempo médio de atendimento, e modelos preditivos de demanda, gestão de estoque e segmentação de clientes (RFM).
+
+Plano detalhado, com sequenciamento e dependências técnicas sugeridas, em [`ROADMAP.md`](./ROADMAP.md).
 
 ---
 
