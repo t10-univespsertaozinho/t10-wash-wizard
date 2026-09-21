@@ -348,6 +348,18 @@ app.post('/api/movimentacoes', requireAdmin, async (req, res) => {
 // ==========================================
 const tables = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'lavagens', 'produtos', 'movimentacoes'];
 
+// Allowlist de colunas por tabela, usada para validar o cabeçalho do CSV
+// antes de montar a query de import (evita SQL Injection via nome de coluna).
+const TABLE_COLUMNS = {
+  users: ['id', 'email', 'nome', 'password_hash', 'role', 'created_at'],
+  clientes: ['id', 'user_id', 'nome', 'telefone', 'created_at'],
+  veiculos: ['id', 'cliente_id', 'user_id', 'modelo', 'placa', 'cor', 'marca', 'created_at'],
+  tipos_lavagem: ['id', 'nome', 'descricao', 'preco', 'created_at'],
+  lavagens: ['id', 'cliente_id', 'veiculo_id', 'tipo_lavagem_id', 'status', 'valor', 'data', 'user_id', 'pagamento', 'observacao', 'data_conclusao'],
+  produtos: ['id', 'nome', 'quantidade', 'estoque_minimo', 'categoria', 'unidade', 'preco_unitario', 'user_id', 'created_at'],
+  movimentacoes: ['id', 'produto_id', 'tipo', 'quantidade', 'observacao', 'user_id', 'data'],
+};
+
 app.get('/api/backup/export', requireAdmin, async (req, res) => {
   try {
     const backup = {};
@@ -400,6 +412,11 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
         if (!records || records.length === 0) continue;
 
         const columns = Object.keys(records[0]);
+        const colunasInvalidas = columns.filter(c => !TABLE_COLUMNS[table].includes(c));
+        if (colunasInvalidas.length > 0) {
+          throw new Error(`Colunas inválidas em ${table}.csv: ${colunasInvalidas.join(', ')}`);
+        }
+
         const placeholders = columns.map(() => '?').join(', ');
         const sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders})`;
 
