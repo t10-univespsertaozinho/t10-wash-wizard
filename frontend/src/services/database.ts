@@ -1,6 +1,15 @@
 import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque } from '@/types';
+import { TOKEN_STORAGE_KEY } from '@/utils/security';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+const getToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+};
 
 export interface Database {
   initialize(): Promise<void>;
@@ -37,14 +46,18 @@ export interface Database {
   createMovimentacao(userId: string, data: Omit<MovimentacaoEstoque, 'id' | 'data' | 'user_id'>): Promise<MovimentacaoEstoque>;
 }
 
-const req = async (endpoint: string, options: RequestInit = {}) => {
+const req = async (endpoint: string, options: RequestInit & { notFoundReturnsNull?: boolean } = {}) => {
+  const { notFoundReturnsNull, ...fetchOptions } = options;
   const url = `${API_URL}${endpoint}`;
+  const token = getToken();
   const headers = {
     'Content-Type': 'application/json',
-    ...(options.headers || {})
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(fetchOptions.headers || {})
   };
-  
-  const res = await fetch(url, { ...options, headers });
+
+  const res = await fetch(url, { ...fetchOptions, headers });
+  if (res.status === 404 && notFoundReturnsNull) return null;
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
     throw new Error(err.error || `Erro HTTP: ${res.status}`);
@@ -62,8 +75,7 @@ export const apiDB: Database = {
   },
 
   async getCliente(id: string) {
-    const clientes = await req(`/clientes`);
-    return clientes.find((c: Cliente) => c.id === id) || null;
+    return req(`/clientes/${id}`, { notFoundReturnsNull: true });
   },
 
   async createCliente(userId: string, data) {
@@ -174,8 +186,10 @@ export const exportBackup = async () => {
 
 export const importBackup = async (formData: FormData) => {
   const url = `${API_URL}/backup/import`;
+  const token = getToken();
   const res = await fetch(url, {
     method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
     // Note: Do not set Content-Type header when sending FormData,
     // browser will automatically set it to multipart/form-data with boundary

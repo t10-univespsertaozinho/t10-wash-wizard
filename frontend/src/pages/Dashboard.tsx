@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { isDarkTheme } from '@/hooks/useTheme';
-import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User, TrendingUp, Package } from 'lucide-react';
+import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User, TrendingUp, Package, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend } from 'recharts';
 
@@ -180,9 +180,14 @@ export default function Dashboard() {
                         <td className="py-2 px-3">{t?.nome || '—'}</td>
                         <td className="py-2 px-3 text-right text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
                         <td className="py-2 px-3 text-right">
-                          <button onClick={() => updateLavagemStatus(l.id, 'concluida')} className="bg-success/10 text-success text-xs px-3 py-1 rounded-full font-semibold hover:bg-success/20 transition-colors inline-flex items-center gap-1">
-                            <Check size={12} /> Concluir
-                          </button>
+                          <div className="inline-flex items-center gap-1.5">
+                            <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} className="bg-accent/10 text-accent text-xs px-3 py-1 rounded-full font-semibold hover:bg-accent/20 transition-colors inline-flex items-center gap-1">
+                              <PlayCircle size={12} /> Em progresso
+                            </button>
+                            <button onClick={() => updateLavagemStatus(l.id, 'concluida')} className="bg-success/10 text-success text-xs px-3 py-1 rounded-full font-semibold hover:bg-success/20 transition-colors inline-flex items-center gap-1">
+                              <Check size={12} /> Concluir
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

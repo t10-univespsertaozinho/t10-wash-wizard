@@ -1,6 +1,6 @@
 import { useApp } from '@/contexts/AppContext';
 import { useState } from 'react';
-import { Check, X, Pencil } from 'lucide-react';
+import { Check, X, Pencil, PlayCircle } from 'lucide-react';
 
 export default function Lavagens() {
   const { lavagens, getCliente, getTipoLavagem, veiculos, updateLavagemStatus } = useApp();
@@ -63,11 +63,14 @@ export default function Lavagens() {
                   <td className="py-3 px-4 text-center">{statusBadge(l.status)}</td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      {(l.status === 'pendente' || l.status === 'em_progresso') && (
-                        <button onClick={() => updateLavagemStatus(l.id, 'concluida')} className="p-1.5 rounded-lg hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"><Check size={15} /></button>
-                      )}
                       {l.status === 'pendente' && (
-                        <button onClick={() => updateLavagemStatus(l.id, 'cancelada')} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><X size={15} /></button>
+                        <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} title="Iniciar lavagem" className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"><PlayCircle size={15} /></button>
+                      )}
+                      {(l.status === 'pendente' || l.status === 'em_progresso') && (
+                        <button onClick={() => updateLavagemStatus(l.id, 'concluida')} title="Concluir lavagem" className="p-1.5 rounded-lg hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"><Check size={15} /></button>
+                      )}
+                      {(l.status === 'pendente' || l.status === 'em_progresso') && (
+                        <button onClick={() => updateLavagemStatus(l.id, 'cancelada')} title="Cancelar lavagem" className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><X size={15} /></button>
                       )}
                     </div>
                   </td>

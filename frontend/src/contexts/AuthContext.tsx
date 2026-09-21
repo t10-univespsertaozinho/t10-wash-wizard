@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { createSignedUser, verifySignedUser, SignedUser } from '@/utils/security';
+import { TOKEN_STORAGE_KEY } from '@/utils/security';
 
-export type UserRole = 'admin' | 'user';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+export type UserRole = 'admin' | 'operador';
 
 export interface AppUser {
   id: string;
@@ -20,32 +22,28 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const ADMIN_EMAIL = 'admin@washwizard.com';
-const ADMIN_PASSWORD = 'admin123';
-const USER_EMAIL = 'user@washwizard.com';
-const USER_PASSWORD = 'user123';
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadAuth() {
-      const savedUser = localStorage.getItem('t10_user');
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser) as SignedUser;
-          const verified = await verifySignedUser(parsed);
-          
-          if (verified) {
-            const { _signature, _timestamp, ...userData } = verified;
-            setAppUser(userData);
-          } else {
-            localStorage.removeItem('t10_user');
-          }
-        } catch {
-          localStorage.removeItem('t10_user');
+      const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      try {
+        const res = await fetch(`${API_URL}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          setAppUser(await res.json());
+        } else {
+          localStorage.removeItem(TOKEN_STORAGE_KEY);
         }
+      } catch {
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
       }
       setLoading(false);
     }
@@ -53,35 +51,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, senha: string): Promise<boolean> => {
-    if (email === ADMIN_EMAIL && senha === ADMIN_PASSWORD) {
-      const user: AppUser = { id: 'admin-local', nome: 'Administrador', email, role: 'admin' };
-      const signedUser = await createSignedUser(user);
+    try {
+      const res = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, senha }),
+      });
+      if (!res.ok) return false;
+
+      const { token, user } = await res.json();
+      localStorage.setItem(TOKEN_STORAGE_KEY, token);
       setAppUser(user);
-      localStorage.setItem('t10_user', JSON.stringify(signedUser));
       return true;
+    } catch {
+      return false;
     }
-    if (email === USER_EMAIL && senha === USER_PASSWORD) {
-      const user: AppUser = { id: 'user-local', nome: 'Usuário', email, role: 'user' };
-      const signedUser = await createSignedUser(user);
-      setAppUser(user);
-      localStorage.setItem('t10_user', JSON.stringify(signedUser));
-      return true;
-    }
-    return false;
   }, []);
 
   const logout = useCallback(async () => {
     setAppUser(null);
-    localStorage.removeItem('t10_user');
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated: !!appUser, 
-      user: appUser, 
-      login, 
+    <AuthContext.Provider value={{
+      isAuthenticated: !!appUser,
+      user: appUser,
+      login,
       logout,
-      loading 
+      loading
     }}>
       {children}
     </AuthContext.Provider>
