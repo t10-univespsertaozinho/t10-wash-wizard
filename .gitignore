@@ -30,6 +30,7 @@ dist-ssr
 *.db
 *.sqlite
 *.sql
+!backend/schema.sql
 
 # Backups SQLite e Arquivos CSV
 *.csv
