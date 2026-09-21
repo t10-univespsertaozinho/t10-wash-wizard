@@ -1,6 +1,15 @@
 import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque } from '@/types';
+import { TOKEN_STORAGE_KEY } from '@/utils/security';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+const getToken = () => {
+  try {
+    return localStorage.getItem(TOKEN_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+};
 
 export interface Database {
   initialize(): Promise<void>;
@@ -39,11 +48,13 @@ export interface Database {
 
 const req = async (endpoint: string, options: RequestInit = {}) => {
   const url = `${API_URL}${endpoint}`;
+  const token = getToken();
   const headers = {
     'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers || {})
   };
-  
+
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
@@ -174,8 +185,10 @@ export const exportBackup = async () => {
 
 export const importBackup = async (formData: FormData) => {
   const url = `${API_URL}/backup/import`;
+  const token = getToken();
   const res = await fetch(url, {
     method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: formData,
     // Note: Do not set Content-Type header when sending FormData,
     // browser will automatically set it to multipart/form-data with boundary

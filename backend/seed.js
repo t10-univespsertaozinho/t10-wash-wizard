@@ -1,6 +1,10 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
+import bcrypt from 'bcryptjs';
+import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,9 +31,14 @@ db.exec('DELETE FROM clientes');
 db.exec('DELETE FROM produtos');
 db.exec('DELETE FROM tipos_lavagem');
 let adminId = 'admin-local';
-console.log('Criando usuário admin (se não existir)...');
-db.run('INSERT OR IGNORE INTO users (id, email, nome, role, created_at) VALUES (?, ?, ?, ?, ?)',
-  adminId, 'admin@washwizard.com', 'Administrador', 'admin', now
+console.log('Criando usuários iniciais (se não existirem)...');
+const adminPasswordHash = bcrypt.hashSync(process.env.SEED_ADMIN_PASSWORD || 'admin123', 10);
+const operadorPasswordHash = bcrypt.hashSync(process.env.SEED_OPERADOR_PASSWORD || 'operador123', 10);
+db.run('INSERT OR IGNORE INTO users (id, email, nome, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+  adminId, 'admin@washwizard.com', 'Administrador', 'admin', adminPasswordHash, now
+);
+db.run('INSERT OR IGNORE INTO users (id, email, nome, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+  'operador-local', 'operador@washwizard.com', 'Operador', 'operador', operadorPasswordHash, now
 );
 
 // Inserir tipos de lavagem

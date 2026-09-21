@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   id TEXT PRIMARY KEY,
   email TEXT NOT NULL UNIQUE,
   nome TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'operador' CHECK (role IN ('admin', 'operador')),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
