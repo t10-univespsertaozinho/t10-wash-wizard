@@ -12,6 +12,7 @@ export default function NovaLavagem() {
   const [valor, setValor] = useState('');
   const [pagamento, setPagamento] = useState('Dinheiro');
   const [obs, setObs] = useState('');
+  const [erro, setErro] = useState('');
 
   const veiculosCliente = clienteId ? getVeiculosCliente(clienteId) : [];
 
@@ -23,14 +24,22 @@ export default function NovaLavagem() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErro('');
     if (!clienteId || !veiculoId || !tipoId) return;
+
+    const valorNum = parseFloat(valor);
+    if (!Number.isFinite(valorNum) || valorNum < 0) {
+      setErro('O valor deve ser um número maior ou igual a zero.');
+      return;
+    }
+
     addLavagem({
       cliente_id: clienteId,
       veiculo_id: veiculoId,
       tipo_lavagem_id: tipoId,
       status: 'pendente',
       pagamento,
-      valor: parseFloat(valor) || 0,
+      valor: valorNum,
       observacao: obs,
     });
     navigate('/lavagens');
@@ -40,6 +49,9 @@ export default function NovaLavagem() {
     <div className="max-w-lg mx-auto">
       <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 animate-fade-up">
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Registrar Lavagem</h2>
+        {erro && (
+          <div className="badge-cancelada text-sm rounded-lg px-4 py-2 text-center">{erro}</div>
+        )}
         <div>
           <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Cliente</label>
           <select className="input-t10" value={clienteId} onChange={e => { setClienteId(e.target.value); setVeiculoId(''); }} required>
@@ -63,7 +75,7 @@ export default function NovaLavagem() {
         </div>
         <div>
           <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Valor (R$)</label>
-          <input className="input-t10" type="number" step="0.01" value={valor} onChange={e => setValor(e.target.value)} required />
+          <input className="input-t10" type="number" step="0.01" min="0" value={valor} onChange={e => setValor(e.target.value)} required />
         </div>
         <div>
           <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Forma de Pagamento</label>

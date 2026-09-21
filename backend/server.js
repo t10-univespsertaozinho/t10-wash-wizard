@@ -102,6 +102,14 @@ app.get('/api/clientes', async (req, res) => {
   } catch (err) { handleServerError(res, err); }
 });
 
+app.get('/api/clientes/:id', async (req, res) => {
+  try {
+    const row = await get('SELECT * FROM clientes WHERE id = ?', [req.params.id]);
+    if (!row) return res.status(404).json({ error: 'Cliente não encontrado' });
+    res.json(row);
+  } catch (err) { handleServerError(res, err); }
+});
+
 app.post('/api/clientes', async (req, res) => {
   try {
     const { nome, telefone } = req.body;
@@ -146,6 +154,9 @@ app.get('/api/veiculos', async (req, res) => {
 app.post('/api/veiculos', async (req, res) => {
   try {
     const { cliente_id, placa, marca, cor, modelo } = req.body;
+    if (!cliente_id || !String(modelo || '').trim() || !String(placa || '').trim()) {
+      return res.status(400).json({ error: 'Cliente, modelo e placa são obrigatórios.' });
+    }
     const id = genId();
     await run('INSERT INTO veiculos (id, cliente_id, user_id, placa, marca, cor, modelo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [id, cliente_id, req.user.id, placa, marca, cor, modelo, now()]);
@@ -164,6 +175,9 @@ app.delete('/api/veiculos/:id', async (req, res) => {
 app.put('/api/veiculos/:id', async (req, res) => {
   try {
     const { modelo, placa, cor } = req.body;
+    if (!String(modelo || '').trim() || !String(placa || '').trim()) {
+      return res.status(400).json({ error: 'Modelo e placa são obrigatórios.' });
+    }
     await run('UPDATE veiculos SET modelo = ?, placa = ?, cor = ? WHERE id = ?', [modelo, placa, cor, req.params.id]);
     const row = await get('SELECT * FROM veiculos WHERE id = ?', [req.params.id]);
     res.json(row);
@@ -233,15 +247,22 @@ app.get('/api/lavagens', async (req, res) => {
 app.post('/api/lavagens', async (req, res) => {
   try {
     const { cliente_id, veiculo_id, tipo_lavagem_id, status, valor, pagamento, observacao } = req.body;
+    if (!cliente_id || !veiculo_id || !tipo_lavagem_id) {
+      return res.status(400).json({ error: 'Cliente, veículo e tipo de lavagem são obrigatórios.' });
+    }
     const statusFinal = status || 'pendente';
     if (!STATUS_LAVAGEM.includes(statusFinal)) {
       return res.status(400).json({ error: `Status inválido. Use um dos: ${STATUS_LAVAGEM.join(', ')}` });
+    }
+    const valorNum = Number(valor);
+    if (!Number.isFinite(valorNum) || valorNum < 0) {
+      return res.status(400).json({ error: 'O valor da lavagem deve ser um número maior ou igual a zero.' });
     }
     const id = genId();
     const dataConclusao = statusFinal === 'concluida' ? now() : null;
     await run(`INSERT INTO lavagens (id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, user_id, pagamento, observacao, data_conclusao)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, cliente_id, veiculo_id, tipo_lavagem_id, statusFinal, valor, now(), req.user.id, pagamento || 'Pendente', observacao, dataConclusao]);
+      [id, cliente_id, veiculo_id, tipo_lavagem_id, statusFinal, valorNum, now(), req.user.id, pagamento || 'Pendente', observacao, dataConclusao]);
     const row = await get('SELECT * FROM lavagens WHERE id = ?', [id]);
     res.json(row);
   } catch (err) { handleServerError(res, err); }
@@ -253,11 +274,18 @@ app.put('/api/lavagens/:id', async (req, res) => {
     if (status !== undefined && !STATUS_LAVAGEM.includes(status)) {
       return res.status(400).json({ error: `Status inválido. Use um dos: ${STATUS_LAVAGEM.join(', ')}` });
     }
+    let valorNum;
+    if (valor !== undefined) {
+      valorNum = Number(valor);
+      if (!Number.isFinite(valorNum) || valorNum < 0) {
+        return res.status(400).json({ error: 'O valor da lavagem deve ser um número maior ou igual a zero.' });
+      }
+    }
 
     const updates = [];
     const params = [];
     if (status !== undefined) { updates.push('status = ?'); params.push(status); }
-    if (valor !== undefined) { updates.push('valor = ?'); params.push(valor); }
+    if (valor !== undefined) { updates.push('valor = ?'); params.push(valorNum); }
     if (pagamento !== undefined) { updates.push('pagamento = ?'); params.push(pagamento); }
     if (observacao !== undefined) { updates.push('observacao = ?'); params.push(observacao); }
 

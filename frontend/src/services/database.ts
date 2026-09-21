@@ -46,16 +46,18 @@ export interface Database {
   createMovimentacao(userId: string, data: Omit<MovimentacaoEstoque, 'id' | 'data' | 'user_id'>): Promise<MovimentacaoEstoque>;
 }
 
-const req = async (endpoint: string, options: RequestInit = {}) => {
+const req = async (endpoint: string, options: RequestInit & { notFoundReturnsNull?: boolean } = {}) => {
+  const { notFoundReturnsNull, ...fetchOptions } = options;
   const url = `${API_URL}${endpoint}`;
   const token = getToken();
   const headers = {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {})
+    ...(fetchOptions.headers || {})
   };
 
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetch(url, { ...fetchOptions, headers });
+  if (res.status === 404 && notFoundReturnsNull) return null;
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erro desconhecido' }));
     throw new Error(err.error || `Erro HTTP: ${res.status}`);
@@ -73,8 +75,7 @@ export const apiDB: Database = {
   },
 
   async getCliente(id: string) {
-    const clientes = await req(`/clientes`);
-    return clientes.find((c: Cliente) => c.id === id) || null;
+    return req(`/clientes/${id}`, { notFoundReturnsNull: true });
   },
 
   async createCliente(userId: string, data) {
