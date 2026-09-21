@@ -150,7 +150,11 @@ const generateRandomDate = (monthsAgo) => {
   date.setDate(Math.floor(Math.random() * 28) + 1);
   date.setHours(Math.floor(Math.random() * 10) + 8);
   date.setMinutes(Math.floor(Math.random() * 60));
-  return date.toISOString();
+
+  // No mês atual (monthsAgo = 0), o dia sorteado (1-28) pode cair depois de hoje,
+  // gerando uma data futura. Trava em "agora" para nunca ultrapassar a data atual.
+  const agora = new Date();
+  return (date > agora ? agora : date).toISOString();
 };
 
 const statuses = ['concluida', 'pendente', 'em_progresso', 'cancelada'];
