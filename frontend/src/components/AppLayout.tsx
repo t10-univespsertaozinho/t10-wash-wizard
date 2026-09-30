@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavLink } from '@/components/NavLink';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, Droplets, List, Tags, Users, UserPlus,
   Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings, Car
@@ -49,6 +49,39 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const sidebarWasOpen = useRef(false);
+
+  /**
+   * WCAG 2.1.1 - o menu lateral abre com um botao real, mas antes so dispensava
+   * pelo clique no overlay, que e exclusivo do ponteiro: quem navega por teclado
+   * abria o menu e ficava preso, sem Escape, sem botao de fechar e sem o foco
+   * migrado para dentro da gaveta.
+   */
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      setSidebarOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [sidebarOpen]);
+
+  // Devolve o foco ao gatilho quando a gaveta fecha. O `sidebarWasOpen` evita
+  // roubar o foco no primeiro render, quando `sidebarOpen` ja vale false.
+  useEffect(() => {
+    if (sidebarOpen) {
+      sidebarWasOpen.current = true;
+      return;
+    }
+    if (!sidebarWasOpen.current) return;
+    sidebarWasOpen.current = false;
+    menuButtonRef.current?.focus();
+  }, [sidebarOpen]);
 
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
@@ -80,6 +113,16 @@ export default function AppLayout() {
             T10 🚗
           </NavLink>
           <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">Gestão</p>
+          {/* Fecha a gaveta sem depender do overlay (que so o mouse alcança). */}
+          <button
+            ref={closeButtonRef}
+            type="button"
+            onClick={() => setSidebarOpen(false)}
+            aria-label="Fechar menu"
+            className="lg:hidden absolute right-3 top-4 text-muted-foreground hover:text-foreground rounded-lg p-1"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
         </div>
         <nav aria-label="Navegação principal" className="flex-1 py-3 px-3 space-y-0.5 overflow-y-auto">
           {navItems.map(item => (
@@ -119,14 +162,25 @@ export default function AppLayout() {
         </div>
       </aside>
 
-      {/* Overlay */}
-      {sidebarOpen && <div className="fixed inset-0 z-30 bg-background/60 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      {/* Overlay: botão nativo em vez de div com onClick. Fica fora da ordem de
+          tabulação (tabIndex={-1}) porque o teclado já tem Escape e o botão
+          "Fechar menu"; continua alcançável por controle de voz, daí o rótulo. */}
+      {sidebarOpen && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label="Fechar menu"
+          onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 z-30 bg-background/60 lg:hidden"
+        />
+      )}
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 border-b border-border flex items-center justify-between px-4 lg:px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
           <div className="flex items-center gap-3 min-w-0">
             <button
+              ref={menuButtonRef}
               type="button"
               className="lg:hidden text-muted-foreground shrink-0"
               onClick={() => setSidebarOpen(true)}

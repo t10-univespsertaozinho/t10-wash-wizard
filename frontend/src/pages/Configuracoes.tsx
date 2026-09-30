@@ -3,6 +3,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { exportBackup, importBackup, resetDatabase } from '@/services/database';
 import { Shield, Database, AlertTriangle, Save, RefreshCw, UploadCloud, DownloadCloud, Trash2 } from 'lucide-react';
 
+/**
+ * Extrai uma mensagem exibível de um `catch`.
+ *
+ * `unknown` em vez de `any`: `any` desligaria a checagem de tipo justamente no
+ * ponto onde o valor é menos previsível — o `throw` pode ser qualquer coisa.
+ * `e.message` num `any` passava sem reclamar, mas um `throw 'texto solto'` ou um
+ * `throw { codigo: 500 }` quebrariam a tela em branco num `catch` que devia
+ * justamente ser o caminho seguro.
+ */
+function mensagemDeErro(e: unknown, padrao: string): string {
+  if (e instanceof Error && e.message) return e.message;
+  // Erros de outra realm (iframe, worker) falham no `instanceof`; tenta ler o campo.
+  if (typeof e === 'object' && e !== null && 'message' in e) {
+    const { message } = e as { message?: unknown };
+    if (typeof message === 'string' && message) return message;
+  }
+  return padrao;
+}
+
 export default function Configuracoes() {
   const { user } = useAuth();
   
@@ -36,8 +55,8 @@ export default function Configuracoes() {
         URL.revokeObjectURL(url);
       }
       setMessage({ type: 'success', text: 'Backup exportado com sucesso!' });
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Erro ao exportar backup.' });
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: mensagemDeErro(e, 'Erro ao exportar backup.') });
     } finally {
       setLoading(false);
     }
@@ -64,8 +83,8 @@ export default function Configuracoes() {
       setMessage({ type: 'success', text: `Backup importado! ${res.records} registros restaurados.` });
       // Recarregar a página após alguns segundos para refletir os novos dados
       setTimeout(() => window.location.reload(), 2000);
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Erro ao importar backup.' });
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: mensagemDeErro(e, 'Erro ao importar backup.') });
     } finally {
       setLoading(false);
       e.target.value = '';
@@ -83,8 +102,8 @@ export default function Configuracoes() {
       await resetDatabase();
       setMessage({ type: 'success', text: 'Banco de dados resetado com sucesso!' });
       setTimeout(() => window.location.reload(), 2000);
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Erro ao resetar banco de dados.' });
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: mensagemDeErro(e, 'Erro ao resetar banco de dados.') });
     } finally {
       setLoading(false);
     }
