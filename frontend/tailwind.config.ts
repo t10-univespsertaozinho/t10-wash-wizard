@@ -44,7 +44,21 @@ export default {
         },
         accent: {
           DEFAULT: "hsl(var(--accent))",
+          // WCAG 1.4.3 - usar text-accent-text para texto; --accent e o preenchimento
+          text: "hsl(var(--text-accent))",
           foreground: "hsl(var(--accent-foreground))",
+        },
+        // `--chart-*` ja e uma cor completa (hex), nao a tripla "H S% L%" dos
+        // outros tokens. Envolver em hsl() aqui quebrava a cor: hsl() nao aceita
+        // hue em porcentagem. Usar var() direto mantem border-chart-4 /
+        // text-chart-4 funcionando e sem parse.
+        chart: {
+          1: "var(--chart-1)",
+          2: "var(--chart-2)",
+          3: "var(--chart-3)",
+          4: "var(--chart-4)",
+          5: "var(--chart-5)",
+          6: "var(--chart-6)",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

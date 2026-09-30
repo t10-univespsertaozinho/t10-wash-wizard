@@ -3,6 +3,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { exportBackup, importBackup, resetDatabase } from '@/services/database';
 import { Shield, Database, AlertTriangle, Save, RefreshCw, UploadCloud, DownloadCloud, Trash2 } from 'lucide-react';
 
+/**
+ * Extrai uma mensagem exibível de um `catch`.
+ *
+ * `unknown` em vez de `any`: `any` desligaria a checagem de tipo justamente no
+ * ponto onde o valor é menos previsível — o `throw` pode ser qualquer coisa.
+ * `e.message` num `any` passava sem reclamar, mas um `throw 'texto solto'` ou um
+ * `throw { codigo: 500 }` quebrariam a tela em branco num `catch` que devia
+ * justamente ser o caminho seguro.
+ */
+function mensagemDeErro(e: unknown, padrao: string): string {
+  if (e instanceof Error && e.message) return e.message;
+  // Erros de outra realm (iframe, worker) falham no `instanceof`; tenta ler o campo.
+  if (typeof e === 'object' && e !== null && 'message' in e) {
+    const { message } = e as { message?: unknown };
+    if (typeof message === 'string' && message) return message;
+  }
+  return padrao;
+}
+
 export default function Configuracoes() {
   const { user } = useAuth();
   
@@ -36,8 +55,8 @@ export default function Configuracoes() {
         URL.revokeObjectURL(url);
       }
       setMessage({ type: 'success', text: 'Backup exportado com sucesso!' });
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Erro ao exportar backup.' });
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: mensagemDeErro(e, 'Erro ao exportar backup.') });
     } finally {
       setLoading(false);
     }
@@ -64,8 +83,8 @@ export default function Configuracoes() {
       setMessage({ type: 'success', text: `Backup importado! ${res.records} registros restaurados.` });
       // Recarregar a página após alguns segundos para refletir os novos dados
       setTimeout(() => window.location.reload(), 2000);
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Erro ao importar backup.' });
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: mensagemDeErro(e, 'Erro ao importar backup.') });
     } finally {
       setLoading(false);
       e.target.value = '';
@@ -83,8 +102,8 @@ export default function Configuracoes() {
       await resetDatabase();
       setMessage({ type: 'success', text: 'Banco de dados resetado com sucesso!' });
       setTimeout(() => window.location.reload(), 2000);
-    } catch (e: any) {
-      setMessage({ type: 'error', text: e.message || 'Erro ao resetar banco de dados.' });
+    } catch (e: unknown) {
+      setMessage({ type: 'error', text: mensagemDeErro(e, 'Erro ao resetar banco de dados.') });
     } finally {
       setLoading(false);
     }
@@ -93,7 +112,7 @@ export default function Configuracoes() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="font-barlow-condensed font-bold text-2xl text-foreground">Configurações do Sistema</h1>
+        <h2 className="font-barlow-condensed font-bold text-2xl text-foreground">Configurações do Sistema</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Gerencie o banco de dados local SQLite e realize backups via arquivos CSV.
         </p>
@@ -136,14 +155,20 @@ export default function Configuracoes() {
               Exportar Backup (CSV)
             </button>
 
-            <label className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
-              {loading ? <RefreshCw className="animate-spin" size={16} /> : <UploadCloud size={16} />}
+            <label
+              htmlFor="import-backup-csv"
+              className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus-within:ring-2 focus-within:ring-[hsl(var(--focus-ring))] focus-within:ring-offset-2 focus-within:ring-offset-background"
+            >
+              <span aria-hidden="true" className="inline-flex">
+                {loading ? <RefreshCw className="animate-spin" size={16} /> : <UploadCloud size={16} />}
+              </span>
               Importar Backup (CSV)
               <input 
+                id="import-backup-csv"
                 type="file" 
                 multiple 
                 accept=".csv" 
-                className="hidden" 
+                className="sr-only"
                 onChange={handleImportBackup}
                 disabled={loading}
               />
@@ -172,9 +197,13 @@ export default function Configuracoes() {
 
       {/* Mensagem de Feedback */}
       {message && (
-        <div className={`rounded-lg px-4 py-3 ${
-          message.type === 'success' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-        }`}>
+        <div
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live={message.type === 'error' ? 'assertive' : 'polite'}
+          className={`rounded-lg px-4 py-3 ${
+            message.type === 'success' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+          }`}
+        >
           {message.text}
         </div>
       )}

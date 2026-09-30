@@ -1,30 +1,113 @@
 import { useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { isDarkTheme } from '@/hooks/useTheme';
+import { useCssTokens, toHsl } from '@/hooks/useThemeTokens';
 import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User, TrendingUp, Package, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, LabelList } from 'recharts';
+import {
+  ChartDataTable,
+  ChartLegend,
+  ChartTooltip,
+  BarValue,
+} from '@/components/charts/chartA11y';
+import { chartA11yProps, type SeriesDescriptor } from '@/components/charts/chartSeries';
+import { useChartPalette } from '@/components/charts/useChartPalette';
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// Tokens que ainda sao a tripla "H S% L%" e por isso passam por `toHsl()`.
+// As cores das series nao entram aqui: `--chart-*` ja e uma cor completa e vem
+// por `useChartPalette()`, sem montagem de string em JS.
+const TOKENS = ['--card', '--foreground', '--muted-foreground', '--border'] as const;
+
+/** Raio das pontas superiores das barras. */
+const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
+
+/**
+ * Espessura do separador entre segmentos empilhados.
+ *
+ * O traco sai centrado no contorno do path, entao na divisa entre dois segmentos
+ * entram 0.5px de cada lado e a faixa visivel soma 1px exato, na cor do card.
+ * Sem isso, com mais de 6 tipos cadastrados a paleta de 6 cores passaria a
+ * repetir e dois segmentos ficariam identicos.
+ */
+const SEGMENT_GAP = 1;
+
+/**
+ * Cor do separador: `hsl(var(--card))`, direto no atributo do Recharts.
+ *
+ * `--card` e a tripla "H S% L%" e o `hsl()` aqui recebe a tripla como
+ * substituto de `var()`, que e a forma como o CSS foi feito para funcionar.
+ * Nao precisa passar por JS, e o modo de falha e o seguro: se um navegador
+ * antigo nao resolver `var()` em atributo de apresentacao, some o separador,
+ * mas nao aparece contorno preto em cima de cada segmento.
+ */
+const SEGMENT_STROKE = 'hsl(var(--card))';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { lavagens, clientes, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData, tiposLavagem } = useApp();
-  const isDark = isDarkTheme();
+  const tokens = useCssTokens(TOKENS);
 
+  // Paleta das series: hex direto do CSS, com reserva de Okabe-Ito se a leitura falhar.
+  const chartColors = useChartPalette();
+
+  // Cores do tooltip derivadas dos tokens: fundo, borda e sombra do tema ativo.
   const tooltipStyle = useMemo(() => ({
-    background: isDark ? '#1a1d27' : '#ffffff',
-    border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : '#e5e7eb'}`,
-    borderRadius: 8,
-    color: isDark ? '#fff' : '#1f2937',
-    fontSize: 12,
-  }), [isDark]);
+    background: toHsl(tokens['--card']),
+    border: `1px solid hsl(${tokens['--border']})`,
+    borderRadius: 12,
+    boxShadow: `0 10px 30px -8px hsl(${tokens['--foreground']} / 0.18)`,
+    color: toHsl(tokens['--foreground']),
+    fontFamily: 'inherit',
+  }), [tokens]);
 
-  const tickStyle = useMemo(() => ({ 
-    fill: isDark ? '#9ca3af' : '#6b7280', 
-    fontSize: 11 
-  }), [isDark]);
+  /** Tinta do valor acima da barra: precisa contrastar com o card, nao com a barra. */
+  const labelInk = useMemo(() => toHsl(tokens['--foreground']), [tokens]);
+
+  const tickStyle = useMemo(() => ({
+    fill: toHsl(tokens['--muted-foreground']),
+    fontSize: 11,
+    fontFamily: 'inherit',
+  }), [tokens]);
+
+  /**
+   * Faixa de realce do tooltip: 12% da cor da serie 1.
+   *
+   * `color-mix` em vez de `hsl(--chart-1 / 0.12)`: o token ja e uma cor
+   * completa em hex, e ancorar alfa em hex nao e sintaxe valida de hsl().
+   */
+  const cursorStyle = useMemo(
+    () => ({ fill: `color-mix(in srgb, ${chartColors[0]} 12%, transparent)` }),
+    [chartColors],
+  );
+
+  /**
+   * Descritores das series: fonte unica para legenda, tooltip e tabela `sr-only`.
+   * O rotulo visivel do Recharts vem daqui, para que os tres nunca saiam de
+   * sincronia. Nao ha textura: a separacao entre series fica por conta da
+   * paleta Okabe-Ito e o nome da serie faz o papel de rotulo.
+   */
+  const series7dias = useMemo<SeriesDescriptor[]>(() => [
+    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'bar' },
+    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'line', dash: '7 4' },
+  ], []);
+
+  const series6meses = useMemo<SeriesDescriptor[]>(() => [
+    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'bar' },
+    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'line', dash: '7 4' },
+  ], []);
+
+  const seriesPorTipo = useMemo<SeriesDescriptor[]>(
+    () => tiposLavagem.map((t) => ({
+      key: t.nome,
+      name: t.nome,
+      unit: 'numero' as const,
+      kind: 'bar' as const,
+    })),
+    [tiposLavagem],
+  );
 
   const stats = useMemo(() => {
     const hoje = new Date().toISOString().slice(0, 10);
@@ -102,7 +185,7 @@ export default function Dashboard() {
   const statsCardsHoje = useMemo(() => [
     { label: 'Lavagens Hoje', value: stats.lavagensHoje.length, icon: Droplets, border: 'border-primary' },
     { label: 'Receita Hoje', value: `R$ ${stats.receitaHoje.toFixed(2)}`, icon: DollarSign, border: 'border-success' },
-    { label: 'Clientes Hoje', value: stats.clientesHoje, icon: Users, border: 'border-purple-500' },
+    { label: 'Clientes Hoje', value: stats.clientesHoje, icon: Users, border: 'border-chart-4' },
     { label: 'Lavagens no Mês', value: stats.lavagensMes.length, icon: Calendar, border: 'border-accent' },
   ], [stats]);
 
@@ -111,18 +194,13 @@ export default function Dashboard() {
     { label: 'Concluídas no Mês', value: stats.concluidasMes.length, icon: Check, border: 'border-accent' },
   ], [stats]);
 
-  const colors = useMemo(() => isDark 
-    ? ['hsl(49,100%,50%)', 'hsl(212,80%,42%)', 'hsl(142,70%,45%)', 'hsl(280,60%,50%)', 'hsl(340,80%,50%)', 'hsl(180,70%,50%)']
-    : ['hsl(25,95%,45%)', 'hsl(212,80%,50%)', 'hsl(142,70%,35%)', 'hsl(280,60%,45%)', 'hsl(340,80%,50%)', 'hsl(180,70%,45%)'],
-  [isDark]);
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-barlow-condensed font-bold text-2xl text-foreground">Dashboard</h1>
+          <h2 className="font-barlow-condensed font-bold text-2xl text-foreground">Dashboard</h2>
           <p className="text-sm text-muted-foreground flex items-center gap-2">
-            {user?.role === 'admin' ? <Shield size={14} className="text-accent" /> : <User size={14} />}
+            {user?.role === 'admin' ? <Shield size={14} className="text-accent-text" /> : <User size={14} />}
             Perfil: <span className="font-semibold text-foreground capitalize">{user?.role}</span> ({user?.nome})
           </p>
         </div>
@@ -135,7 +213,7 @@ export default function Dashboard() {
                   seedTestData();
                 }
               }}
-              className="bg-accent/10 text-accent hover:bg-accent/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
+              className="bg-accent/10 text-accent-text hover:bg-accent/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
             >
               <Droplets size={16} /> Carregar Dados
             </button>
@@ -144,7 +222,7 @@ export default function Dashboard() {
       </div>
 
       {/* 1. Stats Rápidas - Hoje */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statsCardsHoje.map((s, i) => (
           <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
             <div className="flex items-center justify-between">
@@ -165,9 +243,15 @@ export default function Dashboard() {
           {stats.pendentes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma lavagem pendente.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div
+              className="overflow-x-auto"
+              tabIndex={0}
+              role="region"
+              aria-label="Tabela de últimas lavagens"
+            >
               <table className="w-full text-sm">
-                <thead><tr className="table-header"><th className="text-left py-2 px-3">Cliente</th><th className="text-left py-2 px-3">Veículo</th><th className="text-left py-2 px-3">Tipo</th><th className="text-right py-2 px-3">Valor</th><th className="py-2 px-3"></th></tr></thead>
+                <caption className="sr-only">Últimas lavagens registradas, com cliente, veículo, tipo, valor e ações</caption>
+                <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Cliente</th><th scope="col" className="text-left py-2 px-3">Veículo</th><th scope="col" className="text-left py-2 px-3">Tipo</th><th scope="col" className="text-right py-2 px-3">Valor</th><th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th></tr></thead>
                 <tbody>
                   {stats.pendentes.slice(0, 5).map(l => {
                     const c = getCliente(l.cliente_id);
@@ -181,7 +265,7 @@ export default function Dashboard() {
                         <td className="py-2 px-3 text-right text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
                         <td className="py-2 px-3 text-right">
                           <div className="inline-flex items-center gap-1.5">
-                            <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} className="bg-accent/10 text-accent text-xs px-3 py-1 rounded-full font-semibold hover:bg-accent/20 transition-colors inline-flex items-center gap-1">
+                            <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} className="bg-accent/10 text-accent-text text-xs px-3 py-1 rounded-full font-semibold hover:bg-accent/20 transition-colors inline-flex items-center gap-1">
                               <PlayCircle size={12} /> Em progresso
                             </button>
                             <button onClick={() => updateLavagemStatus(l.id, 'concluida')} className="bg-success/10 text-success text-xs px-3 py-1 rounded-full font-semibold hover:bg-success/20 transition-colors inline-flex items-center gap-1">
@@ -205,7 +289,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-2">
               {recentClientes.map(c => {
-                const avatarColors = ['bg-primary/20 text-primary', 'bg-accent/20 text-accent', 'bg-success/20 text-success', 'bg-purple-500/20 text-purple-400', 'bg-destructive/20 text-destructive'];
+                const avatarColors = ['badge-andamento', 'badge-pendente', 'badge-concluida', 'badge-info', 'badge-cancelada'];
                 const ci = c.nome.charCodeAt(0) % avatarColors.length;
                 return (
                   <Link key={c.id} to={`/clientes/${c.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/40 transition-colors">
@@ -229,19 +313,51 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
           <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Últimos 7 dias</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={stats.last7}>
-                <XAxis dataKey="dia" tick={tickStyle} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend />
-                <Bar yAxisId="left" dataKey="receita" fill="hsl(49,100%,50%)" radius={[4, 4, 0, 0]} name="Receita (R$)" />
-                <Line yAxisId="right" type="monotone" dataKey="lavagens" stroke="hsl(212,80%,42%)" strokeWidth={2} dot={{ fill: 'hsl(212,80%,42%)' }} name="Lavagens" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          <figure
+            className="m-0"
+            aria-label="Gráfico dos últimos 7 dias: receita em barras e quantidade de lavagens em linha tracejada. Os valores exatos estão na tabela seguinte."
+          >
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={stats.last7} {...chartA11yProps('Últimos 7 dias', 'Barras: receita em reais por dia. Linha tracejada: quantidade de lavagens por dia. Os valores exatos estão na tabela seguinte.')}>
+                  <XAxis dataKey="dia" tick={tickStyle} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={cursorStyle}
+                    content={<ChartTooltip items={series7dias} colors={chartColors} contentStyle={tooltipStyle} />}
+                  />
+                  <Legend content={<ChartLegend items={series7dias} colors={chartColors} />} />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="receita"
+                    name={series7dias[0].name}
+                    fill={chartColors[0]}
+                    radius={BAR_RADIUS}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="lavagens"
+                    name={series7dias[1].name}
+                    stroke={chartColors[1]}
+                    strokeWidth={2}
+                    strokeDasharray={series7dias[1].dash}
+                    dot={{ fill: chartColors[1] }}
+                    activeDot={{ r: 4 }}
+                    isAnimationActive={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <ChartDataTable
+              caption="Receita e quantidade de lavagens nos últimos 7 dias"
+              rowLabel="Dia"
+              columns={series7dias}
+              rows={stats.last7.map(d => ({ label: d.dia, values: [d.receita, d.lavagens] }))}
+            />
+          </figure>
         </div>
 
         <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '480ms' }}>
@@ -269,7 +385,7 @@ export default function Dashboard() {
       {/* 3. Stats do Mês + Lavagens por Tipo */}
       {user?.role === 'admin' && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {statsCardsMes.map((s, i) => (
               <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between">
@@ -281,14 +397,14 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
-            <div className="bg-card rounded-xl border-l-4 border-purple-500 p-4 animate-fade-up" style={{ animationDelay: '160ms' }}>
+            <div className="bg-card rounded-xl border-l-4 border-chart-4 p-4 animate-fade-up" style={{ animationDelay: '160ms' }}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total por Tipo (Mês)</p>
                   <div className="mt-1 space-y-1">
                     {stats.lavagensPorTipoMes.map((t) => (
                       <p key={t.nome} className="text-sm font-barlow-condensed font-bold text-foreground">
-                        {t.nome}: <span className="text-purple-400">{t.quantidade}</span>
+                        {t.nome}: <span className="text-chart-4">{t.quantidade}</span>
                       </p>
                     ))}
                   </div>
@@ -302,36 +418,106 @@ export default function Dashboard() {
           <div className="grid lg:grid-cols-2 gap-4">
             <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '320ms' }}>
               <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens e Receita - Últimos 6 meses</h2>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={stats.last6Months}>
-                    <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                    <Bar yAxisId="left" dataKey="lavagens" fill="hsl(212,80%,42%)" radius={[4, 4, 0, 0]} name="Lavagens" />
-                    <Line yAxisId="right" type="monotone" dataKey="receita" stroke="hsl(49,100%,50%)" strokeWidth={2} dot={{ fill: 'hsl(49,100%,50%)' }} name="Receita (R$)" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              <figure
+                className="m-0"
+                aria-label="Gráfico dos últimos 6 meses: quantidade de lavagens em barras com o número escrito acima de cada uma e receita em linha tracejada. Os valores exatos estão na tabela seguinte."
+              >
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={stats.last6Months} {...chartA11yProps('Lavagens e receita nos últimos 6 meses', 'Barras: quantidade de lavagens por mês, com o número escrito acima de cada barra. Linha tracejada: receita em reais por mês. Os valores exatos estão na tabela seguinte.')}>
+                      <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={cursorStyle}
+                        content={<ChartTooltip items={series6meses} colors={chartColors} contentStyle={tooltipStyle} />}
+                      />
+                      <Legend content={<ChartLegend items={series6meses} colors={chartColors} />} />
+                      <Bar
+                        yAxisId="left"
+                        dataKey="lavagens"
+                        name={series6meses[0].name}
+                        fill={chartColors[0]}
+                        radius={BAR_RADIUS}
+                        isAnimationActive={false}
+                      >
+                        {/* Rotulo direto: a barra sozinha nao diz quantas lavagens houve */}
+                        <LabelList dataKey="lavagens" content={<BarValue color={labelInk} />} />
+                      </Bar>
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="receita"
+                        name={series6meses[1].name}
+                        stroke={chartColors[0]}
+                        strokeWidth={2}
+                        strokeDasharray={series6meses[1].dash}
+                        dot={{ fill: chartColors[0] }}
+                        activeDot={{ r: 4 }}
+                        isAnimationActive={false}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <ChartDataTable
+                  caption="Quantidade de lavagens e receita nos últimos 6 meses"
+                  rowLabel="Mês"
+                  columns={series6meses}
+                  rows={stats.last6Months.map(m => ({ label: m.mes, values: [m.lavagens, m.receita] }))}
+                />
+              </figure>
             </div>
 
             <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
               <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens por Tipo - Últimos 6 meses</h2>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.lavagensPorTipo}>
-                    <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
-                    <YAxis tick={tickStyle} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                    {tiposLavagem.map((t, i) => (
-                      <Bar key={t.id} dataKey={t.nome} stackId="a" fill={colors[i % colors.length]} radius={[2, 2, 0, 0]} />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <figure
+                className="m-0"
+                aria-label="Gráfico de barras empilhadas das lavagens por tipo nos últimos 6 meses. Cada tipo tem uma cor própria da paleta Okabe-Ito, a legenda nomeia cada tipo, e os valores exatos estão na tabela seguinte e no tooltip ao passar o mouse."
+              >
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.lavagensPorTipo} {...chartA11yProps('Lavagens por tipo nos últimos 6 meses', 'Barras empilhadas por mês. Cada tipo de lavagem tem uma cor própria, nomeada na legenda. Os valores exatos de cada segmento estão na tabela seguinte.')}>
+                      <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
+                      <YAxis tick={tickStyle} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={cursorStyle}
+                        content={<ChartTooltip items={seriesPorTipo} colors={chartColors} contentStyle={tooltipStyle} />}
+                      />
+                      <Legend content={<ChartLegend items={seriesPorTipo} colors={chartColors} />} />
+                      {/* Sem LabelList: numero dentro de segmento espremido vira ruido
+                          visual. O valor fica no tooltip e na tabela sr-only. */}
+                      {tiposLavagem.map((t, i) => {
+                        // So a ultima barra da pilha recebe raio. Arredondar todas
+                        // curva o topo de cada segmento dentro da pilha e deixa um
+                        // serrilhado entre as camadas.
+                        const ehTopo = i === tiposLavagem.length - 1;
+                        return (
+                          <Bar
+                            key={t.id}
+                            dataKey={t.nome}
+                            stackId="a"
+                            name={t.nome}
+                            fill={chartColors[i % chartColors.length]}
+                            radius={ehTopo ? BAR_RADIUS : undefined}
+                            stroke={SEGMENT_STROKE}
+                            strokeWidth={SEGMENT_GAP}
+                            isAnimationActive={false}
+                          />
+                        );
+                      })}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <ChartDataTable
+                  caption="Lavagens por tipo de lavagem nos últimos 6 meses"
+                  rowLabel="Mês"
+                  columns={seriesPorTipo}
+                  rows={stats.lavagensPorTipo.map(m => ({
+                    label: m.mes,
+                    values: tiposLavagem.map(t => Number(m[t.nome] ?? 0)),
+                  }))}
+                />
+              </figure>
             </div>
           </div>
         </>

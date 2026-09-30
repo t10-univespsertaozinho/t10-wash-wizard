@@ -40,8 +40,11 @@ export default function Veiculos() {
           </h3>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search size={14} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
+                id="veiculos-busca"
+                type="search"
+                aria-label="Buscar veículos por modelo, placa ou cliente"
                 className="input-t10 pl-9 text-sm py-1.5"
                 placeholder="Buscar por modelo, placa ou cliente..."
                 value={busca}
@@ -59,7 +62,9 @@ export default function Veiculos() {
 
         {showForm && (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 p-4 bg-secondary/40 rounded-lg">
+            <label htmlFor="veiculo-cliente" className="sr-only">Cliente</label>
             <select
+              id="veiculo-cliente"
               className="input-t10"
               value={clienteId}
               onChange={e => setClienteId(e.target.value)}
@@ -70,10 +75,13 @@ export default function Veiculos() {
                 <option key={c.id} value={c.id}>{c.nome}</option>
               ))}
             </select>
-            <input className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
-            <input className="input-t10 uppercase font-mono" placeholder="ABC1D23 ou ABC1234" value={placa} onChange={handlePlacaChange} maxLength={8} required />
+            <label htmlFor="veiculo-modelo" className="sr-only">Modelo</label>
+            <input id="veiculo-modelo" className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
+            <label htmlFor="veiculo-placa" className="sr-only">Placa</label>
+            <input id="veiculo-placa" className="input-t10 uppercase font-mono" placeholder="ABC1D23 ou ABC1234" value={placa} onChange={handlePlacaChange} maxLength={8} required />
             <div className="flex gap-2">
-              <input className="input-t10 flex-1" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
+              <label htmlFor="veiculo-cor" className="sr-only">Cor</label>
+              <input id="veiculo-cor" className="input-t10 flex-1" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
               <button type="submit" className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-sm hover:brightness-110 transition-all whitespace-nowrap">
                 Salvar
               </button>
@@ -81,42 +89,47 @@ export default function Veiculos() {
           </form>
         )}
 
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="table-header">
-              <th className="text-left py-2 px-3">Cliente</th>
-              <th className="text-left py-2 px-3">Modelo</th>
-              <th className="text-left py-2 px-3">Placa</th>
-              <th className="text-left py-2 px-3">Cor</th>
-              <th className="py-2 px-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtrados.map(v => {
-              const cliente = clientes.find(c => c.id === v.cliente_id);
-              return (
-                <tr key={v.id} className="table-row-hover border-t border-border">
-                  <td className="py-2 px-3 font-medium text-foreground">{cliente?.nome || '—'}</td>
-                  <td className="py-2 px-3">{v.modelo}</td>
-                  <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
-                  <td className="py-2 px-3 text-right">
-                    <ConfirmDialogButton
-                      title="Excluir Veículo"
-                      description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
-                      onConfirm={() => deleteVeiculo(v.id)}
-                      icon={<Trash2 size={14} />}
-                      variant="ghost"
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-            {filtrados.length === 0 && (
-              <tr><td colSpan={5} className="py-6 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>
-            )}
-          </tbody>
-        </table>
+        {/* WCAG 2.1.1 / 1.4.10 - regiao rolavel por teclado, com rotulo para leitores de tela */}
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de veículos">
+          <table className="w-full text-sm">
+            <caption className="sr-only">Veículos cadastrados, com cliente, modelo, placa, cor e ações</caption>
+            <thead>
+              <tr className="table-header">
+                <th scope="col" className="text-left py-2 px-3">Cliente</th>
+                <th scope="col" className="text-left py-2 px-3">Modelo</th>
+                <th scope="col" className="text-left py-2 px-3">Placa</th>
+                <th scope="col" className="text-left py-2 px-3">Cor</th>
+                <th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map(v => {
+                const cliente = clientes.find(c => c.id === v.cliente_id);
+                return (
+                  <tr key={v.id} className="table-row-hover border-t border-border">
+                    <td className="py-2 px-3 font-medium text-foreground">{cliente?.nome || '—'}</td>
+                    <td className="py-2 px-3">{v.modelo}</td>
+                    <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
+                    <td className="py-2 px-3 text-right">
+                      <ConfirmDialogButton
+                        title="Excluir Veículo"
+                        ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
+                        description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
+                        onConfirm={() => deleteVeiculo(v.id)}
+                        icon={<Trash2 size={14} />}
+                        variant="ghost"
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtrados.length === 0 && (
+                <tr><td colSpan={5} className="py-6 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

@@ -25,23 +25,30 @@ export default function Estoque() {
 
       {produtosBaixoEstoque.length > 0 && (
         <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3 animate-fade-up">
-          <AlertTriangle size={20} className="text-primary flex-shrink-0" />
+          <AlertTriangle size={20} aria-hidden="true" className="text-primary flex-shrink-0" />
           <p className="text-sm text-primary font-medium">
             {produtosBaixoEstoque.length} produto(s) com estoque baixo ou zerado
           </p>
         </div>
       )}
-      <div className="bg-card rounded-xl border border-border overflow-x-auto animate-fade-up" style={{ animationDelay: '100ms' }}>
+      <div
+        className="bg-card rounded-xl border border-border overflow-x-auto animate-fade-up"
+        style={{ animationDelay: '100ms' }}
+        tabIndex={0}
+        role="region"
+        aria-label="Tabela de produtos em estoque"
+      >
         <table className="w-full text-sm">
+                <caption className="sr-only">Produtos em estoque, com produto, categoria, quantidade, mínimo, preço unitário, status e ações</caption>
           <thead>
             <tr className="table-header">
-              <th className="text-left py-3 px-4">Produto</th>
-              <th className="text-left py-3 px-4">Categoria</th>
-              <th className="text-center py-3 px-4">Quantidade</th>
-              <th className="text-center py-3 px-4">Mínimo</th>
-              <th className="text-right py-3 px-4">Preço Un.</th>
-              <th className="text-center py-3 px-4">Status</th>
-              <th className="text-right py-3 px-4">Ações</th>
+              <th scope="col" className="text-left py-3 px-4">Produto</th>
+              <th scope="col" className="text-left py-3 px-4">Categoria</th>
+              <th scope="col" className="text-center py-3 px-4">Quantidade</th>
+              <th scope="col" className="text-center py-3 px-4">Mínimo</th>
+              <th scope="col" className="text-right py-3 px-4">Preço Un.</th>
+              <th scope="col" className="text-center py-3 px-4">Status</th>
+              <th scope="col" className="text-right py-3 px-4">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -57,6 +64,7 @@ export default function Estoque() {
                   <div className="flex items-center justify-end gap-1">
                     <ConfirmDialogButton
                       title="Excluir Produto"
+                      ariaLabel={`Excluir produto ${p.nome}`}
                       description={`Tem certeza que deseja excluir o produto "${p.nome}"?`}
                       onConfirm={() => deleteProduto(p.id)}
                       icon={<Trash2 size={15} />}

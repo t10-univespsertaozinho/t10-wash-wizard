@@ -25,26 +25,36 @@ export default function Lavagens() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap" role="group" aria-label="Filtrar lavagens por status">
         {filters.map(f => (
-          <button key={f.key} onClick={() => setFiltro(f.key)}
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => setFiltro(f.key)}
+            aria-pressed={filtro === f.key}
             className={`text-xs px-4 py-1.5 rounded-full font-semibold transition-colors ${filtro === f.key ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
             {f.label}
           </button>
         ))}
       </div>
-      <div className="bg-card rounded-xl border border-border overflow-x-auto">
+      <div
+        className="bg-card rounded-xl border border-border overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Tabela de lavagens"
+      >
         <table className="w-full text-sm">
+                <caption className="sr-only">Lavagens registradas, com data, cliente, veículo, tipo, valor, pagamento, status e ações</caption>
           <thead>
             <tr className="table-header">
-              <th className="text-left py-3 px-4">Data/Hora</th>
-              <th className="text-left py-3 px-4">Cliente</th>
-              <th className="text-left py-3 px-4">Veículo</th>
-              <th className="text-left py-3 px-4">Tipo</th>
-              <th className="text-right py-3 px-4">Valor</th>
-              <th className="text-left py-3 px-4">Pagamento</th>
-              <th className="text-center py-3 px-4">Status</th>
-              <th className="text-right py-3 px-4">Ações</th>
+              <th scope="col" className="text-left py-3 px-4">Data/Hora</th>
+              <th scope="col" className="text-left py-3 px-4">Cliente</th>
+              <th scope="col" className="text-left py-3 px-4">Veículo</th>
+              <th scope="col" className="text-left py-3 px-4">Tipo</th>
+              <th scope="col" className="text-right py-3 px-4">Valor</th>
+              <th scope="col" className="text-left py-3 px-4">Pagamento</th>
+              <th scope="col" className="text-center py-3 px-4">Status</th>
+              <th scope="col" className="text-right py-3 px-4">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -64,13 +74,13 @@ export default function Lavagens() {
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {l.status === 'pendente' && (
-                        <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} title="Iniciar lavagem" className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"><PlayCircle size={15} /></button>
+                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'em_progresso')} title="Iniciar lavagem" aria-label={`Iniciar lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent-text transition-colors"><PlayCircle size={15} aria-hidden="true" /></button>
                       )}
                       {(l.status === 'pendente' || l.status === 'em_progresso') && (
-                        <button onClick={() => updateLavagemStatus(l.id, 'concluida')} title="Concluir lavagem" className="p-1.5 rounded-lg hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"><Check size={15} /></button>
+                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'concluida')} title="Concluir lavagem" aria-label={`Concluir lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"><Check size={15} aria-hidden="true" /></button>
                       )}
                       {(l.status === 'pendente' || l.status === 'em_progresso') && (
-                        <button onClick={() => updateLavagemStatus(l.id, 'cancelada')} title="Cancelar lavagem" className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><X size={15} /></button>
+                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'cancelada')} title="Cancelar lavagem" aria-label={`Cancelar lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><X size={15} aria-hidden="true" /></button>
                       )}
                     </div>
                   </td>

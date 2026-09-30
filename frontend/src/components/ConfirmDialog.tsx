@@ -15,7 +15,7 @@ export function ConfirmDialog({ title, description, onConfirm, triggerText = "Ex
     <AlertDialog>
       <AlertDialogTrigger asChild>
         <Button variant={variant === "destructive" ? "destructive" : "default"} size="sm">
-          {triggerText === "Excluir" && <Trash2 size={14} className="mr-1" />}
+          {triggerText === "Excluir" && <Trash2 size={14} className="mr-1" aria-hidden="true" />}
           {triggerText}
         </Button>
       </AlertDialogTrigger>
@@ -41,14 +41,23 @@ interface ConfirmDialogButtonProps {
   onConfirm: () => void;
   icon?: React.ReactNode;
   variant?: "default" | "destructive" | "ghost";
+  ariaLabel?: string;
 }
 
-export function ConfirmDialogButton({ title, description, onConfirm, icon, variant = "ghost" }: ConfirmDialogButtonProps) {
+export function ConfirmDialogButton({ title, description, onConfirm, icon, variant = "ghost", ariaLabel }: ConfirmDialogButtonProps) {
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button variant={variant} size="sm" className={variant === "ghost" ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10" : ""}>
-          {icon}
+        <Button
+          variant={variant}
+          size="sm"
+          aria-label={ariaLabel ?? title}
+          title={title}
+          className={variant === "ghost" ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10" : ""}
+        >
+          <span aria-hidden="true" className="inline-flex">
+            {icon}
+          </span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

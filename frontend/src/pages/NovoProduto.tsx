@@ -30,35 +30,35 @@ export default function NovoProduto() {
       <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 animate-fade-up">
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Cadastrar Produto</h2>
         <div>
-          <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Nome</label>
-          <input className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do produto" required />
+          <label htmlFor="produto-nome" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Nome</label>
+          <input id="produto-nome" className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do produto" required />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Categoria</label>
-            <select className="input-t10" value={categoria} onChange={e => setCategoria(e.target.value as Produto['categoria'])}>
+            <label htmlFor="produto-categoria" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Categoria</label>
+            <select id="produto-categoria" className="input-t10" value={categoria} onChange={e => setCategoria(e.target.value as Produto['categoria'])}>
               <option>Limpeza</option><option>Polimento</option><option>Proteção</option><option>Outros</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Unidade</label>
-            <select className="input-t10" value={unidade} onChange={e => setUnidade(e.target.value)}>
+            <label htmlFor="produto-unidade" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Unidade</label>
+            <select id="produto-unidade" className="input-t10" value={unidade} onChange={e => setUnidade(e.target.value)}>
               <option value="un">un</option><option value="L">L</option><option value="ml">ml</option><option value="kg">kg</option>
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Qtd Inicial</label>
-            <input className="input-t10" type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />
+            <label htmlFor="produto-quantidade" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Qtd Inicial</label>
+            <input id="produto-quantidade" className="input-t10" type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Estoque Mín.</label>
-            <input className="input-t10" type="number" value={estoqueMinimo} onChange={e => setEstoqueMinimo(e.target.value)} required />
+            <label htmlFor="produto-estoque-minimo" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Estoque Mín.</label>
+            <input id="produto-estoque-minimo" className="input-t10" type="number" value={estoqueMinimo} onChange={e => setEstoqueMinimo(e.target.value)} required />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Preço (R$)</label>
-            <input className="input-t10" type="number" step="0.01" value={preco} onChange={e => setPreco(e.target.value)} required />
+            <label htmlFor="produto-preco" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Preço (R$)</label>
+            <input id="produto-preco" className="input-t10" type="number" step="0.01" value={preco} onChange={e => setPreco(e.target.value)} required />
           </div>
         </div>
         <button type="submit" className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm">Cadastrar Produto</button>

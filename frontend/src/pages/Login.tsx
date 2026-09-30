@@ -14,16 +14,29 @@ export default function Login() {
     e.preventDefault();
     setLoading(true);
     setErro('');
-    
+
     const sucesso = await login(email, senha);
-    
+
     if (sucesso) {
       navigate('/');
     } else {
       setErro('Email ou senha inválidos');
-      setTimeout(() => setErro(''), 4000);
     }
     setLoading(false);
+  };
+
+  /**
+   * WCAG 2.2.1: a mensagem de erro nao pode ter prazo. Antes ela sumia sozinha
+   * em 4s, e quem usa leitor de tela, lupa ou teclado demorava mais que isso
+   * para achar o campo e corrigir — o alerta era anunciado e ja havia sumido
+   * quando o usuario chegava nele.
+   *
+   * O erro so sai da tela quando ele deixa de valer: uma nova submissao limpa o
+   * estado (`setErro('')` em `handleSubmit`) e mexer em e-mail ou senha tambem,
+   * sinalizando que o valor digitado mudou e o erro anterior nao se aplica.
+   */
+  const limparErro = () => {
+    if (erro) setErro('');
   };
 
   return (
@@ -37,27 +50,44 @@ export default function Login() {
         </div>
         <form onSubmit={handleSubmit} className="bg-card rounded-xl p-8 border border-border space-y-5">
           {erro && (
-            <div className="badge-cancelada text-sm rounded-lg px-4 py-2 text-center">{erro}</div>
+            <div
+              id="login-erro"
+              role="alert"
+              aria-live="assertive"
+              className="badge-cancelada text-sm rounded-lg px-4 py-2 text-center"
+            >
+              {erro}
+            </div>
           )}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Email</label>
+            <label htmlFor="login-email" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Email</label>
             <input 
+              id="login-email"
+              name="email"
+              autoComplete="email"
               className="input-t10" 
               value={email} 
-              onChange={e => setEmail(e.target.value)} 
+              onChange={e => { setEmail(e.target.value); limparErro(); }} 
               placeholder="admin@washwizard.com" 
               type="email"
+              aria-invalid={erro ? true : undefined}
+              aria-describedby={erro ? 'login-erro' : undefined}
               required
             />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Senha</label>
+            <label htmlFor="login-senha" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Senha</label>
             <input 
+              id="login-senha"
+              name="senha"
+              autoComplete="current-password"
               className="input-t10" 
               type="password" 
               value={senha} 
-              onChange={e => setSenha(e.target.value)} 
+              onChange={e => { setSenha(e.target.value); limparErro(); }} 
               placeholder="••••••••" 
+              aria-invalid={erro ? true : undefined}
+              aria-describedby={erro ? 'login-erro' : undefined}
               required
             />
           </div>

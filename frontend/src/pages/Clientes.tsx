@@ -16,19 +16,26 @@ export default function Clientes() {
   return (
     <div className="space-y-4">
       <div className="relative max-w-md">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input className="input-t10 pl-9" placeholder="Buscar por nome ou telefone..." value={busca} onChange={e => setBusca(e.target.value)} />
+        <label htmlFor="clientes-busca" className="sr-only">Buscar clientes por nome ou telefone</label>
+        <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input id="clientes-busca" type="search" className="input-t10 pl-9" placeholder="Buscar por nome ou telefone..." value={busca} onChange={e => setBusca(e.target.value)} />
       </div>
-      <div className="bg-card rounded-xl border border-border overflow-x-auto">
+      <div
+        className="bg-card rounded-xl border border-border overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Tabela de clientes"
+      >
         <table className="w-full text-sm">
+                <caption className="sr-only">Clientes cadastrados, com nome, telefone, veículos, lavagens, data de cadastro e ações</caption>
           <thead>
             <tr className="table-header">
-              <th className="text-left py-3 px-4">Nome</th>
-              <th className="text-left py-3 px-4">Telefone</th>
-              <th className="text-center py-3 px-4">Veículos</th>
-              <th className="text-center py-3 px-4">Lavagens</th>
-              <th className="text-left py-3 px-4">Cadastro</th>
-              <th className="text-right py-3 px-4">Ações</th>
+              <th scope="col" className="text-left py-3 px-4">Nome</th>
+              <th scope="col" className="text-left py-3 px-4">Telefone</th>
+              <th scope="col" className="text-center py-3 px-4">Veículos</th>
+              <th scope="col" className="text-center py-3 px-4">Lavagens</th>
+              <th scope="col" className="text-left py-3 px-4">Cadastro</th>
+              <th scope="col" className="text-right py-3 px-4">Ações</th>
             </tr>
           </thead>
           <tbody>
@@ -41,10 +48,25 @@ export default function Clientes() {
                 <td className="py-3 px-4 text-muted-foreground">{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
                 <td className="py-3 px-4 text-right">
                   <div className="flex items-center justify-end gap-1">
-                    <Link to={`/clientes/${c.id}`} className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"><Eye size={15} /></Link>
-                    <Link to={`/clientes/${c.id}/editar`} className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"><Pencil size={15} /></Link>
+                    <Link
+                      to={`/clientes/${c.id}`}
+                      aria-label={`Ver detalhes do cliente ${c.nome}`}
+                      title="Ver detalhes"
+                      className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Eye size={15} aria-hidden="true" />
+                    </Link>
+                    <Link
+                      to={`/clientes/${c.id}/editar`}
+                      aria-label={`Editar cliente ${c.nome}`}
+                      title="Editar"
+                      className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <Pencil size={15} aria-hidden="true" />
+                    </Link>
                     <ConfirmDialogButton
                         title="Excluir Cliente"
+                        ariaLabel={`Excluir cliente ${c.nome}`}
                         description={`Tem certeza que deseja excluir o cliente "${c.nome}"? Todos os veículos e lavagens associadas também serão excluídos.`}
                         onConfirm={() => deleteCliente(c.id)}
                         icon={<Trash2 size={15} />}
