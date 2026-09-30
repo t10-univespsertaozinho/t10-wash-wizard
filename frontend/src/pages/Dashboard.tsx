@@ -4,7 +4,21 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCssTokens, toHsl } from '@/hooks/useThemeTokens';
 import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User, TrendingUp, Package, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, LabelList } from 'recharts';
+import {
+  ChartDataTable,
+  ChartLegend,
+  ChartPatternDefs,
+  ChartTooltip,
+  BarValue,
+  SegmentValue,
+} from '@/components/charts/chartA11y';
+import {
+  chartA11yProps,
+  seriesFill,
+  seriesPatternLabel,
+  type SeriesDescriptor,
+} from '@/components/charts/chartPatterns';
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
@@ -32,6 +46,36 @@ export default function Dashboard() {
     fill: toHsl(tokens['--muted-foreground']),
     fontSize: 11,
   }), [tokens]);
+
+  // Faixa de realce do tooltip, derivada do token — nada de cor fixa no JSX.
+  const cursorStyle = useMemo(() => ({ fill: `hsl(${tokens['--chart-1']} / 0.12)` }), [tokens]);
+
+  /**
+   * Descritores das series: fonte unica para legenda, tooltip e tabela `sr-only`.
+   * O rotulo visivel do Recharts vem daqui, para que os tres nunca saiam de
+   * sincronia. `pattern` nomeia a textura em texto — o canal nao-cromatico de
+   * que a pessoa com daltonismo depende.
+   */
+  const series7dias = useMemo<SeriesDescriptor[]>(() => [
+    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'bar', pattern: seriesPatternLabel(0) },
+    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'line', pattern: 'tracejado', dash: '7 4' },
+  ], []);
+
+  const series6meses = useMemo<SeriesDescriptor[]>(() => [
+    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'bar', pattern: seriesPatternLabel(0) },
+    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'line', pattern: 'tracejado', dash: '7 4' },
+  ], []);
+
+  const seriesPorTipo = useMemo<SeriesDescriptor[]>(
+    () => tiposLavagem.map((t, i) => ({
+      key: t.nome,
+      name: t.nome,
+      unit: 'numero',
+      kind: 'bar',
+      pattern: seriesPatternLabel(i),
+    })),
+    [tiposLavagem],
+  );
 
   const stats = useMemo(() => {
     const hoje = new Date().toISOString().slice(0, 10);
@@ -237,19 +281,52 @@ export default function Dashboard() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
           <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Últimos 7 dias</h2>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={stats.last7}>
-                <XAxis dataKey="dia" tick={tickStyle} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
-                <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Legend />
-                <Bar yAxisId="left" dataKey="receita" fill={chartColors[0]} radius={[4, 4, 0, 0]} name="Receita (R$)" />
-                <Line yAxisId="right" type="monotone" dataKey="lavagens" stroke={chartColors[1]} strokeWidth={2} dot={{ fill: chartColors[1] }} name="Lavagens" />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
+          <figure
+            className="m-0"
+            aria-label="Gráfico dos últimos 7 dias: receita em barras e quantidade de lavagens em linha tracejada. Os valores exatos estão na tabela seguinte."
+          >
+            <ChartPatternDefs prefix="d7" colors={chartColors} />
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={stats.last7} {...chartA11yProps('Últimos 7 dias', 'Barras: receita em reais por dia. Linha tracejada: quantidade de lavagens por dia. Os valores exatos estão na tabela seguinte.')}>
+                  <XAxis dataKey="dia" tick={tickStyle} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
+                  <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    cursor={cursorStyle}
+                    content={<ChartTooltip items={series7dias} colors={chartColors} prefix="d7" contentStyle={tooltipStyle} />}
+                  />
+                  <Legend content={<ChartLegend items={series7dias} colors={chartColors} prefix="d7" />} />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="receita"
+                    name={series7dias[0].name}
+                    fill={seriesFill('d7', 0, chartColors)}
+                    radius={[4, 4, 0, 0]}
+                    isAnimationActive={false}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="lavagens"
+                    name={series7dias[1].name}
+                    stroke={chartColors[1]}
+                    strokeWidth={2}
+                    strokeDasharray={series7dias[1].dash}
+                    dot={{ fill: chartColors[1] }}
+                    activeDot={{ r: 4 }}
+                    isAnimationActive={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+            <ChartDataTable
+              caption="Receita e quantidade de lavagens nos últimos 7 dias"
+              rowLabel="Dia"
+              columns={series7dias}
+              rows={stats.last7.map(d => ({ label: d.dia, values: [d.receita, d.lavagens] }))}
+            />
+          </figure>
         </div>
 
         <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '480ms' }}>
@@ -310,36 +387,104 @@ export default function Dashboard() {
           <div className="grid lg:grid-cols-2 gap-4">
             <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '320ms' }}>
               <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens e Receita - Últimos 6 meses</h2>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ComposedChart data={stats.last6Months}>
-                    <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
-                    <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                    <Bar yAxisId="left" dataKey="lavagens" fill={chartColors[1]} radius={[4, 4, 0, 0]} name="Lavagens" />
-                    <Line yAxisId="right" type="monotone" dataKey="receita" stroke={chartColors[0]} strokeWidth={2} dot={{ fill: chartColors[0] }} name="Receita (R$)" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
+              <figure
+                className="m-0"
+                aria-label="Gráfico dos últimos 6 meses: quantidade de lavagens em barras com o número escrito acima de cada uma e receita em linha tracejada. Os valores exatos estão na tabela seguinte."
+              >
+                <ChartPatternDefs prefix="m6" colors={chartColors} />
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={stats.last6Months} {...chartA11yProps('Lavagens e receita nos últimos 6 meses', 'Barras: quantidade de lavagens por mês, com o número escrito acima de cada barra. Linha tracejada: receita em reais por mês. Os valores exatos estão na tabela seguinte.')}>
+                      <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={cursorStyle}
+                        content={<ChartTooltip items={series6meses} colors={chartColors} prefix="m6" contentStyle={tooltipStyle} />}
+                      />
+                      <Legend content={<ChartLegend items={series6meses} colors={chartColors} prefix="m6" />} />
+                      <Bar
+                        yAxisId="left"
+                        dataKey="lavagens"
+                        name={series6meses[0].name}
+                        fill={seriesFill('m6', 0, chartColors)}
+                        radius={[4, 4, 0, 0]}
+                        isAnimationActive={false}
+                      >
+                        {/* Rotulo direto: a barra sozinha nao diz quantas lavagens houve */}
+                        <LabelList dataKey="lavagens" content={<BarValue color={chartColors[0]} />} />
+                      </Bar>
+                      <Line
+                        yAxisId="right"
+                        type="monotone"
+                        dataKey="receita"
+                        name={series6meses[1].name}
+                        stroke={chartColors[0]}
+                        strokeWidth={2}
+                        strokeDasharray={series6meses[1].dash}
+                        dot={{ fill: chartColors[0] }}
+                        activeDot={{ r: 4 }}
+                        isAnimationActive={false}
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+                <ChartDataTable
+                  caption="Quantidade de lavagens e receita nos últimos 6 meses"
+                  rowLabel="Mês"
+                  columns={series6meses}
+                  rows={stats.last6Months.map(m => ({ label: m.mes, values: [m.lavagens, m.receita] }))}
+                />
+              </figure>
             </div>
 
             <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
               <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens por Tipo - Últimos 6 meses</h2>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats.lavagensPorTipo}>
-                    <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
-                    <YAxis tick={tickStyle} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} />
-                    <Legend />
-                    {tiposLavagem.map((t, i) => (
-                      <Bar key={t.id} dataKey={t.nome} stackId="a" fill={chartColors[i % chartColors.length]} radius={[2, 2, 0, 0]} />
-                    ))}
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <figure
+                className="m-0"
+                aria-label="Gráfico de barras empilhadas das lavagens por tipo nos últimos 6 meses. Cada tipo tem uma textura e uma cor própria, o valor de cada segmento está escrito dentro dele, e a legenda nomeia a textura de cada tipo. Os valores exatos estão na tabela seguinte."
+              >
+                <ChartPatternDefs prefix="tipo" colors={chartColors} />
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={stats.lavagensPorTipo} {...chartA11yProps('Lavagens por tipo nos últimos 6 meses', 'Barras empilhadas por mês. Cada tipo de lavagem tem cor e textura próprias, descritas na legenda, e o valor de cada segmento está escrito dentro dele. Os valores exatos estão na tabela seguinte.')}>
+                      <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
+                      <YAxis tick={tickStyle} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        cursor={cursorStyle}
+                        content={<ChartTooltip items={seriesPorTipo} colors={chartColors} prefix="tipo" contentStyle={tooltipStyle} />}
+                      />
+                      <Legend content={<ChartLegend items={seriesPorTipo} colors={chartColors} prefix="tipo" />} />
+                      {tiposLavagem.map((t, i) => {
+                        const cor = chartColors[i % chartColors.length];
+                        return (
+                          <Bar
+                            key={t.id}
+                            dataKey={t.nome}
+                            stackId="a"
+                            name={t.nome}
+                            fill={seriesFill('tipo', i, chartColors)}
+                            radius={[2, 2, 0, 0]}
+                            isAnimationActive={false}
+                          >
+                            {/* WCAG 1.4.1: o segmento carrega o proprio numero, alem da textura */}
+                            <LabelList dataKey={t.nome} content={<SegmentValue color={cor} />} />
+                          </Bar>
+                        );
+                      })}
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <ChartDataTable
+                  caption="Lavagens por tipo de lavagem nos últimos 6 meses"
+                  rowLabel="Mês"
+                  columns={seriesPorTipo}
+                  rows={stats.lavagensPorTipo.map(m => ({
+                    label: m.mes,
+                    values: tiposLavagem.map(t => Number(m[t.nome] ?? 0)),
+                  }))}
+                />
+              </figure>
             </div>
           </div>
         </>
