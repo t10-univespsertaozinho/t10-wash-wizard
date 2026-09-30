@@ -39,16 +39,17 @@ export default function Lavagens() {
       </div>
       <div className="bg-card rounded-xl border border-border overflow-x-auto">
         <table className="w-full text-sm">
+                <caption className="sr-only">Lavagens registradas, com data, cliente, veículo, tipo, valor, pagamento, status e ações</caption>
           <thead>
             <tr className="table-header">
-              <th className="text-left py-3 px-4">Data/Hora</th>
-              <th className="text-left py-3 px-4">Cliente</th>
-              <th className="text-left py-3 px-4">Veículo</th>
-              <th className="text-left py-3 px-4">Tipo</th>
-              <th className="text-right py-3 px-4">Valor</th>
-              <th className="text-left py-3 px-4">Pagamento</th>
-              <th className="text-center py-3 px-4">Status</th>
-              <th className="text-right py-3 px-4">Ações</th>
+              <th scope="col" className="text-left py-3 px-4">Data/Hora</th>
+              <th scope="col" className="text-left py-3 px-4">Cliente</th>
+              <th scope="col" className="text-left py-3 px-4">Veículo</th>
+              <th scope="col" className="text-left py-3 px-4">Tipo</th>
+              <th scope="col" className="text-right py-3 px-4">Valor</th>
+              <th scope="col" className="text-left py-3 px-4">Pagamento</th>
+              <th scope="col" className="text-center py-3 px-4">Status</th>
+              <th scope="col" className="text-right py-3 px-4">Ações</th>
             </tr>
           </thead>
           <tbody>

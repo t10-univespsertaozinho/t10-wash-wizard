@@ -33,15 +33,16 @@ export default function Estoque() {
       )}
       <div className="bg-card rounded-xl border border-border overflow-x-auto animate-fade-up" style={{ animationDelay: '100ms' }}>
         <table className="w-full text-sm">
+                <caption className="sr-only">Produtos em estoque, com produto, categoria, quantidade, mínimo, preço unitário, status e ações</caption>
           <thead>
             <tr className="table-header">
-              <th className="text-left py-3 px-4">Produto</th>
-              <th className="text-left py-3 px-4">Categoria</th>
-              <th className="text-center py-3 px-4">Quantidade</th>
-              <th className="text-center py-3 px-4">Mínimo</th>
-              <th className="text-right py-3 px-4">Preço Un.</th>
-              <th className="text-center py-3 px-4">Status</th>
-              <th className="text-right py-3 px-4">Ações</th>
+              <th scope="col" className="text-left py-3 px-4">Produto</th>
+              <th scope="col" className="text-left py-3 px-4">Categoria</th>
+              <th scope="col" className="text-center py-3 px-4">Quantidade</th>
+              <th scope="col" className="text-center py-3 px-4">Mínimo</th>
+              <th scope="col" className="text-right py-3 px-4">Preço Un.</th>
+              <th scope="col" className="text-center py-3 px-4">Status</th>
+              <th scope="col" className="text-right py-3 px-4">Ações</th>
             </tr>
           </thead>
           <tbody>

@@ -178,9 +178,13 @@ export default function Configuracoes() {
 
       {/* Mensagem de Feedback */}
       {message && (
-        <div className={`rounded-lg px-4 py-3 ${
-          message.type === 'success' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
-        }`}>
+        <div
+          role={message.type === 'error' ? 'alert' : 'status'}
+          aria-live={message.type === 'error' ? 'assertive' : 'polite'}
+          className={`rounded-lg px-4 py-3 ${
+            message.type === 'success' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'
+          }`}
+        >
           {message.text}
         </div>
       )}

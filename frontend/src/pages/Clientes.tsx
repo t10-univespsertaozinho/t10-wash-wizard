@@ -22,14 +22,15 @@ export default function Clientes() {
       </div>
       <div className="bg-card rounded-xl border border-border overflow-x-auto">
         <table className="w-full text-sm">
+                <caption className="sr-only">Clientes cadastrados, com nome, telefone, veículos, lavagens, data de cadastro e ações</caption>
           <thead>
             <tr className="table-header">
-              <th className="text-left py-3 px-4">Nome</th>
-              <th className="text-left py-3 px-4">Telefone</th>
-              <th className="text-center py-3 px-4">Veículos</th>
-              <th className="text-center py-3 px-4">Lavagens</th>
-              <th className="text-left py-3 px-4">Cadastro</th>
-              <th className="text-right py-3 px-4">Ações</th>
+              <th scope="col" className="text-left py-3 px-4">Nome</th>
+              <th scope="col" className="text-left py-3 px-4">Telefone</th>
+              <th scope="col" className="text-center py-3 px-4">Veículos</th>
+              <th scope="col" className="text-center py-3 px-4">Lavagens</th>
+              <th scope="col" className="text-left py-3 px-4">Cadastro</th>
+              <th scope="col" className="text-right py-3 px-4">Ações</th>
             </tr>
           </thead>
           <tbody>

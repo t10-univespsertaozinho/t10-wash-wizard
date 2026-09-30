@@ -20,22 +20,23 @@ export default function TiposLavagem() {
       <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 animate-fade-up h-fit">
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Novo Tipo</h2>
         <div>
-          <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Nome</label>
-          <input className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Lavagem Premium" required />
+          <label htmlFor="tipo-nome" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Nome</label>
+          <input id="tipo-nome" className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Lavagem Premium" required />
         </div>
         <div>
-          <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Descrição</label>
-          <input className="input-t10" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Descrição do serviço" />
+          <label htmlFor="tipo-descricao" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Descrição</label>
+          <input id="tipo-descricao" className="input-t10" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Descrição do serviço" />
         </div>
         <div>
-          <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Preço (R$)</label>
-          <input className="input-t10" type="number" step="0.01" value={preco} onChange={e => setPreco(e.target.value)} placeholder="0.00" required />
+          <label htmlFor="tipo-preco" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Preço (R$)</label>
+          <input id="tipo-preco" className="input-t10" type="number" step="0.01" value={preco} onChange={e => setPreco(e.target.value)} placeholder="0.00" required />
         </div>
         <button type="submit" className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm">Cadastrar</button>
       </form>
 
       <div className="bg-card rounded-xl border border-border overflow-hidden animate-fade-up" style={{ animationDelay: '100ms' }}>
         <table className="w-full text-sm">
+          <caption className="sr-only">Tipos de lavagem cadastrados, com nome, descrição e preço</caption>
           <thead><tr className="table-header"><th scope="col" className="text-left py-3 px-4">Nome</th><th scope="col" className="text-left py-3 px-4">Descrição</th><th scope="col" className="text-right py-3 px-4">Preço</th><th scope="col" className="py-3 px-4"><span className="sr-only">Ações</span></th></tr></thead>
           <tbody>
             {tiposLavagem.map(t => (

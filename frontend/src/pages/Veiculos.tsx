@@ -42,6 +42,9 @@ export default function Veiculos() {
             <div className="relative">
               <Search size={14} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
+                id="veiculos-busca"
+                type="search"
+                aria-label="Buscar veículos por modelo, placa ou cliente"
                 className="input-t10 pl-9 text-sm py-1.5"
                 placeholder="Buscar por modelo, placa ou cliente..."
                 value={busca}
@@ -59,7 +62,9 @@ export default function Veiculos() {
 
         {showForm && (
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 p-4 bg-secondary/40 rounded-lg">
+            <label htmlFor="veiculo-cliente" className="sr-only">Cliente</label>
             <select
+              id="veiculo-cliente"
               className="input-t10"
               value={clienteId}
               onChange={e => setClienteId(e.target.value)}
@@ -70,10 +75,13 @@ export default function Veiculos() {
                 <option key={c.id} value={c.id}>{c.nome}</option>
               ))}
             </select>
-            <input className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
-            <input className="input-t10 uppercase font-mono" placeholder="ABC1D23 ou ABC1234" value={placa} onChange={handlePlacaChange} maxLength={8} required />
+            <label htmlFor="veiculo-modelo" className="sr-only">Modelo</label>
+            <input id="veiculo-modelo" className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
+            <label htmlFor="veiculo-placa" className="sr-only">Placa</label>
+            <input id="veiculo-placa" className="input-t10 uppercase font-mono" placeholder="ABC1D23 ou ABC1234" value={placa} onChange={handlePlacaChange} maxLength={8} required />
             <div className="flex gap-2">
-              <input className="input-t10 flex-1" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
+              <label htmlFor="veiculo-cor" className="sr-only">Cor</label>
+              <input id="veiculo-cor" className="input-t10 flex-1" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
               <button type="submit" className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-sm hover:brightness-110 transition-all whitespace-nowrap">
                 Salvar
               </button>
@@ -82,6 +90,7 @@ export default function Veiculos() {
         )}
 
         <table className="w-full text-sm">
+          <caption className="sr-only">Veículos cadastrados, com cliente, modelo, placa, cor e ações</caption>
           <thead>
             <tr className="table-header">
               <th scope="col" className="text-left py-2 px-3">Cliente</th>

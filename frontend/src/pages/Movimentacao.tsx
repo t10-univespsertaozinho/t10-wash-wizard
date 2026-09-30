@@ -62,8 +62,8 @@ export default function Movimentacao() {
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Nova Movimentação</h2>
         
         <div>
-          <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Produto</label>
-          <select className="input-t10" value={produtoId} onChange={e => setProdutoId(e.target.value)} required>
+          <label htmlFor="movimentacao-produto" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Produto</label>
+          <select id="movimentacao-produto" className="input-t10" value={produtoId} onChange={e => setProdutoId(e.target.value)} required>
             <option value="">Selecione...</option>
             {produtosOrdenados.map(p => {
               const baixo = p.quantidade <= p.estoque_minimo;
@@ -76,23 +76,45 @@ export default function Movimentacao() {
           </select>
         </div>
 
-        <div>
-          <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Tipo</label>
+        <fieldset>
+          <legend className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Tipo</legend>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setTipo('entrada')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${tipo === 'entrada' ? 'bg-success text-success-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
-              <ArrowDownCircle size={18} /> Entrada
-            </button>
-            <button type="button" onClick={() => setTipo('saida')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${tipo === 'saida' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
-              <ArrowUpCircle size={18} /> Saída
-            </button>
+            <input
+              type="radio"
+              id="movimentacao-tipo-entrada"
+              name="movimentacao-tipo"
+              value="entrada"
+              checked={tipo === 'entrada'}
+              onChange={() => setTipo('entrada')}
+              className="sr-only peer"
+            />
+            <label
+              htmlFor="movimentacao-tipo-entrada"
+              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-[hsl(var(--focus-ring))] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background ${tipo === 'entrada' ? 'bg-success text-success-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
+            >
+              <ArrowDownCircle size={18} aria-hidden="true" /> Entrada
+            </label>
+            <input
+              type="radio"
+              id="movimentacao-tipo-saida"
+              name="movimentacao-tipo"
+              value="saida"
+              checked={tipo === 'saida'}
+              onChange={() => setTipo('saida')}
+              className="sr-only peer"
+            />
+            <label
+              htmlFor="movimentacao-tipo-saida"
+              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer peer-focus-visible:ring-2 peer-focus-visible:ring-[hsl(var(--focus-ring))] peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-background ${tipo === 'saida' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}
+            >
+              <ArrowUpCircle size={18} aria-hidden="true" /> Saída
+            </label>
           </div>
-        </div>
+        </fieldset>
 
         <div>
-          <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Quantidade</label>
-          <input className="input-t10" type="number" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />
+          <label htmlFor="movimentacao-quantidade" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Quantidade</label>
+          <input id="movimentacao-quantidade" className="input-t10" type="number" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed">
