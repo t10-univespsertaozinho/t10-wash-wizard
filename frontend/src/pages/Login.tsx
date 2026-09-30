@@ -37,11 +37,14 @@ export default function Login() {
         </div>
         <form onSubmit={handleSubmit} className="bg-card rounded-xl p-8 border border-border space-y-5">
           {erro && (
-            <div className="badge-cancelada text-sm rounded-lg px-4 py-2 text-center">{erro}</div>
+            <div role="alert" className="badge-cancelada text-sm rounded-lg px-4 py-2 text-center">{erro}</div>
           )}
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Email</label>
+            <label htmlFor="login-email" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Email</label>
             <input 
+              id="login-email"
+              name="email"
+              autoComplete="email"
               className="input-t10" 
               value={email} 
               onChange={e => setEmail(e.target.value)} 
@@ -51,8 +54,11 @@ export default function Login() {
             />
           </div>
           <div>
-            <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Senha</label>
+            <label htmlFor="login-senha" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Senha</label>
             <input 
+              id="login-senha"
+              name="senha"
+              autoComplete="current-password"
               className="input-t10" 
               type="password" 
               value={senha} 

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,6 +28,15 @@ const Configuracoes = lazy(() => import("@/pages/Configuracoes"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
 const queryClient = new QueryClient();
+
+// Layout público: garante a landmark <main> exigida pelo WCAG 1.3.1
+function PublicLayout({ children }: { children: ReactNode }) {
+  return (
+    <main id="main-content" tabIndex={-1} className="min-h-screen focus:outline-none">
+      {children}
+    </main>
+  );
+}
 
 // Loading Fallback
 const PageLoading = () => (
@@ -74,7 +83,7 @@ const App = () => (
             <BrowserRouter>
               <Suspense fallback={<PageLoading />}>
                 <Routes>
-                  <Route path="/login" element={<Login />} />
+                  <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
                   
                   {/* Protected User Routes */}
                   <Route element={<ProtectedRoute />}>
@@ -101,7 +110,7 @@ const App = () => (
                     </Route>
                   </Route>
 
-                  <Route path="*" element={<NotFound />} />
+                  <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
                 </Routes>
               </Suspense>
             </BrowserRouter>

@@ -40,7 +40,7 @@ export default function Veiculos() {
           </h3>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search size={14} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 className="input-t10 pl-9 text-sm py-1.5"
                 placeholder="Buscar por modelo, placa ou cliente..."
@@ -84,11 +84,11 @@ export default function Veiculos() {
         <table className="w-full text-sm">
           <thead>
             <tr className="table-header">
-              <th className="text-left py-2 px-3">Cliente</th>
-              <th className="text-left py-2 px-3">Modelo</th>
-              <th className="text-left py-2 px-3">Placa</th>
-              <th className="text-left py-2 px-3">Cor</th>
-              <th className="py-2 px-3"></th>
+              <th scope="col" className="text-left py-2 px-3">Cliente</th>
+              <th scope="col" className="text-left py-2 px-3">Modelo</th>
+              <th scope="col" className="text-left py-2 px-3">Placa</th>
+              <th scope="col" className="text-left py-2 px-3">Cor</th>
+              <th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th>
             </tr>
           </thead>
           <tbody>
@@ -103,6 +103,7 @@ export default function Veiculos() {
                   <td className="py-2 px-3 text-right">
                     <ConfirmDialogButton
                       title="Excluir Veículo"
+                      ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
                       description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
                       onConfirm={() => deleteVeiculo(v.id)}
                       icon={<Trash2 size={14} />}

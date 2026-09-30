@@ -93,7 +93,7 @@ export default function Configuracoes() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="font-barlow-condensed font-bold text-2xl text-foreground">Configurações do Sistema</h1>
+        <h2 className="font-barlow-condensed font-bold text-2xl text-foreground">Configurações do Sistema</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Gerencie o banco de dados local SQLite e realize backups via arquivos CSV.
         </p>
@@ -136,14 +136,20 @@ export default function Configuracoes() {
               Exportar Backup (CSV)
             </button>
 
-            <label className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer">
-              {loading ? <RefreshCw className="animate-spin" size={16} /> : <UploadCloud size={16} />}
+            <label
+              htmlFor="import-backup-csv"
+              className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus-within:ring-2 focus-within:ring-[hsl(var(--focus-ring))] focus-within:ring-offset-2 focus-within:ring-offset-background"
+            >
+              <span aria-hidden="true" className="inline-flex">
+                {loading ? <RefreshCw className="animate-spin" size={16} /> : <UploadCloud size={16} />}
+              </span>
               Importar Backup (CSV)
               <input 
+                id="import-backup-csv"
                 type="file" 
                 multiple 
                 accept=".csv" 
-                className="hidden" 
+                className="sr-only"
                 onChange={handleImportBackup}
                 disabled={loading}
               />

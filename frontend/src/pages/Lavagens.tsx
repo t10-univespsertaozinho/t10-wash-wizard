@@ -25,9 +25,13 @@ export default function Lavagens() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap" role="group" aria-label="Filtrar lavagens por status">
         {filters.map(f => (
-          <button key={f.key} onClick={() => setFiltro(f.key)}
+          <button
+            key={f.key}
+            type="button"
+            onClick={() => setFiltro(f.key)}
+            aria-pressed={filtro === f.key}
             className={`text-xs px-4 py-1.5 rounded-full font-semibold transition-colors ${filtro === f.key ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
             {f.label}
           </button>
@@ -64,13 +68,13 @@ export default function Lavagens() {
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {l.status === 'pendente' && (
-                        <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} title="Iniciar lavagem" className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"><PlayCircle size={15} /></button>
+                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'em_progresso')} title="Iniciar lavagem" aria-label={`Iniciar lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"><PlayCircle size={15} aria-hidden="true" /></button>
                       )}
                       {(l.status === 'pendente' || l.status === 'em_progresso') && (
-                        <button onClick={() => updateLavagemStatus(l.id, 'concluida')} title="Concluir lavagem" className="p-1.5 rounded-lg hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"><Check size={15} /></button>
+                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'concluida')} title="Concluir lavagem" aria-label={`Concluir lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"><Check size={15} aria-hidden="true" /></button>
                       )}
                       {(l.status === 'pendente' || l.status === 'em_progresso') && (
-                        <button onClick={() => updateLavagemStatus(l.id, 'cancelada')} title="Cancelar lavagem" className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><X size={15} /></button>
+                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'cancelada')} title="Cancelar lavagem" aria-label={`Cancelar lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><X size={15} aria-hidden="true" /></button>
                       )}
                     </div>
                   </td>

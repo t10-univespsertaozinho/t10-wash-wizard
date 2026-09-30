@@ -120,7 +120,7 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-barlow-condensed font-bold text-2xl text-foreground">Dashboard</h1>
+          <h2 className="font-barlow-condensed font-bold text-2xl text-foreground">Dashboard</h2>
           <p className="text-sm text-muted-foreground flex items-center gap-2">
             {user?.role === 'admin' ? <Shield size={14} className="text-accent" /> : <User size={14} />}
             Perfil: <span className="font-semibold text-foreground capitalize">{user?.role}</span> ({user?.nome})

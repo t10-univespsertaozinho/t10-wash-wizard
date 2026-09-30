@@ -26,7 +26,9 @@
     --success-foreground: 225 20% 7%;
     --border: 0 0% 100% / 0.07;
     --input: 0 0% 100% / 0.06;
-    --ring: 212 80% 42%;
+    --ring: 49 100% 60%;
+    --focus-ring: 49 100% 60%;
+    --placeholder: 220 14% 65%;
     --radius: 0.625rem;
     --sidebar-background: 228 18% 13%;
     --sidebar-foreground: 0 0% 75%;
@@ -59,7 +61,9 @@
     --success-foreground: 0 0% 100%;
     --border: 220 10% 85%;
     --input: 220 10% 90%;
-    --ring: 212 80% 50%;
+    --ring: 212 85% 30%;
+    --focus-ring: 212 85% 30%;
+    --placeholder: 215 16% 40%;
     --sidebar-background: 0 0% 96%;
     --sidebar-foreground: 225 20% 10%;
     --sidebar-primary: 25 95% 45%;
@@ -77,6 +81,11 @@
   }
   body {
     @apply bg-background text-foreground font-barlow antialiased;
+  }
+  /* WCAG 2.4.7 - indicador de foco visível como base para todo elemento focável */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid hsl(var(--focus-ring));
+    outline-offset: 2px;
   }
 }
 
@@ -103,7 +112,12 @@
     @apply bg-destructive/15 text-destructive dark:bg-destructive/20;
   }
   .input-t10 {
-    @apply w-full rounded-lg border border-border bg-input px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/40 transition-all;
+    @apply w-full rounded-lg border border-border bg-input px-4 py-2.5 text-foreground focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all;
+  }
+  /* WCAG 1.4.11 / 1.4.3 - placeholder com contraste mínimo de 4.5:1 no fundo do campo */
+  .input-t10::placeholder {
+    color: hsl(var(--placeholder));
+    opacity: 1;
   }
   .table-header {
     @apply text-[10px] uppercase tracking-widest text-muted-foreground font-semibold bg-secondary/50;

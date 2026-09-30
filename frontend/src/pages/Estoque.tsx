@@ -25,7 +25,7 @@ export default function Estoque() {
 
       {produtosBaixoEstoque.length > 0 && (
         <div className="bg-primary/10 border border-primary/20 rounded-xl p-4 flex items-center gap-3 animate-fade-up">
-          <AlertTriangle size={20} className="text-primary flex-shrink-0" />
+          <AlertTriangle size={20} aria-hidden="true" className="text-primary flex-shrink-0" />
           <p className="text-sm text-primary font-medium">
             {produtosBaixoEstoque.length} produto(s) com estoque baixo ou zerado
           </p>
@@ -57,6 +57,7 @@ export default function Estoque() {
                   <div className="flex items-center justify-end gap-1">
                     <ConfirmDialogButton
                       title="Excluir Produto"
+                      ariaLabel={`Excluir produto ${p.nome}`}
                       description={`Tem certeza que deseja excluir o produto "${p.nome}"?`}
                       onConfirm={() => deleteProduto(p.id)}
                       icon={<Trash2 size={15} />}

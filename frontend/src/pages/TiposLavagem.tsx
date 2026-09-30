@@ -36,7 +36,7 @@ export default function TiposLavagem() {
 
       <div className="bg-card rounded-xl border border-border overflow-hidden animate-fade-up" style={{ animationDelay: '100ms' }}>
         <table className="w-full text-sm">
-          <thead><tr className="table-header"><th className="text-left py-3 px-4">Nome</th><th className="text-left py-3 px-4">Descrição</th><th className="text-right py-3 px-4">Preço</th><th className="py-3 px-4"></th></tr></thead>
+          <thead><tr className="table-header"><th scope="col" className="text-left py-3 px-4">Nome</th><th scope="col" className="text-left py-3 px-4">Descrição</th><th scope="col" className="text-right py-3 px-4">Preço</th><th scope="col" className="py-3 px-4"><span className="sr-only">Ações</span></th></tr></thead>
           <tbody>
             {tiposLavagem.map(t => (
               <tr key={t.id} className="table-row-hover border-t border-border">
@@ -44,7 +44,15 @@ export default function TiposLavagem() {
                 <td className="py-3 px-4 text-muted-foreground">{t.descricao}</td>
                 <td className="py-3 px-4 text-right text-primary font-bold">R$ {t.preco.toFixed(2)}</td>
                 <td className="py-3 px-4 text-right">
-                  <button onClick={() => deleteTipoLavagem(t.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 size={14} /></button>
+                  <button
+                    type="button"
+                    onClick={() => deleteTipoLavagem(t.id)}
+                    aria-label={`Excluir tipo de lavagem ${t.nome}`}
+                    title="Excluir"
+                    className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <Trash2 size={14} aria-hidden="true" />
+                  </button>
                 </td>
               </tr>
             ))}
