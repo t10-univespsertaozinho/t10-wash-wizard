@@ -8,71 +8,103 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, Compos
 import {
   ChartDataTable,
   ChartLegend,
-  ChartPatternDefs,
   ChartTooltip,
   BarValue,
-  SegmentValue,
 } from '@/components/charts/chartA11y';
-import {
-  chartA11yProps,
-  seriesFill,
-  seriesPatternLabel,
-  type SeriesDescriptor,
-} from '@/components/charts/chartPatterns';
+import { chartA11yProps, type SeriesDescriptor } from '@/components/charts/chartSeries';
+import { useChartPalette } from '@/components/charts/useChartPalette';
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-const TOKENS = [
-  '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5', '--chart-6',
-  '--card', '--foreground', '--muted-foreground', '--border',
-] as const;
+// Tokens que ainda sao a tripla "H S% L%" e por isso passam por `toHsl()`.
+// As cores das series nao entram aqui: `--chart-*` ja e uma cor completa e vem
+// por `useChartPalette()`, sem montagem de string em JS.
+const TOKENS = ['--card', '--foreground', '--muted-foreground', '--border'] as const;
+
+/** Raio das pontas superiores das barras. */
+const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
+
+/**
+ * Espessura do separador entre segmentos empilhados.
+ *
+ * O traco sai centrado no contorno do path, entao na divisa entre dois segmentos
+ * entram 0.5px de cada lado e a faixa visivel soma 1px exato, na cor do card.
+ * Sem isso, com mais de 6 tipos cadastrados a paleta de 6 cores passaria a
+ * repetir e dois segmentos ficariam identicos.
+ */
+const SEGMENT_GAP = 1;
+
+/**
+ * Cor do separador: `hsl(var(--card))`, direto no atributo do Recharts.
+ *
+ * `--card` e a tripla "H S% L%" e o `hsl()` aqui recebe a tripla como
+ * substituto de `var()`, que e a forma como o CSS foi feito para funcionar.
+ * Nao precisa passar por JS, e o modo de falha e o seguro: se um navegador
+ * antigo nao resolver `var()` em atributo de apresentacao, some o separador,
+ * mas nao aparece contorno preto em cima de cada segmento.
+ */
+const SEGMENT_STROKE = 'hsl(var(--card))';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { lavagens, clientes, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData, tiposLavagem } = useApp();
   const tokens = useCssTokens(TOKENS);
 
-  const chartColors = useMemo(() => TOKENS.slice(0, 6).map(name => toHsl(tokens[name])), [tokens]);
+  // Paleta das series: hex direto do CSS, com reserva de Okabe-Ito se a leitura falhar.
+  const chartColors = useChartPalette();
 
+  // Cores do tooltip derivadas dos tokens: fundo, borda e sombra do tema ativo.
   const tooltipStyle = useMemo(() => ({
     background: toHsl(tokens['--card']),
     border: `1px solid hsl(${tokens['--border']})`,
-    borderRadius: 8,
+    borderRadius: 12,
+    boxShadow: `0 10px 30px -8px hsl(${tokens['--foreground']} / 0.18)`,
     color: toHsl(tokens['--foreground']),
-    fontSize: 12,
+    fontFamily: 'inherit',
   }), [tokens]);
+
+  /** Tinta do valor acima da barra: precisa contrastar com o card, nao com a barra. */
+  const labelInk = useMemo(() => toHsl(tokens['--foreground']), [tokens]);
 
   const tickStyle = useMemo(() => ({
     fill: toHsl(tokens['--muted-foreground']),
     fontSize: 11,
+    fontFamily: 'inherit',
   }), [tokens]);
 
-  // Faixa de realce do tooltip, derivada do token — nada de cor fixa no JSX.
-  const cursorStyle = useMemo(() => ({ fill: `hsl(${tokens['--chart-1']} / 0.12)` }), [tokens]);
+  /**
+   * Faixa de realce do tooltip: 12% da cor da serie 1.
+   *
+   * `color-mix` em vez de `hsl(--chart-1 / 0.12)`: o token ja e uma cor
+   * completa em hex, e ancorar alfa em hex nao e sintaxe valida de hsl().
+   */
+  const cursorStyle = useMemo(
+    () => ({ fill: `color-mix(in srgb, ${chartColors[0]} 12%, transparent)` }),
+    [chartColors],
+  );
 
   /**
    * Descritores das series: fonte unica para legenda, tooltip e tabela `sr-only`.
    * O rotulo visivel do Recharts vem daqui, para que os tres nunca saiam de
-   * sincronia. `pattern` nomeia a textura em texto — o canal nao-cromatico de
-   * que a pessoa com daltonismo depende.
+   * sincronia. Nao ha textura: a separacao entre series fica por conta da
+   * paleta Okabe-Ito e o nome da serie faz o papel de rotulo.
    */
   const series7dias = useMemo<SeriesDescriptor[]>(() => [
-    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'bar', pattern: seriesPatternLabel(0) },
-    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'line', pattern: 'tracejado', dash: '7 4' },
+    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'bar' },
+    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'line', dash: '7 4' },
   ], []);
 
   const series6meses = useMemo<SeriesDescriptor[]>(() => [
-    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'bar', pattern: seriesPatternLabel(0) },
-    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'line', pattern: 'tracejado', dash: '7 4' },
+    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'bar' },
+    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'line', dash: '7 4' },
   ], []);
 
   const seriesPorTipo = useMemo<SeriesDescriptor[]>(
-    () => tiposLavagem.map((t, i) => ({
+    () => tiposLavagem.map((t) => ({
       key: t.nome,
       name: t.nome,
-      unit: 'numero',
-      kind: 'bar',
-      pattern: seriesPatternLabel(i),
+      unit: 'numero' as const,
+      kind: 'bar' as const,
     })),
     [tiposLavagem],
   );
@@ -285,7 +317,6 @@ export default function Dashboard() {
             className="m-0"
             aria-label="Gráfico dos últimos 7 dias: receita em barras e quantidade de lavagens em linha tracejada. Os valores exatos estão na tabela seguinte."
           >
-            <ChartPatternDefs prefix="d7" colors={chartColors} />
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={stats.last7} {...chartA11yProps('Últimos 7 dias', 'Barras: receita em reais por dia. Linha tracejada: quantidade de lavagens por dia. Os valores exatos estão na tabela seguinte.')}>
@@ -294,15 +325,15 @@ export default function Dashboard() {
                   <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
                   <Tooltip
                     cursor={cursorStyle}
-                    content={<ChartTooltip items={series7dias} colors={chartColors} prefix="d7" contentStyle={tooltipStyle} />}
+                    content={<ChartTooltip items={series7dias} colors={chartColors} contentStyle={tooltipStyle} />}
                   />
-                  <Legend content={<ChartLegend items={series7dias} colors={chartColors} prefix="d7" />} />
+                  <Legend content={<ChartLegend items={series7dias} colors={chartColors} />} />
                   <Bar
                     yAxisId="left"
                     dataKey="receita"
                     name={series7dias[0].name}
-                    fill={seriesFill('d7', 0, chartColors)}
-                    radius={[4, 4, 0, 0]}
+                    fill={chartColors[0]}
+                    radius={BAR_RADIUS}
                     isAnimationActive={false}
                   />
                   <Line
@@ -391,7 +422,6 @@ export default function Dashboard() {
                 className="m-0"
                 aria-label="Gráfico dos últimos 6 meses: quantidade de lavagens em barras com o número escrito acima de cada uma e receita em linha tracejada. Os valores exatos estão na tabela seguinte."
               >
-                <ChartPatternDefs prefix="m6" colors={chartColors} />
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={stats.last6Months} {...chartA11yProps('Lavagens e receita nos últimos 6 meses', 'Barras: quantidade de lavagens por mês, com o número escrito acima de cada barra. Linha tracejada: receita em reais por mês. Os valores exatos estão na tabela seguinte.')}>
@@ -400,19 +430,19 @@ export default function Dashboard() {
                       <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
                       <Tooltip
                         cursor={cursorStyle}
-                        content={<ChartTooltip items={series6meses} colors={chartColors} prefix="m6" contentStyle={tooltipStyle} />}
+                        content={<ChartTooltip items={series6meses} colors={chartColors} contentStyle={tooltipStyle} />}
                       />
-                      <Legend content={<ChartLegend items={series6meses} colors={chartColors} prefix="m6" />} />
+                      <Legend content={<ChartLegend items={series6meses} colors={chartColors} />} />
                       <Bar
                         yAxisId="left"
                         dataKey="lavagens"
                         name={series6meses[0].name}
-                        fill={seriesFill('m6', 0, chartColors)}
-                        radius={[4, 4, 0, 0]}
+                        fill={chartColors[0]}
+                        radius={BAR_RADIUS}
                         isAnimationActive={false}
                       >
                         {/* Rotulo direto: a barra sozinha nao diz quantas lavagens houve */}
-                        <LabelList dataKey="lavagens" content={<BarValue color={chartColors[0]} />} />
+                        <LabelList dataKey="lavagens" content={<BarValue color={labelInk} />} />
                       </Bar>
                       <Line
                         yAxisId="right"
@@ -442,34 +472,37 @@ export default function Dashboard() {
               <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens por Tipo - Últimos 6 meses</h2>
               <figure
                 className="m-0"
-                aria-label="Gráfico de barras empilhadas das lavagens por tipo nos últimos 6 meses. Cada tipo tem uma textura e uma cor própria, o valor de cada segmento está escrito dentro dele, e a legenda nomeia a textura de cada tipo. Os valores exatos estão na tabela seguinte."
+                aria-label="Gráfico de barras empilhadas das lavagens por tipo nos últimos 6 meses. Cada tipo tem uma cor própria da paleta Okabe-Ito, a legenda nomeia cada tipo, e os valores exatos estão na tabela seguinte e no tooltip ao passar o mouse."
               >
-                <ChartPatternDefs prefix="tipo" colors={chartColors} />
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.lavagensPorTipo} {...chartA11yProps('Lavagens por tipo nos últimos 6 meses', 'Barras empilhadas por mês. Cada tipo de lavagem tem cor e textura próprias, descritas na legenda, e o valor de cada segmento está escrito dentro dele. Os valores exatos estão na tabela seguinte.')}>
+                    <BarChart data={stats.lavagensPorTipo} {...chartA11yProps('Lavagens por tipo nos últimos 6 meses', 'Barras empilhadas por mês. Cada tipo de lavagem tem uma cor própria, nomeada na legenda. Os valores exatos de cada segmento estão na tabela seguinte.')}>
                       <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
                       <YAxis tick={tickStyle} axisLine={false} tickLine={false} />
                       <Tooltip
                         cursor={cursorStyle}
-                        content={<ChartTooltip items={seriesPorTipo} colors={chartColors} prefix="tipo" contentStyle={tooltipStyle} />}
+                        content={<ChartTooltip items={seriesPorTipo} colors={chartColors} contentStyle={tooltipStyle} />}
                       />
-                      <Legend content={<ChartLegend items={seriesPorTipo} colors={chartColors} prefix="tipo" />} />
+                      <Legend content={<ChartLegend items={seriesPorTipo} colors={chartColors} />} />
+                      {/* Sem LabelList: numero dentro de segmento espremido vira ruido
+                          visual. O valor fica no tooltip e na tabela sr-only. */}
                       {tiposLavagem.map((t, i) => {
-                        const cor = chartColors[i % chartColors.length];
+                        // So a ultima barra da pilha recebe raio. Arredondar todas
+                        // curva o topo de cada segmento dentro da pilha e deixa um
+                        // serrilhado entre as camadas.
+                        const ehTopo = i === tiposLavagem.length - 1;
                         return (
                           <Bar
                             key={t.id}
                             dataKey={t.nome}
                             stackId="a"
                             name={t.nome}
-                            fill={seriesFill('tipo', i, chartColors)}
-                            radius={[2, 2, 0, 0]}
+                            fill={chartColors[i % chartColors.length]}
+                            radius={ehTopo ? BAR_RADIUS : undefined}
+                            stroke={SEGMENT_STROKE}
+                            strokeWidth={SEGMENT_GAP}
                             isAnimationActive={false}
-                          >
-                            {/* WCAG 1.4.1: o segmento carrega o proprio numero, alem da textura */}
-                            <LabelList dataKey={t.nome} content={<SegmentValue color={cor} />} />
-                          </Bar>
+                          />
                         );
                       })}
                     </BarChart>

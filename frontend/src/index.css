@@ -36,13 +36,23 @@
     --ring: 49 100% 60%;
     --focus-ring: 49 100% 60%;
     --placeholder: 220 14% 65%;
-    /* WCAG 1.4.11 - series dos graficos (Recharts), todas >= 4.5:1 */
-    --chart-1: 49 100% 64%;
-    --chart-2: 205 90% 62%;
-    --chart-3: 150 65% 58%;
-    --chart-4: 285 55% 72%;
-    --chart-5: 345 80% 66%;
-    --chart-6: 180 70% 56%;
+    /* Paleta Okabe-Ito: os hex exatos da paleta de referencia.
+       Sao cores COMPLETAS de proposito, nao a tripla "H S% L%" que os outros
+       tokens usam. A tripla obriga quem consome a montar a cor em JS, e esse
+       parsing ja quebrou uma vez: hsl() nao aceita hue em porcentagem, entao
+       "201.57% 100% 34.9%" virava hsl(201.57%, ...) — invalido, e o navegador
+       desenhava a barra em preto. Com hex, o valor ja nasce pronto para o
+       atributo fill/stroke do SVG e para o var() do Tailwind.
+       Por que esta paleta: os pares de matiz nao colapsam sob protanopia,
+       deuteranopia ou tritanopia, porque nenhum par depende da diferenca
+       vermelho x verde. WCAG 1.4.11 (marca grafica, 3:1): a mais fraca e o azul
+       a 3.21:1 contra o card. */
+    --chart-1: #0072B2; /* azul */
+    --chart-2: #E69F00; /* ambar */
+    --chart-3: #56B4E9; /* cyan */
+    --chart-4: #CC79A7; /* rosa */
+    --chart-5: #009E73; /* verde */
+    --chart-6: #D55E00; /* tijolo */
     /* WCAG 1.4.3 - pares opacos de badge, minimo 4.5:1 dentro de cada par */
     --badge-pendente-bg: 45 30% 14%;
     --badge-pendente-fg: 45 100% 62%;
@@ -96,13 +106,16 @@
     --ring: 212 85% 30%;
     --focus-ring: 212 85% 30%;
     --placeholder: 215 16% 40%;
-    /* WCAG 1.4.11 - series dos graficos (Recharts), todas >= 4.5:1 */
-    --chart-1: 25 95% 35.5%;
-    --chart-2: 212 85% 43.5%;
-    --chart-3: 152 65% 29%;
-    --chart-4: 285 50% 50%;
-    --chart-5: 347 75% 45%;
-    --chart-6: 190 75% 30.5%;
+    /* Okabe-Ito no claro: mesmo matiz e mesma saturacao, so a luminosidade cai.
+       Ambar e cyan reprovam 3:1 sobre branco, e mexer no matiz para escurecer
+       quebraria justamente a separacao para daltônicos. Adjustando so a
+       luminosidade, as seis passam 4.5:1 aqui. */
+    --chart-1: #0072B2; /* azul    5.19:1 */
+    --chart-2: #9E6D00; /* ambar   4.52:1 */
+    --chart-3: #187DB7; /* cyan    4.51:1 */
+    --chart-4: #BC508C; /* rosa    4.50:1 */
+    --chart-5: #008762; /* verde   4.52:1 */
+    --chart-6: #C35600; /* tijolo  4.51:1 */
     /* WCAG 1.4.3 - pares opacos de badge, minimo 4.5:1 dentro de cada par */
     --badge-pendente-bg: 28 90% 95%;
     --badge-pendente-fg: 28 90% 36%;
@@ -187,6 +200,34 @@
   }
   .table-row-hover {
     @apply transition-colors hover:bg-secondary/50;
+  }
+  /*
+   * Interacao dos graficos. O Recharts nao traz folha de estilo propria aqui,
+   * entao estas regras sao a unica fonte de verdade do hover: a barra baixa
+   * para 85% de opacidade, o que da feedback sem confundir "esta barra esta
+   * selecionada" com "esta barra e outra".
+   */
+  .recharts-bar-rectangle path {
+    transition: opacity 180ms ease-out;
+  }
+  .recharts-bar-rectangle:hover path {
+    opacity: 0.85;
+  }
+  .recharts-line-curve,
+  .recharts-dot {
+    transition: opacity 180ms ease-out;
+  }
+  .recharts-active-dot,
+  .recharts-line-dots:hover .recharts-line-dot {
+    opacity: 0.85;
+  }
+  /* WCAG 2.3.3 - sem movimento nao essencial */
+  @media (prefers-reduced-motion: reduce) {
+    .recharts-bar-rectangle path,
+    .recharts-line-curve,
+    .recharts-dot {
+      transition: none;
+    }
   }
 }
 

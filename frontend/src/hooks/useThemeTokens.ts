@@ -48,9 +48,42 @@ export function useCssTokens<T extends string>(names: readonly T[]): Record<T, s
   return tokens;
 }
 
-/** Converte o formato interno `H S% L%` em `hsl(H, S%, L%)`, aceito por SVG e inline styles. */
+/**
+ * Monta uma cor CSS a partir do formato interno `H S% L%` dos tokens de tema.
+ *
+ * Esta funcao ja deixou a paleta inteira dos graficos cair para preto: ela
+ * assumia que o hue vinha sem unidade e devolvia `hsl(201.57%, 100%, 34.9%)`
+ * quando o token trazia o hue em porcentagem. Isso e invalido — em `hsl()` o
+ * hue e `<number> | <angle>`, nunca `<percentage>` — entao o navegador descartava
+ * o atributo e o SVG desenhava preto. Por isso as tres salvacoes:
+ *
+ * 1. token vazio devolve `''`, nunca `hsl(undefined)`;
+ * 2. token que ja e uma cor completa (`hsl(...)`, `rgb(...)`, hex) passa direto,
+ *    o que impede o `hsl(hsl(...))` de um token ja resolvido;
+ * 3. hue em porcentagem e normalizado para numero antes de formatar.
+ *
+ * Prefira passar hex direto quando nao houver troca de tema a respeitar.
+ */
 export function toHsl(token: string): string {
-  if (!token) return '';
-  if (token.includes('/')) return `hsl(${token})`;
-  return `hsl(${token.split(/\s+/).join(', ')})`;
+  const raw = (token ?? '').trim();
+  if (!raw) return '';
+
+  // ja e uma cor completa: nao embrulhar de novo
+  if (/^(hsl|rgb|rgba|hsla|oklch|color|lab|lch)\(/i.test(raw) || raw.startsWith('#')) {
+    return raw;
+  }
+
+  // `H S% L%`, opcionalmente com `/ alfa`
+  const [corpo, alfa] = raw.split('/').map(p => p.trim());
+  if (!corpo) return '';
+
+  const partes = corpo.split(/\s+/);
+  if (partes.length !== 3) return '';
+
+  const [h, s, l] = partes;
+  if (h.endsWith('%')) return '';
+  if (!s.endsWith('%') || !l.endsWith('%')) return '';
+
+  return alfa ? `hsl(${h}, ${s}, ${l} / ${alfa})` : `hsl(${h}, ${s}, ${l})`;
 }
+
