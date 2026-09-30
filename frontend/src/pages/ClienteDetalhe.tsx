@@ -102,7 +102,7 @@ export default function ClienteDetalhe() {
         </div>
 
         {showForm && (
-          <form onSubmit={handleAddVeiculo} className="grid grid-cols-3 gap-3 mb-4">
+          <form onSubmit={handleAddVeiculo} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
             <label htmlFor="detalhe-veiculo-modelo" className="sr-only">Modelo</label>
             <input id="detalhe-veiculo-modelo" className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
             <label htmlFor="detalhe-veiculo-placa" className="sr-only">Placa</label>
@@ -115,88 +115,94 @@ export default function ClienteDetalhe() {
           </form>
         )}
 
-        <table className="w-full text-sm">
-          <caption className="sr-only">Veículos do cliente, com modelo, placa, cor e ações</caption>
-          <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Modelo</th><th scope="col" className="text-left py-2 px-3">Placa</th><th scope="col" className="text-left py-2 px-3">Cor</th><th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th></tr></thead>
-          <tbody>
-            {veiculosCliente.map(v => (
-              <tr key={v.id} className="table-row-hover border-t border-border">
-                {editandoVeiculoId === v.id ? (
-                  <>
-                    <td className="py-2 px-3">
-                      <input className="input-t10 text-sm py-1" aria-label={`Modelo do veículo ${v.placa}`} value={editandoModelo} onChange={e => setEditandoModelo(e.target.value)} />
-                    </td>
-                    <td className="py-2 px-3">
-                      <input className="input-t10 text-sm py-1 uppercase font-mono" aria-label={`Placa do veículo ${v.modelo}`} value={editPlacaValue} onChange={handleEditPlacaChange} maxLength={8} />
-                    </td>
-                    <td className="py-2 px-3">
-                      <input className="input-t10 text-sm py-1" aria-label={`Cor do veículo ${v.modelo}`} value={editandoCor} onChange={e => setEditandoCor(e.target.value)} />
-                    </td>
-                    <td className="py-2 px-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button type="button" onClick={salvarEdicaoVeiculo} aria-label={`Salvar alterações do veículo ${v.placa}`} title="Salvar" className="text-success hover:bg-success/10 p-1 rounded"><Check size={14} aria-hidden="true" /></button>
-                        <button type="button" onClick={cancelarEdicaoVeiculo} aria-label={`Cancelar edição do veículo ${v.placa}`} title="Cancelar" className="text-muted-foreground hover:bg-secondary/60 p-1 rounded"><X size={14} aria-hidden="true" /></button>
-                      </div>
-                    </td>
-                  </>
-                ) : (
-                  <>
-                    <td className="py-2 px-3 font-medium text-foreground">{v.modelo}</td>
-                    <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
-                    <td className="py-2 px-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => iniciarEdicaoVeiculo(v)}
-                          aria-label={`Editar veículo ${v.modelo}, placa ${v.placa}`}
-                          title="Editar"
-                          className="text-muted-foreground hover:text-primary transition-colors p-1"
-                        >
-                          <Pencil size={14} aria-hidden="true" />
-                        </button>
-                        <ConfirmDialogButton
-                          title="Excluir Veículo"
-                          ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
-                          description={`Tem certeza que deseja excluir o veículo "${v.modelo}"? Esta ação não pode ser desfeita.`}
-                          onConfirm={() => deleteVeiculo(v.id)}
-                          icon={<Trash2 size={14} />}
-                          variant="ghost"
-                        />
-                      </div>
-                    </td>
-                  </>
-                )}
-              </tr>
-            ))}
-            {veiculosCliente.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>}
-          </tbody>
-        </table>
+        {/* WCAG 2.1.1 / 1.4.10 - regiao rolavel por teclado, com rotulo para leitores de tela */}
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de veículos do cliente">
+          <table className="w-full text-sm">
+            <caption className="sr-only">Veículos do cliente, com modelo, placa, cor e ações</caption>
+            <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Modelo</th><th scope="col" className="text-left py-2 px-3">Placa</th><th scope="col" className="text-left py-2 px-3">Cor</th><th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th></tr></thead>
+            <tbody>
+              {veiculosCliente.map(v => (
+                <tr key={v.id} className="table-row-hover border-t border-border">
+                  {editandoVeiculoId === v.id ? (
+                    <>
+                      <td className="py-2 px-3">
+                        <input className="input-t10 text-sm py-1" aria-label={`Modelo do veículo ${v.placa}`} value={editandoModelo} onChange={e => setEditandoModelo(e.target.value)} />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input className="input-t10 text-sm py-1 uppercase font-mono" aria-label={`Placa do veículo ${v.modelo}`} value={editPlacaValue} onChange={handleEditPlacaChange} maxLength={8} />
+                      </td>
+                      <td className="py-2 px-3">
+                        <input className="input-t10 text-sm py-1" aria-label={`Cor do veículo ${v.modelo}`} value={editandoCor} onChange={e => setEditandoCor(e.target.value)} />
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button type="button" onClick={salvarEdicaoVeiculo} aria-label={`Salvar alterações do veículo ${v.placa}`} title="Salvar" className="text-success hover:bg-success/10 p-1 rounded"><Check size={14} aria-hidden="true" /></button>
+                          <button type="button" onClick={cancelarEdicaoVeiculo} aria-label={`Cancelar edição do veículo ${v.placa}`} title="Cancelar" className="text-muted-foreground hover:bg-secondary/60 p-1 rounded"><X size={14} aria-hidden="true" /></button>
+                        </div>
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="py-2 px-3 font-medium text-foreground">{v.modelo}</td>
+                      <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
+                      <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
+                      <td className="py-2 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => iniciarEdicaoVeiculo(v)}
+                            aria-label={`Editar veículo ${v.modelo}, placa ${v.placa}`}
+                            title="Editar"
+                            className="text-muted-foreground hover:text-primary transition-colors p-1"
+                          >
+                            <Pencil size={14} aria-hidden="true" />
+                          </button>
+                          <ConfirmDialogButton
+                            title="Excluir Veículo"
+                            ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
+                            description={`Tem certeza que deseja excluir o veículo "${v.modelo}"? Esta ação não pode ser desfeita.`}
+                            onConfirm={() => deleteVeiculo(v.id)}
+                            icon={<Trash2 size={14} />}
+                            variant="ghost"
+                          />
+                        </div>
+                      </td>
+                    </>
+                  )}
+                </tr>
+              ))}
+              {veiculosCliente.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Histórico */}
       <div className="bg-card rounded-xl border border-border p-5">
         <h3 className="font-barlow-condensed font-bold text-foreground mb-4">Histórico de Lavagens</h3>
-        <table className="w-full text-sm">
-          <caption className="sr-only">Histórico de lavagens do cliente, com data, veículo, tipo, valor e status</caption>
-          <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Data</th><th scope="col" className="text-left py-2 px-3">Veículo</th><th scope="col" className="text-left py-2 px-3">Tipo</th><th scope="col" className="text-right py-2 px-3">Valor</th><th scope="col" className="text-center py-2 px-3">Status</th></tr></thead>
-          <tbody>
-            {lavagensCliente.map(l => {
-              const v = veiculos.find(x => x.id === l.veiculo_id);
-              const t = getTipoLavagem(l.tipo_lavagem_id);
-              return (
-                <tr key={l.id} className="table-row-hover border-t border-border">
-                  <td className="py-2 px-3 text-muted-foreground">{new Date(l.data).toLocaleDateString('pt-BR')}</td>
-                  <td className="py-2 px-3">{v?.modelo || '—'}</td>
-                  <td className="py-2 px-3">{t?.nome || '—'}</td>
-                  <td className="py-2 px-3 text-right text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
-                  <td className="py-2 px-3 text-center">{statusBadge(l.status)}</td>
-                </tr>
-              );
-            })}
-            {lavagensCliente.length === 0 && <tr><td colSpan={5} className="py-4 text-center text-muted-foreground text-sm">Nenhuma lavagem registrada.</td></tr>}
-          </tbody>
-        </table>
+        {/* WCAG 2.1.1 / 1.4.10 - regiao rolavel por teclado, com rotulo para leitores de tela */}
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de histórico de lavagens do cliente">
+          <table className="w-full text-sm">
+            <caption className="sr-only">Histórico de lavagens do cliente, com data, veículo, tipo, valor e status</caption>
+            <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Data</th><th scope="col" className="text-left py-2 px-3">Veículo</th><th scope="col" className="text-left py-2 px-3">Tipo</th><th scope="col" className="text-right py-2 px-3">Valor</th><th scope="col" className="text-center py-2 px-3">Status</th></tr></thead>
+            <tbody>
+              {lavagensCliente.map(l => {
+                const v = veiculos.find(x => x.id === l.veiculo_id);
+                const t = getTipoLavagem(l.tipo_lavagem_id);
+                return (
+                  <tr key={l.id} className="table-row-hover border-t border-border">
+                    <td className="py-2 px-3 text-muted-foreground">{new Date(l.data).toLocaleDateString('pt-BR')}</td>
+                    <td className="py-2 px-3">{v?.modelo || '—'}</td>
+                    <td className="py-2 px-3">{t?.nome || '—'}</td>
+                    <td className="py-2 px-3 text-right text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
+                    <td className="py-2 px-3 text-center">{statusBadge(l.status)}</td>
+                  </tr>
+                );
+              })}
+              {lavagensCliente.length === 0 && <tr><td colSpan={5} className="py-4 text-center text-muted-foreground text-sm">Nenhuma lavagem registrada.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

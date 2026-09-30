@@ -31,7 +31,13 @@ export default function Estoque() {
           </p>
         </div>
       )}
-      <div className="bg-card rounded-xl border border-border overflow-x-auto animate-fade-up" style={{ animationDelay: '100ms' }}>
+      <div
+        className="bg-card rounded-xl border border-border overflow-x-auto animate-fade-up"
+        style={{ animationDelay: '100ms' }}
+        tabIndex={0}
+        role="region"
+        aria-label="Tabela de produtos em estoque"
+      >
         <table className="w-full text-sm">
                 <caption className="sr-only">Produtos em estoque, com produto, categoria, quantidade, mínimo, preço unitário, status e ações</caption>
           <thead>

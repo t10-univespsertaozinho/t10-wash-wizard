@@ -37,7 +37,12 @@ export default function Lavagens() {
           </button>
         ))}
       </div>
-      <div className="bg-card rounded-xl border border-border overflow-x-auto">
+      <div
+        className="bg-card rounded-xl border border-border overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Tabela de lavagens"
+      >
         <table className="w-full text-sm">
                 <caption className="sr-only">Lavagens registradas, com data, cliente, veículo, tipo, valor, pagamento, status e ações</caption>
           <thead>

@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavLink } from '@/components/NavLink';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useState } from 'react';
 import {
   LayoutDashboard, Droplets, List, Tags, Users, UserPlus,
@@ -124,10 +125,10 @@ export default function AppLayout() {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="h-14 border-b border-border flex items-center justify-between px-4 lg:px-6 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
-              className="lg:hidden text-muted-foreground"
+              className="lg:hidden text-muted-foreground shrink-0"
               onClick={() => setSidebarOpen(true)}
               aria-expanded={sidebarOpen}
               aria-controls="app-sidebar"
@@ -135,15 +136,20 @@ export default function AppLayout() {
             >
               {sidebarOpen ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
             </button>
-            <h1 className="text-lg font-barlow-condensed font-bold text-foreground">{title}</h1>
+            <h1 className="text-lg font-barlow-condensed font-bold text-foreground truncate">{title}</h1>
           </div>
-          <NavLink
-            to="/nova-lavagem"
-            end
-            className="bg-primary text-primary-foreground text-xs font-bold px-4 py-2 rounded-lg hover:brightness-110 transition-all flex items-center gap-1.5"
-          >
-            <Plus size={14} aria-hidden="true" /> Nova Lavagem
-          </NavLink>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <ThemeToggle />
+            <NavLink
+              to="/nova-lavagem"
+              end
+              aria-label="Nova Lavagem"
+              className="bg-primary text-primary-foreground text-xs font-bold px-3 sm:px-4 py-2 rounded-lg hover:brightness-110 transition-all flex items-center gap-1.5"
+            >
+              <Plus size={14} aria-hidden="true" />
+              <span className="hidden sm:inline">Nova Lavagem</span>
+            </NavLink>
+          </div>
         </header>
         <main id="main-content" tabIndex={-1} className="flex-1 p-4 lg:p-6 overflow-y-auto focus:outline-none">
           <Outlet />

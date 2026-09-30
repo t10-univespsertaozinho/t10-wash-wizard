@@ -1,62 +1,34 @@
-import { useEffect, useState } from 'react';
+import { useTheme as useNextTheme } from 'next-themes';
 
-type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'system';
 
-interface UseThemeReturn {
-  theme: Theme;
-  resolvedTheme: 'light' | 'dark';
-  setTheme: (theme: Theme) => void;
+/**
+ * Fonte unica de verdade do tema.
+ *
+ * A aplicacao ja monta `ThemeProvider` (next-themes) em `App.tsx` com
+ * `attribute="class"`, `enableSystem` e `defaultTheme="system"`. Esta e a
+ * implementacao anterior, local e nao reativa: ela escrevia na mesma chave
+ * `localStorage` e manipulava `documentElement.classList` por conta propria,
+ * disputando o controle de classe com o next-themes.
+ *
+ * Reexportamos o hook do next-themes para que `setTheme`, a persistencia e a
+ * classe em `<html>` tenham um unico dono. Assim `resolvedTheme` e reativo e
+ * qualquer consumidor re-renderiza no instante da troca de tema.
+ */
+export function useTheme() {
+  return useNextTheme();
 }
 
-export function useTheme(): UseThemeReturn {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('theme') as Theme) || 'system';
-    }
-    return 'system';
-  });
-
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
-
-  useEffect(() => {
-    const root = window.document.documentElement;
-    
-    const updateResolvedTheme = () => {
-      if (theme === 'system') {
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        setResolvedTheme(systemTheme);
-        root.classList.remove('light', 'dark');
-        root.classList.add(systemTheme);
-      } else {
-        setResolvedTheme(theme);
-        root.classList.remove('light', 'dark');
-        root.classList.add(theme);
-      }
-    };
-
-    updateResolvedTheme();
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = () => {
-      if (theme === 'system') {
-        updateResolvedTheme();
-      }
-    };
-
-    mediaQuery.addEventListener('change', handleChange);
-    return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
-
-  useEffect(() => {
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  return { theme, resolvedTheme, setTheme };
-}
-
-export function isDarkTheme(): boolean {
-  if (typeof window === 'undefined') return true;
-  const root = window.document.documentElement;
-  return root.classList.contains('dark') || 
-    (!root.classList.contains('light') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+/**
+ * Indica de forma REATIVA se o tema efetivo (ja resolvido) e escuro.
+ *
+ * Substitui a antiga `isDarkTheme()`, que lia `documentElement.classList` no
+ * corpo da funcao: como nao passava por estado do React, nao disparava
+ * re-render e devolvia um valor obsoleto em qualquer render seguinte a troca de
+ * tema. Para virar hook (e ler `resolvedTheme` do next-themes) o nome precisa do
+ * prefixo `use`, conforme as regras de hooks.
+ */
+export function useIsDarkTheme(): boolean {
+  const { resolvedTheme } = useNextTheme();
+  return resolvedTheme === 'dark';
 }

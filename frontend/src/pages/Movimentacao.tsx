@@ -122,7 +122,7 @@ export default function Movimentacao() {
         </button>
       </form>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden animate-fade-up" style={{ animationDelay: '100ms' }}>
+      <div className="bg-card rounded-xl border border-border animate-fade-up" style={{ animationDelay: '100ms' }}>
         <div className="p-4 border-b border-border">
           <h2 className="font-barlow-condensed font-bold text-foreground">Histórico Recente</h2>
         </div>

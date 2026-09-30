@@ -34,7 +34,13 @@ export default function TiposLavagem() {
         <button type="submit" className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm">Cadastrar</button>
       </form>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden animate-fade-up" style={{ animationDelay: '100ms' }}>
+      <div
+        className="bg-card rounded-xl border border-border overflow-x-auto animate-fade-up"
+        style={{ animationDelay: '100ms' }}
+        tabIndex={0}
+        role="region"
+        aria-label="Tabela de tipos de lavagem"
+      >
         <table className="w-full text-sm">
           <caption className="sr-only">Tipos de lavagem cadastrados, com nome, descrição e preço</caption>
           <thead><tr className="table-header"><th scope="col" className="text-left py-3 px-4">Nome</th><th scope="col" className="text-left py-3 px-4">Descrição</th><th scope="col" className="text-right py-3 px-4">Preço</th><th scope="col" className="py-3 px-4"><span className="sr-only">Ações</span></th></tr></thead>

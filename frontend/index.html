@@ -17,6 +17,22 @@
   <meta name="twitter:title" content="Wash Wizard - Gestão de Lava-Rápido">
   <meta property="og:description" content="Sistema de gestão de lava-rápido: clientes, veículos, lavagens, estoque e financeiro.">
   <meta name="twitter:description" content="Sistema de gestão de lava-rápido: clientes, veículos, lavagens, estoque e financeiro.">
+    <!-- Script bloqueante do next-themes: aplica a classe de tema em <html> antes do
+         primeiro paint, evitando o "flash" de tema errado ao carregar a página. -->
+    <script>
+      (function () {
+        try {
+          var storedTheme = localStorage.getItem('theme') || 'system';
+          var resolvedTheme = storedTheme === 'system'
+            ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+            : storedTheme;
+          document.documentElement.classList.add(resolvedTheme);
+          document.documentElement.style.colorScheme = resolvedTheme;
+        } catch (e) {
+          /* localStorage bloqueado (modo privado): segue o padrão do CSS */
+        }
+      })();
+    </script>
 </head>
 
   <body>

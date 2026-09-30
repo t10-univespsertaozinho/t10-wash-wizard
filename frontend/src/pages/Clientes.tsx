@@ -20,7 +20,12 @@ export default function Clientes() {
         <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input id="clientes-busca" type="search" className="input-t10 pl-9" placeholder="Buscar por nome ou telefone..." value={busca} onChange={e => setBusca(e.target.value)} />
       </div>
-      <div className="bg-card rounded-xl border border-border overflow-x-auto">
+      <div
+        className="bg-card rounded-xl border border-border overflow-x-auto"
+        tabIndex={0}
+        role="region"
+        aria-label="Tabela de clientes"
+      >
         <table className="w-full text-sm">
                 <caption className="sr-only">Clientes cadastrados, com nome, telefone, veículos, lavagens, data de cadastro e ações</caption>
           <thead>

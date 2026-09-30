@@ -146,7 +146,7 @@ export default function Dashboard() {
       </div>
 
       {/* 1. Stats Rápidas - Hoje */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statsCardsHoje.map((s, i) => (
           <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
             <div className="flex items-center justify-between">
@@ -167,7 +167,12 @@ export default function Dashboard() {
           {stats.pendentes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma lavagem pendente.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <div
+              className="overflow-x-auto"
+              tabIndex={0}
+              role="region"
+              aria-label="Tabela de últimas lavagens"
+            >
               <table className="w-full text-sm">
                 <caption className="sr-only">Últimas lavagens registradas, com cliente, veículo, tipo, valor e ações</caption>
                 <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Cliente</th><th scope="col" className="text-left py-2 px-3">Veículo</th><th scope="col" className="text-left py-2 px-3">Tipo</th><th scope="col" className="text-right py-2 px-3">Valor</th><th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th></tr></thead>
@@ -272,7 +277,7 @@ export default function Dashboard() {
       {/* 3. Stats do Mês + Lavagens por Tipo */}
       {user?.role === 'admin' && (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {statsCardsMes.map((s, i) => (
               <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
                 <div className="flex items-center justify-between">

@@ -33,7 +33,7 @@ export default function NovoProduto() {
           <label htmlFor="produto-nome" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Nome</label>
           <input id="produto-nome" className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do produto" required />
         </div>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label htmlFor="produto-categoria" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Categoria</label>
             <select id="produto-categoria" className="input-t10" value={categoria} onChange={e => setCategoria(e.target.value as Produto['categoria'])}>
@@ -47,7 +47,7 @@ export default function NovoProduto() {
             </select>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label htmlFor="produto-quantidade" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Qtd Inicial</label>
             <input id="produto-quantidade" className="input-t10" type="number" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />

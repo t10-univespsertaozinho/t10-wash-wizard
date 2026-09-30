@@ -89,44 +89,47 @@ export default function Veiculos() {
           </form>
         )}
 
-        <table className="w-full text-sm">
-          <caption className="sr-only">Veículos cadastrados, com cliente, modelo, placa, cor e ações</caption>
-          <thead>
-            <tr className="table-header">
-              <th scope="col" className="text-left py-2 px-3">Cliente</th>
-              <th scope="col" className="text-left py-2 px-3">Modelo</th>
-              <th scope="col" className="text-left py-2 px-3">Placa</th>
-              <th scope="col" className="text-left py-2 px-3">Cor</th>
-              <th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtrados.map(v => {
-              const cliente = clientes.find(c => c.id === v.cliente_id);
-              return (
-                <tr key={v.id} className="table-row-hover border-t border-border">
-                  <td className="py-2 px-3 font-medium text-foreground">{cliente?.nome || '—'}</td>
-                  <td className="py-2 px-3">{v.modelo}</td>
-                  <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
-                  <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
-                  <td className="py-2 px-3 text-right">
-                    <ConfirmDialogButton
-                      title="Excluir Veículo"
-                      ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
-                      description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
-                      onConfirm={() => deleteVeiculo(v.id)}
-                      icon={<Trash2 size={14} />}
-                      variant="ghost"
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-            {filtrados.length === 0 && (
-              <tr><td colSpan={5} className="py-6 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>
-            )}
-          </tbody>
-        </table>
+        {/* WCAG 2.1.1 / 1.4.10 - regiao rolavel por teclado, com rotulo para leitores de tela */}
+        <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de veículos">
+          <table className="w-full text-sm">
+            <caption className="sr-only">Veículos cadastrados, com cliente, modelo, placa, cor e ações</caption>
+            <thead>
+              <tr className="table-header">
+                <th scope="col" className="text-left py-2 px-3">Cliente</th>
+                <th scope="col" className="text-left py-2 px-3">Modelo</th>
+                <th scope="col" className="text-left py-2 px-3">Placa</th>
+                <th scope="col" className="text-left py-2 px-3">Cor</th>
+                <th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtrados.map(v => {
+                const cliente = clientes.find(c => c.id === v.cliente_id);
+                return (
+                  <tr key={v.id} className="table-row-hover border-t border-border">
+                    <td className="py-2 px-3 font-medium text-foreground">{cliente?.nome || '—'}</td>
+                    <td className="py-2 px-3">{v.modelo}</td>
+                    <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
+                    <td className="py-2 px-3 text-right">
+                      <ConfirmDialogButton
+                        title="Excluir Veículo"
+                        ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
+                        description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
+                        onConfirm={() => deleteVeiculo(v.id)}
+                        icon={<Trash2 size={14} />}
+                        variant="ghost"
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+              {filtrados.length === 0 && (
+                <tr><td colSpan={5} className="py-6 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
