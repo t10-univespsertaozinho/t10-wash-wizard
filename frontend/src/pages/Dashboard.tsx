@@ -1,30 +1,37 @@
 import { useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { isDarkTheme } from '@/hooks/useTheme';
+import { useCssTokens, toHsl } from '@/hooks/useThemeTokens';
 import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User, TrendingUp, Package, PlayCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend } from 'recharts';
 
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
+const TOKENS = [
+  '--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5', '--chart-6',
+  '--card', '--foreground', '--muted-foreground', '--border',
+] as const;
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { lavagens, clientes, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData, tiposLavagem } = useApp();
-  const isDark = isDarkTheme();
+  const tokens = useCssTokens(TOKENS);
+
+  const chartColors = useMemo(() => TOKENS.slice(0, 6).map(name => toHsl(tokens[name])), [tokens]);
 
   const tooltipStyle = useMemo(() => ({
-    background: isDark ? '#1a1d27' : '#ffffff',
-    border: `1px solid ${isDark ? 'rgba(255,255,255,0.07)' : '#e5e7eb'}`,
+    background: toHsl(tokens['--card']),
+    border: `1px solid hsl(${tokens['--border']})`,
     borderRadius: 8,
-    color: isDark ? '#fff' : '#1f2937',
+    color: toHsl(tokens['--foreground']),
     fontSize: 12,
-  }), [isDark]);
+  }), [tokens]);
 
-  const tickStyle = useMemo(() => ({ 
-    fill: isDark ? '#9ca3af' : '#6b7280', 
-    fontSize: 11 
-  }), [isDark]);
+  const tickStyle = useMemo(() => ({
+    fill: toHsl(tokens['--muted-foreground']),
+    fontSize: 11,
+  }), [tokens]);
 
   const stats = useMemo(() => {
     const hoje = new Date().toISOString().slice(0, 10);
@@ -102,7 +109,7 @@ export default function Dashboard() {
   const statsCardsHoje = useMemo(() => [
     { label: 'Lavagens Hoje', value: stats.lavagensHoje.length, icon: Droplets, border: 'border-primary' },
     { label: 'Receita Hoje', value: `R$ ${stats.receitaHoje.toFixed(2)}`, icon: DollarSign, border: 'border-success' },
-    { label: 'Clientes Hoje', value: stats.clientesHoje, icon: Users, border: 'border-purple-500' },
+    { label: 'Clientes Hoje', value: stats.clientesHoje, icon: Users, border: 'border-chart-4' },
     { label: 'Lavagens no Mês', value: stats.lavagensMes.length, icon: Calendar, border: 'border-accent' },
   ], [stats]);
 
@@ -111,18 +118,13 @@ export default function Dashboard() {
     { label: 'Concluídas no Mês', value: stats.concluidasMes.length, icon: Check, border: 'border-accent' },
   ], [stats]);
 
-  const colors = useMemo(() => isDark 
-    ? ['hsl(49,100%,50%)', 'hsl(212,80%,42%)', 'hsl(142,70%,45%)', 'hsl(280,60%,50%)', 'hsl(340,80%,50%)', 'hsl(180,70%,50%)']
-    : ['hsl(25,95%,45%)', 'hsl(212,80%,50%)', 'hsl(142,70%,35%)', 'hsl(280,60%,45%)', 'hsl(340,80%,50%)', 'hsl(180,70%,45%)'],
-  [isDark]);
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="font-barlow-condensed font-bold text-2xl text-foreground">Dashboard</h2>
           <p className="text-sm text-muted-foreground flex items-center gap-2">
-            {user?.role === 'admin' ? <Shield size={14} className="text-accent" /> : <User size={14} />}
+            {user?.role === 'admin' ? <Shield size={14} className="text-accent-text" /> : <User size={14} />}
             Perfil: <span className="font-semibold text-foreground capitalize">{user?.role}</span> ({user?.nome})
           </p>
         </div>
@@ -135,7 +137,7 @@ export default function Dashboard() {
                   seedTestData();
                 }
               }}
-              className="bg-accent/10 text-accent hover:bg-accent/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
+              className="bg-accent/10 text-accent-text hover:bg-accent/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
             >
               <Droplets size={16} /> Carregar Dados
             </button>
@@ -181,7 +183,7 @@ export default function Dashboard() {
                         <td className="py-2 px-3 text-right text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
                         <td className="py-2 px-3 text-right">
                           <div className="inline-flex items-center gap-1.5">
-                            <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} className="bg-accent/10 text-accent text-xs px-3 py-1 rounded-full font-semibold hover:bg-accent/20 transition-colors inline-flex items-center gap-1">
+                            <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} className="bg-accent/10 text-accent-text text-xs px-3 py-1 rounded-full font-semibold hover:bg-accent/20 transition-colors inline-flex items-center gap-1">
                               <PlayCircle size={12} /> Em progresso
                             </button>
                             <button onClick={() => updateLavagemStatus(l.id, 'concluida')} className="bg-success/10 text-success text-xs px-3 py-1 rounded-full font-semibold hover:bg-success/20 transition-colors inline-flex items-center gap-1">
@@ -205,7 +207,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-2">
               {recentClientes.map(c => {
-                const avatarColors = ['bg-primary/20 text-primary', 'bg-accent/20 text-accent', 'bg-success/20 text-success', 'bg-purple-500/20 text-purple-400', 'bg-destructive/20 text-destructive'];
+                const avatarColors = ['badge-andamento', 'badge-pendente', 'badge-concluida', 'badge-info', 'badge-cancelada'];
                 const ci = c.nome.charCodeAt(0) % avatarColors.length;
                 return (
                   <Link key={c.id} to={`/clientes/${c.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/40 transition-colors">
@@ -237,8 +239,8 @@ export default function Dashboard() {
                 <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tooltipStyle} />
                 <Legend />
-                <Bar yAxisId="left" dataKey="receita" fill="hsl(49,100%,50%)" radius={[4, 4, 0, 0]} name="Receita (R$)" />
-                <Line yAxisId="right" type="monotone" dataKey="lavagens" stroke="hsl(212,80%,42%)" strokeWidth={2} dot={{ fill: 'hsl(212,80%,42%)' }} name="Lavagens" />
+                <Bar yAxisId="left" dataKey="receita" fill={chartColors[0]} radius={[4, 4, 0, 0]} name="Receita (R$)" />
+                <Line yAxisId="right" type="monotone" dataKey="lavagens" stroke={chartColors[1]} strokeWidth={2} dot={{ fill: chartColors[1] }} name="Lavagens" />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -281,14 +283,14 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
-            <div className="bg-card rounded-xl border-l-4 border-purple-500 p-4 animate-fade-up" style={{ animationDelay: '160ms' }}>
+            <div className="bg-card rounded-xl border-l-4 border-chart-4 p-4 animate-fade-up" style={{ animationDelay: '160ms' }}>
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total por Tipo (Mês)</p>
                   <div className="mt-1 space-y-1">
                     {stats.lavagensPorTipoMes.map((t) => (
                       <p key={t.nome} className="text-sm font-barlow-condensed font-bold text-foreground">
-                        {t.nome}: <span className="text-purple-400">{t.quantidade}</span>
+                        {t.nome}: <span className="text-chart-4">{t.quantidade}</span>
                       </p>
                     ))}
                   </div>
@@ -310,8 +312,8 @@ export default function Dashboard() {
                     <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
                     <Tooltip contentStyle={tooltipStyle} />
                     <Legend />
-                    <Bar yAxisId="left" dataKey="lavagens" fill="hsl(212,80%,42%)" radius={[4, 4, 0, 0]} name="Lavagens" />
-                    <Line yAxisId="right" type="monotone" dataKey="receita" stroke="hsl(49,100%,50%)" strokeWidth={2} dot={{ fill: 'hsl(49,100%,50%)' }} name="Receita (R$)" />
+                    <Bar yAxisId="left" dataKey="lavagens" fill={chartColors[1]} radius={[4, 4, 0, 0]} name="Lavagens" />
+                    <Line yAxisId="right" type="monotone" dataKey="receita" stroke={chartColors[0]} strokeWidth={2} dot={{ fill: chartColors[0] }} name="Receita (R$)" />
                   </ComposedChart>
                 </ResponsiveContainer>
               </div>
@@ -327,7 +329,7 @@ export default function Dashboard() {
                     <Tooltip contentStyle={tooltipStyle} />
                     <Legend />
                     {tiposLavagem.map((t, i) => (
-                      <Bar key={t.id} dataKey={t.nome} stackId="a" fill={colors[i % colors.length]} radius={[2, 2, 0, 0]} />
+                      <Bar key={t.id} dataKey={t.nome} stackId="a" fill={chartColors[i % chartColors.length]} radius={[2, 2, 0, 0]} />
                     ))}
                   </BarChart>
                 </ResponsiveContainer>

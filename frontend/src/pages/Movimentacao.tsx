@@ -80,11 +80,11 @@ export default function Movimentacao() {
           <label className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Tipo</label>
           <div className="flex gap-2">
             <button type="button" onClick={() => setTipo('entrada')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${tipo === 'entrada' ? 'bg-success text-white' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
+              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${tipo === 'entrada' ? 'bg-success text-success-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
               <ArrowDownCircle size={18} /> Entrada
             </button>
             <button type="button" onClick={() => setTipo('saida')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${tipo === 'saida' ? 'bg-destructive text-white' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
+              className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${tipo === 'saida' ? 'bg-destructive text-destructive-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
               <ArrowUpCircle size={18} /> Saída
             </button>
           </div>

@@ -68,7 +68,7 @@ export default function Lavagens() {
                   <td className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {l.status === 'pendente' && (
-                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'em_progresso')} title="Iniciar lavagem" aria-label={`Iniciar lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent transition-colors"><PlayCircle size={15} aria-hidden="true" /></button>
+                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'em_progresso')} title="Iniciar lavagem" aria-label={`Iniciar lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-accent/10 text-muted-foreground hover:text-accent-text transition-colors"><PlayCircle size={15} aria-hidden="true" /></button>
                       )}
                       {(l.status === 'pendente' || l.status === 'em_progresso') && (
                         <button type="button" onClick={() => updateLavagemStatus(l.id, 'concluida')} title="Concluir lavagem" aria-label={`Concluir lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-success/10 text-muted-foreground hover:text-success transition-colors"><Check size={15} aria-hidden="true" /></button>

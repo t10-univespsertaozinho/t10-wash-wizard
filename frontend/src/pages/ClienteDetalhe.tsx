@@ -65,7 +65,7 @@ export default function ClienteDetalhe() {
     return <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
   };
 
-  const colors = ['bg-primary/20 text-primary', 'bg-accent/20 text-accent', 'bg-success/20 text-success', 'bg-purple-500/20 text-purple-400'];
+  const colors = ['badge-andamento', 'badge-pendente', 'badge-concluida', 'badge-info'];
   const ci = cliente.nome.charCodeAt(0) % colors.length;
 
   return (
@@ -86,7 +86,7 @@ export default function ClienteDetalhe() {
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Lavagens</p>
           </div>
           <div>
-            <p className="text-2xl font-barlow-condensed font-bold text-accent">{veiculosCliente.length}</p>
+            <p className="text-2xl font-barlow-condensed font-bold text-accent-text">{veiculosCliente.length}</p>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Veículos</p>
           </div>
         </div>
