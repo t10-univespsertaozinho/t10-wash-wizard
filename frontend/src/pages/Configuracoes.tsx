@@ -129,7 +129,7 @@ export default function Configuracoes() {
             SQLite Local (Conectado via API)
           </span>
           <span className="text-xs text-muted-foreground">
-            {import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}
+            {import.meta.env.VITE_API_URL || '/api (Proxy Local)'}
           </span>
         </div>
       </div>

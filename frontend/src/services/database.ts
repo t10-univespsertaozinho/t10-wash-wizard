@@ -1,7 +1,7 @@
 import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque } from '@/types';
 import { TOKEN_STORAGE_KEY } from '@/utils/security';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const getToken = () => {
   try {
