@@ -14,7 +14,29 @@ import { requireAuth, requireAdmin } from './middleware/auth.js';
 dotenv.config();
 
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:8080' }));
+
+const isDev = process.env.NODE_ENV !== 'production';
+const localOriginRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Permite requisições sem header Origin (ex: proxy do Vite, ferramentas locais, mobile)
+    if (!origin) return callback(null, true);
+
+    if (isDev && localOriginRegex.test(origin)) {
+      return callback(null, true);
+    }
+
+    const allowedOrigin = process.env.FRONTEND_URL || 'http://localhost:8080';
+    if (origin === allowedOrigin) {
+      return callback(null, true);
+    }
+
+    return callback(new Error(`Bloqueado pelo CORS: ${origin}`));
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 
 // Nota sobre isolamento por usuário: este é um sistema de um único lava-rápido,
@@ -536,6 +558,18 @@ app.post('/api/backup/reset', requireAdmin, async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Backend SQLite rodando na porta ${PORT}`);
-});
+
+// Inicia o servidor se não estiver sendo executado como Serverless Function (ex: Vercel)
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Backend SQLite rodando na porta ${PORT}`);
+  });
+}
+
+// Compatibilidade CommonJS e ES Modules para Vercel Serverless Function
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = app;
+}
+
+export { app };
+export default app;
