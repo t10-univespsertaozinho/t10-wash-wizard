@@ -1,331 +1,398 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCssTokens, toHsl } from '@/hooks/useThemeTokens';
-import { Droplets, Calendar, DollarSign, Users, ChevronRight, Check, AlertTriangle, Shield, User, TrendingUp, Package, PlayCircle } from 'lucide-react';
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Package,
+  AlertTriangle,
+  Clock,
+  ExternalLink,
+  Droplets,
+  Check,
+  PlayCircle,
+  Shield,
+  User,
+  RefreshCw,
+  MessageCircle,
+  Car,
+  ChevronRight,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Line, ComposedChart, Legend, LabelList } from 'recharts';
+import { ResponsiveContainer, Bar, Line, ComposedChart, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import {
   ChartDataTable,
   ChartLegend,
   ChartTooltip,
-  BarValue,
 } from '@/components/charts/chartA11y';
 import { chartA11yProps, type SeriesDescriptor } from '@/components/charts/chartSeries';
 import { useChartPalette } from '@/components/charts/useChartPalette';
+import { getDashboardStats } from '@/services/database';
+import { DashboardStats } from '@/types';
 
-const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-
-// Tokens que ainda sao a tripla "H S% L%" e por isso passam por `toHsl()`.
-// As cores das series nao entram aqui: `--chart-*` ja e uma cor completa e vem
-// por `useChartPalette()`, sem montagem de string em JS.
 const TOKENS = ['--card', '--foreground', '--muted-foreground', '--border'] as const;
-
-/** Raio das pontas superiores das barras. */
 const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
-
-/**
- * Espessura do separador entre segmentos empilhados.
- *
- * O traco sai centrado no contorno do path, entao na divisa entre dois segmentos
- * entram 0.5px de cada lado e a faixa visivel soma 1px exato, na cor do card.
- * Sem isso, com mais de 6 tipos cadastrados a paleta de 6 cores passaria a
- * repetir e dois segmentos ficariam identicos.
- */
-const SEGMENT_GAP = 1;
-
-/**
- * Cor do separador: `hsl(var(--card))`, direto no atributo do Recharts.
- *
- * `--card` e a tripla "H S% L%" e o `hsl()` aqui recebe a tripla como
- * substituto de `var()`, que e a forma como o CSS foi feito para funcionar.
- * Nao precisa passar por JS, e o modo de falha e o seguro: se um navegador
- * antigo nao resolver `var()` em atributo de apresentacao, some o separador,
- * mas nao aparece contorno preto em cima de cada segmento.
- */
-const SEGMENT_STROKE = 'hsl(var(--card))';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { lavagens, clientes, produtosBaixoEstoque, getCliente, getTipoLavagem, updateLavagemStatus, veiculos, seedTestData, tiposLavagem } = useApp();
-  const tokens = useCssTokens(TOKENS);
+  const {
+    lavagens,
+    getCliente,
+    getTipoLavagem,
+    updateLavagemStatus,
+    veiculos,
+    seedTestData,
+  } = useApp();
 
-  // Paleta das series: hex direto do CSS, com reserva de Okabe-Ito se a leitura falhar.
+  const tokens = useCssTokens(TOKENS);
   const chartColors = useChartPalette();
 
-  // Cores do tooltip derivadas dos tokens: fundo, borda e sombra do tema ativo.
-  const tooltipStyle = useMemo(() => ({
-    background: toHsl(tokens['--card']),
-    border: `1px solid hsl(${tokens['--border']})`,
-    borderRadius: 12,
-    boxShadow: `0 10px 30px -8px hsl(${tokens['--foreground']} / 0.18)`,
-    color: toHsl(tokens['--foreground']),
-    fontFamily: 'inherit',
-  }), [tokens]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  /** Tinta do valor acima da barra: precisa contrastar com o card, nao com a barra. */
-  const labelInk = useMemo(() => toHsl(tokens['--foreground']), [tokens]);
+  // Carregar dados consolidados da API analítica
+  const carregarDadosAnaliticos = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setRefreshing(true);
+      else setLoading(true);
+      setError(null);
 
-  const tickStyle = useMemo(() => ({
-    fill: toHsl(tokens['--muted-foreground']),
-    fontSize: 11,
-    fontFamily: 'inherit',
-  }), [tokens]);
+      const dados = await getDashboardStats();
+      setStats(dados);
+    } catch (err: unknown) {
+      console.error('Erro ao carregar estatísticas do dashboard:', err);
+      setError('Não foi possível carregar as métricas do painel. Verifique sua conexão.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
 
-  /**
-   * Faixa de realce do tooltip: 12% da cor da serie 1.
-   *
-   * `color-mix` em vez de `hsl(--chart-1 / 0.12)`: o token ja e uma cor
-   * completa em hex, e ancorar alfa em hex nao e sintaxe valida de hsl().
-   */
+  useEffect(() => {
+    carregarDadosAnaliticos();
+  }, [carregarDadosAnaliticos]);
+
+  // Recarregar analíticos sempre que houver alteração nas lavagens locais
+  const handleUpdateStatus = async (id: string, novoStatus: 'em_progresso' | 'concluida') => {
+    await updateLavagemStatus(id, novoStatus);
+    carregarDadosAnaliticos(true);
+  };
+
+  // Cores do tooltip derivadas dos tokens do tema
+  const tooltipStyle = useMemo(
+    () => ({
+      background: toHsl(tokens['--card']),
+      border: `1px solid hsl(${tokens['--border']})`,
+      borderRadius: 12,
+      boxShadow: `0 10px 30px -8px hsl(${tokens['--foreground']} / 0.18)`,
+      color: toHsl(tokens['--foreground']),
+      fontFamily: 'inherit',
+    }),
+    [tokens]
+  );
+
+  const tickStyle = useMemo(
+    () => ({
+      fill: toHsl(tokens['--muted-foreground']),
+      fontSize: 11,
+      fontFamily: 'inherit',
+    }),
+    [tokens]
+  );
+
   const cursorStyle = useMemo(
     () => ({ fill: `color-mix(in srgb, ${chartColors[0]} 12%, transparent)` }),
-    [chartColors],
+    [chartColors]
   );
 
-  /**
-   * Descritores das series: fonte unica para legenda, tooltip e tabela `sr-only`.
-   * O rotulo visivel do Recharts vem daqui, para que os tres nunca saiam de
-   * sincronia. Nao ha textura: a separacao entre series fica por conta da
-   * paleta Okabe-Ito e o nome da serie faz o papel de rotulo.
-   */
-  const series7dias = useMemo<SeriesDescriptor[]>(() => [
-    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'bar' },
-    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'line', dash: '7 4' },
-  ], []);
-
-  const series6meses = useMemo<SeriesDescriptor[]>(() => [
-    { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'bar' },
-    { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'line', dash: '7 4' },
-  ], []);
-
-  const seriesPorTipo = useMemo<SeriesDescriptor[]>(
-    () => tiposLavagem.map((t) => ({
-      key: t.nome,
-      name: t.nome,
-      unit: 'numero' as const,
-      kind: 'bar' as const,
-    })),
-    [tiposLavagem],
+  const series7dias = useMemo<SeriesDescriptor[]>(
+    () => [
+      { key: 'receita', name: 'Receita (R$)', unit: 'moeda', kind: 'bar' },
+      { key: 'lavagens', name: 'Lavagens', unit: 'numero', kind: 'line', dash: '7 4' },
+    ],
+    []
   );
 
-  const stats = useMemo(() => {
-    const hoje = new Date().toISOString().slice(0, 10);
-    const mesAtual = new Date().toISOString().slice(0, 7);
+  // Lavagens pendentes para ação operacional diária
+  const pendentes = useMemo(
+    () => lavagens.filter((l) => l.status === 'pendente' || l.status === 'em_progresso').slice(0, 5),
+    [lavagens]
+  );
 
-    const lavagensHoje = lavagens.filter(l => l.data.slice(0, 10) === hoje);
-    const lavagensMes = lavagens.filter(l => l.data.slice(0, 7) === mesAtual);
-    const clientesHoje = [...new Set(lavagensHoje.map(l => l.cliente_id))].length;
-    const receitaHoje = lavagensHoje.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0);
-    const receitaMes = lavagensMes.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0);
-    const pendentes = lavagens.filter(l => l.status === 'pendente');
-    const concluidasMes = lavagensMes.filter(l => l.status === 'concluida');
-    
-    const lavagensPorTipoMes = tiposLavagem.map(t => ({
-      nome: t.nome,
-      quantidade: lavagensMes.filter(l => l.tipo_lavagem_id === t.id).length,
-    }));
+  // Identificar destaques do mix de serviços para o Sr. Reinaldo
+  const destaqueMix = useMemo(() => {
+    if (!stats || !stats.mix_servicos || stats.mix_servicos.length === 0) return null;
+    const porReceita = [...stats.mix_servicos].sort((a, b) => b.faturamento_total - a.faturamento_total)[0];
+    const porVolume = [...stats.mix_servicos].sort((a, b) => b.total_atendimentos - a.total_atendimentos)[0];
+    return { porReceita, porVolume };
+  }, [stats]);
 
-    const last7 = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      const key = d.toISOString().slice(0, 10);
-      const dayLavagens = lavagens.filter(l => l.data.slice(0, 10) === key);
-      return {
-        dia: d.toLocaleDateString('pt-BR', { weekday: 'short' }),
-        receita: dayLavagens.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0),
-        lavagens: dayLavagens.length,
-      };
-    });
-
-    const last6Months = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date();
-      d.setMonth(d.getMonth() - (5 - i));
-      const key = d.toISOString().slice(0, 7);
-      const monthLavagens = lavagens.filter(l => l.data.slice(0, 7) === key);
-      return {
-        mes: MONTHS[d.getMonth()],
-        lavagens: monthLavagens.length,
-        receita: monthLavagens.filter(l => l.status === 'concluida').reduce((s, l) => s + l.valor, 0),
-      };
-    });
-
-    const lavagensPorTipo = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date();
-      d.setMonth(d.getMonth() - (5 - i));
-      const key = d.toISOString().slice(0, 7);
-      const monthLavagens = lavagens.filter(l => l.data.slice(0, 7) === key);
-      
-      const data: Record<string, number | string> = { mes: MONTHS[d.getMonth()] };
-      tiposLavagem.forEach(t => {
-        data[t.nome] = monthLavagens.filter(l => l.tipo_lavagem_id === t.id).length;
-      });
-      return data;
-    });
-
-    return {
-      lavagensHoje,
-      lavagensMes,
-      clientesHoje,
-      receitaHoje,
-      receitaMes,
-      pendentes,
-      concluidasMes,
-      lavagensPorTipoMes,
-      last7,
-      last6Months,
-      lavagensPorTipo
-    };
-  }, [lavagens, tiposLavagem]);
-
-  const recentClientes = useMemo(() => 
-    [...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).slice(0, 5),
-  [clientes]);
-
-  const statsCardsHoje = useMemo(() => [
-    { label: 'Lavagens Hoje', value: stats.lavagensHoje.length, icon: Droplets, border: 'border-primary' },
-    { label: 'Receita Hoje', value: `R$ ${stats.receitaHoje.toFixed(2)}`, icon: DollarSign, border: 'border-success' },
-    { label: 'Clientes Hoje', value: stats.clientesHoje, icon: Users, border: 'border-chart-4' },
-    { label: 'Lavagens no Mês', value: stats.lavagensMes.length, icon: Calendar, border: 'border-accent' },
-  ], [stats]);
-
-  const statsCardsMes = useMemo(() => [
-    { label: 'Receita do Mês', value: `R$ ${stats.receitaMes.toFixed(2)}`, icon: TrendingUp, border: 'border-success' },
-    { label: 'Concluídas no Mês', value: stats.concluidasMes.length, icon: Check, border: 'border-accent' },
-  ], [stats]);
+  // Função auxiliar para gerar link WhatsApp
+  const gerarLinkWhatsapp = (telefone: string, nomeCliente: string) => {
+    const limpo = telefone.replace(/\D/g, '');
+    const numeroCompleto = limpo.length <= 11 ? `55${limpo}` : limpo;
+    const mensagem = encodeURIComponent(
+      `Olá, ${nomeCliente}! Aqui é do Lava Rápido Maquininha. Notamos que faz um tempo desde a sua última visita e preparamos um atendimento especial para deixar seu carro novinho de novo. Quando gostaria de passar aqui?`
+    );
+    return `https://wa.me/${numeroCompleto}?text=${mensagem}`;
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
+      {/* Cabeçalho do Dashboard */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="font-barlow-condensed font-bold text-2xl text-foreground">Dashboard</h2>
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            {user?.role === 'admin' ? <Shield size={14} className="text-accent-text" /> : <User size={14} />}
+          <div className="flex items-center gap-3">
+            <h2 className="font-barlow-condensed font-bold text-2xl text-foreground">
+              Painel do Proprietário
+            </h2>
+            <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-primary/10 text-primary border border-primary/20">
+              Lava Rápido Maquininha
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+            {user?.role === 'admin' ? (
+              <Shield size={14} className="text-accent-text" />
+            ) : (
+              <User size={14} />
+            )}
             Perfil: <span className="font-semibold text-foreground capitalize">{user?.role}</span> ({user?.nome})
           </p>
         </div>
-        
+
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => carregarDadosAnaliticos(true)}
+            disabled={refreshing}
+            className="p-2 rounded-lg border border-border hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+            title="Atualizar dados analíticos"
+            aria-label="Atualizar dados"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+          </button>
+
           {user?.role === 'admin' && (
-            <button 
+            <button
               onClick={() => {
-                if (confirm('Deseja carregar dados de teste? Isso irá substituir os dados atuais.')) {
-                  seedTestData();
+                if (confirm('Deseja recarregar a base com dados de demonstração?')) {
+                  seedTestData().then(() => carregarDadosAnaliticos(true));
                 }
               }}
-              className="bg-accent/10 text-accent-text hover:bg-accent/20 px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
+              className="bg-accent/10 text-accent-text hover:bg-accent/20 px-3.5 py-1.5 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 border border-accent/20"
             >
-              <Droplets size={16} /> Carregar Dados
+              <Droplets size={15} /> Recarregar Demonstração
             </button>
           )}
         </div>
       </div>
 
-      {/* 1. Stats Rápidas - Hoje */}
+      {/* Alerta de erro com retry se houver */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-xl p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <AlertTriangle size={18} />
+            <span>{error}</span>
+          </div>
+          <button
+            onClick={() => carregarDadosAnaliticos()}
+            className="text-xs font-bold underline hover:opacity-80 ml-4"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {/* BLOCO 1: TOPO - 4 CARDS DE INDICADORES PRINCIPAIS DE NEGÓCIO */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsCardsHoje.map((s, i) => (
-          <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{s.label}</p>
-                <p className="text-2xl font-barlow-condensed font-bold text-foreground mt-1">{s.value}</p>
-              </div>
-              <s.icon className="text-muted-foreground" size={22} />
+        {/* Card 1: Faturamento da Semana */}
+        <div className="bg-card rounded-xl border-l-4 border-success border border-border p-4 shadow-sm animate-fade-up">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+              Faturamento da Semana
+            </span>
+            <DollarSign className="text-success" size={20} />
+          </div>
+          <div className="mt-2">
+            <p className="text-2xl font-barlow-condensed font-bold text-foreground">
+              {loading ? (
+                <span className="animate-pulse">Carregando...</span>
+              ) : (
+                `R$ ${(stats?.financeiro.receita_semana ?? 0).toLocaleString('pt-BR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`
+              )}
+            </p>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              {stats && stats.financeiro.variacao_receita_pct >= 0 ? (
+                <span className="inline-flex items-center gap-0.5 font-semibold text-success">
+                  <TrendingUp size={13} /> +{stats.financeiro.variacao_receita_pct}%
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
+                  <TrendingDown size={13} /> {stats?.financeiro.variacao_receita_pct}%
+                </span>
+              )}
+              <span className="text-muted-foreground">vs. semana anterior</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {stats?.financeiro.lavagens_semana ?? 0} lavagens concluídas nos últimos 7 dias
+            </p>
+          </div>
+        </div>
+
+        {/* Card 2: Ticket Médio por Carro */}
+        <div className="bg-card rounded-xl border-l-4 border-primary border border-border p-4 shadow-sm animate-fade-up">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+              Ticket Médio
+            </span>
+            <Car className="text-primary" size={20} />
+          </div>
+          <div className="mt-2">
+            <p className="text-2xl font-barlow-condensed font-bold text-foreground">
+              {loading ? (
+                <span className="animate-pulse">Carregando...</span>
+              ) : (
+                `R$ ${(stats?.financeiro.ticket_medio ?? 0).toFixed(2)}`
+              )}
+              <span className="text-xs font-normal text-muted-foreground ml-1">/ carro</span>
+            </p>
+            <div className="flex items-center gap-1.5 mt-1 text-xs">
+              {stats && stats.financeiro.variacao_ticket_pct >= 0 ? (
+                <span className="inline-flex items-center gap-0.5 font-semibold text-success">
+                  <TrendingUp size={13} /> +{stats.financeiro.variacao_ticket_pct}%
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
+                  <TrendingDown size={13} /> {stats?.financeiro.variacao_ticket_pct}%
+                </span>
+              )}
+              <span className="text-muted-foreground">vs. semana anterior</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Gasto médio por cliente atendido no caixa
+            </p>
+          </div>
+        </div>
+
+        {/* Card 3: Fidelização e Recorrência */}
+        <div className="bg-card rounded-xl border-l-4 border-chart-4 border border-border p-4 shadow-sm animate-fade-up">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+              Clientes Fiéis
+            </span>
+            <Users className="text-chart-4" size={20} />
+          </div>
+          <div className="mt-2">
+            <p className="text-2xl font-barlow-condensed font-bold text-foreground">
+              {loading ? (
+                <span className="animate-pulse">Carregando...</span>
+              ) : (
+                `${stats?.fidelizacao.taxa_recorrencia_pct ?? 0}%`
+              )}
+              <span className="text-xs font-normal text-muted-foreground ml-1">recorrentes</span>
+            </p>
+            <p className="text-xs text-foreground/90 font-medium mt-1">
+              {stats?.fidelizacao.clientes_recorrentes ?? 0} de{' '}
+              {stats?.fidelizacao.total_clientes_com_lavagem ?? 0} clientes já retornaram
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Lavaram mais de uma vez no lava-rápido
+            </p>
+          </div>
+        </div>
+
+        {/* Card 4: Alerta de Insumos Críticos */}
+        <div className="bg-card rounded-xl border-l-4 border-amber-500 border border-border p-4 shadow-sm animate-fade-up">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+              Estoque de Atenção
+            </span>
+            <Package className="text-amber-500" size={20} />
+          </div>
+          <div className="mt-2">
+            <p className="text-2xl font-barlow-condensed font-bold text-foreground">
+              {loading ? (
+                <span className="animate-pulse">Carregando...</span>
+              ) : (
+                `${stats?.estoque_critico.length ?? 0} itens`
+              )}
+              <span className="text-xs font-normal text-muted-foreground ml-1">em baixa</span>
+            </p>
+            <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 mt-1 truncate">
+              {stats && stats.estoque_critico.length > 0
+                ? `${stats.estoque_critico[0].nome} (${stats.estoque_critico[0].quantidade} ${stats.estoque_critico[0].unidade})`
+                : 'Todos os insumos operando bem'}
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Abaixo da margem de segurança cadastrada
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* BLOCO 2: CENTRO - TENDÊNCIA E MIX DE SERVIÇOS */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Gráfico 1: Fluxo Diário nos Últimos 7 Dias (2 colunas) */}
+        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+            <div>
+              <h3 className="font-barlow-condensed font-bold text-lg text-foreground">
+                Fluxo Diário de Atendimentos & Receita
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Movimentação dos últimos 7 dias (Barra = Faturamento R$, Linha = Volume de Lavagens)
+              </p>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: chartColors[0] }} />
+                Receita (R$)
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-3 h-0.5" style={{ backgroundColor: chartColors[1] }} />
+                Carros Atendidos
+              </span>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Pendentes + Clientes */}
-      <div className="grid lg:grid-cols-2 gap-4">
-        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '240ms' }}>
-          <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens Pendentes</h2>
-          {stats.pendentes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma lavagem pendente.</p>
-          ) : (
-            <div
-              className="overflow-x-auto"
-              tabIndex={0}
-              role="region"
-              aria-label="Tabela de últimas lavagens"
-            >
-              <table className="w-full text-sm">
-                <caption className="sr-only">Últimas lavagens registradas, com cliente, veículo, tipo, valor e ações</caption>
-                <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Cliente</th><th scope="col" className="text-left py-2 px-3">Veículo</th><th scope="col" className="text-left py-2 px-3">Tipo</th><th scope="col" className="text-right py-2 px-3">Valor</th><th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th></tr></thead>
-                <tbody>
-                  {stats.pendentes.slice(0, 5).map(l => {
-                    const c = getCliente(l.cliente_id);
-                    const v = veiculos.find(x => x.id === l.veiculo_id);
-                    const t = getTipoLavagem(l.tipo_lavagem_id);
-                    return (
-                      <tr key={l.id} className="table-row-hover border-t border-border">
-                        <td className="py-2 px-3">{c?.nome || '—'}</td>
-                        <td className="py-2 px-3">{v?.modelo || '—'}</td>
-                        <td className="py-2 px-3">{t?.nome || '—'}</td>
-                        <td className="py-2 px-3 text-right text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
-                        <td className="py-2 px-3 text-right">
-                          <div className="inline-flex items-center gap-1.5">
-                            <button onClick={() => updateLavagemStatus(l.id, 'em_progresso')} className="bg-accent/10 text-accent-text text-xs px-3 py-1 rounded-full font-semibold hover:bg-accent/20 transition-colors inline-flex items-center gap-1">
-                              <PlayCircle size={12} /> Em progresso
-                            </button>
-                            <button onClick={() => updateLavagemStatus(l.id, 'concluida')} className="bg-success/10 text-success text-xs px-3 py-1 rounded-full font-semibold hover:bg-success/20 transition-colors inline-flex items-center gap-1">
-                              <Check size={12} /> Concluir
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '320ms' }}>
-          <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Clientes Recentes</h2>
-          {recentClientes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado.</p>
-          ) : (
-            <div className="space-y-2">
-              {recentClientes.map(c => {
-                const avatarColors = ['badge-andamento', 'badge-pendente', 'badge-concluida', 'badge-info', 'badge-cancelada'];
-                const ci = c.nome.charCodeAt(0) % avatarColors.length;
-                return (
-                  <Link key={c.id} to={`/clientes/${c.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-secondary/40 transition-colors">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold ${avatarColors[ci]}`}>
-                      {c.nome[0]?.toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{c.nome}</p>
-                      <p className="text-xs text-muted-foreground">{c.telefone}</p>
-                    </div>
-                    <ChevronRight size={16} className="text-muted-foreground" />
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 2. Gráficos Últimos 7 dias + Estoque Baixo */}
-      <div className="grid lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
-          <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Últimos 7 dias</h2>
           <figure
             className="m-0"
-            aria-label="Gráfico dos últimos 7 dias: receita em barras e quantidade de lavagens em linha tracejada. Os valores exatos estão na tabela seguinte."
+            aria-label="Gráfico dos últimos 7 dias: receita em barras e quantidade de lavagens em linha tracejada."
           >
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={stats.last7} {...chartA11yProps('Últimos 7 dias', 'Barras: receita em reais por dia. Linha tracejada: quantidade de lavagens por dia. Os valores exatos estão na tabela seguinte.')}>
+                <ComposedChart
+                  data={stats?.financeiro.fluxo_diario_7d || []}
+                  {...chartA11yProps(
+                    'Últimos 7 dias',
+                    'Barras: receita em reais por dia. Linha tracejada: quantidade de lavagens por dia.'
+                  )}
+                >
                   <XAxis dataKey="dia" tick={tickStyle} axisLine={false} tickLine={false} />
                   <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
-                  <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tick={tickStyle}
+                    axisLine={false}
+                    tickLine={false}
+                  />
                   <Tooltip
                     cursor={cursorStyle}
-                    content={<ChartTooltip items={series7dias} colors={chartColors} contentStyle={tooltipStyle} />}
+                    content={
+                      <ChartTooltip
+                        items={series7dias}
+                        colors={chartColors}
+                        contentStyle={tooltipStyle}
+                      />
+                    }
                   />
                   <Legend content={<ChartLegend items={series7dias} colors={chartColors} />} />
                   <Bar
@@ -355,173 +422,311 @@ export default function Dashboard() {
               caption="Receita e quantidade de lavagens nos últimos 7 dias"
               rowLabel="Dia"
               columns={series7dias}
-              rows={stats.last7.map(d => ({ label: d.dia, values: [d.receita, d.lavagens] }))}
+              rows={(stats?.financeiro.fluxo_diario_7d || []).map((d) => ({
+                label: `${d.dia} (${d.data.slice(8, 10)}/${d.data.slice(5, 7)})`,
+                values: [d.receita, d.lavagens],
+              }))}
             />
           </figure>
         </div>
 
-        <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '480ms' }}>
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle size={16} className="text-primary" />
-            <h2 className="font-barlow-condensed font-bold text-foreground">Estoque Baixo</h2>
+        {/* Gráfico 2: Mix de Serviços (Volume vs. Receita - 30 dias) */}
+        <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h3 className="font-barlow-condensed font-bold text-lg text-foreground">
+                  Mix de Serviços (Últimos 30 Dias)
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Comparativo entre o mais vendido e o mais lucrativo
+                </p>
+              </div>
+            </div>
+
+            {/* Destaque Prático para o Sr. Reinaldo */}
+            {destaqueMix && destaqueMix.porReceita && destaqueMix.porVolume && (
+              <div className="bg-secondary/40 rounded-lg p-3 text-xs border border-border/80 mb-4 space-y-1.5">
+                <p className="text-foreground">
+                  <span className="font-semibold text-primary">💡 Visão do Negócio:</span>
+                </p>
+                <p className="text-muted-foreground">
+                  • Mais rentável:{' '}
+                  <strong className="text-foreground">{destaqueMix.porReceita.nome}</strong> traz{' '}
+                  <strong className="text-foreground">{destaqueMix.porReceita.pct_receita}%</strong> do
+                  dinheiro.
+                </p>
+                <p className="text-muted-foreground">
+                  • Mais popular:{' '}
+                  <strong className="text-foreground">{destaqueMix.porVolume.nome}</strong> lidera em{' '}
+                  <strong className="text-foreground">{destaqueMix.porVolume.pct_volume}%</strong> da
+                  fila.
+                </p>
+              </div>
+            )}
+
+            {/* Barras de Comparação dos Serviços */}
+            <div className="space-y-3">
+              {stats?.mix_servicos && stats.mix_servicos.length > 0 ? (
+                stats.mix_servicos.slice(0, 4).map((servico) => (
+                  <div key={servico.id} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-foreground truncate">{servico.nome}</span>
+                      <span className="text-muted-foreground">
+                        R$ {servico.faturamento_total.toFixed(2)} ({servico.total_atendimentos} atend.)
+                      </span>
+                    </div>
+
+                    {/* Barra de Receita */}
+                    <div className="w-full bg-secondary rounded-full h-2 overflow-hidden flex">
+                      <div
+                        className="bg-primary h-full rounded-full transition-all"
+                        style={{ width: `${Math.min(servico.pct_receita, 100)}%` }}
+                        title={`Receita: ${servico.pct_receita}%`}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>Receita: {servico.pct_receita}%</span>
+                      <span>Volume: {servico.pct_volume}%</span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground">Nenhum serviço registrado nos últimos 30 dias.</p>
+              )}
+            </div>
           </div>
-          {produtosBaixoEstoque.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todos os produtos estão OK.</p>
-          ) : (
-            <div className="space-y-2">
-              {produtosBaixoEstoque.map(p => (
-                <div key={p.id} className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">{p.nome}</span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${p.quantidade === 0 ? 'badge-zerado' : 'badge-baixo'}`}>
-                    {p.quantidade} {p.unidade}
-                  </span>
+
+          <div className="pt-4 border-t border-border mt-4">
+            <Link
+              to="/tipos-lavagem"
+              className="text-xs text-primary font-semibold hover:underline flex items-center justify-between"
+            >
+              <span>Gerenciar tabela de preços e serviços</span>
+              <ChevronRight size={14} />
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* BLOCO 3: BASE - PLANO DE AÇÃO RÁPIDO DO SR. REINALDO */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Painel 1: Alerta de Compras (Insumos Críticos com Runway) */}
+        <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="text-amber-500" size={18} />
+              <h3 className="font-barlow-condensed font-bold text-lg text-foreground">
+                Alerta de Compras (Insumos em Baixa)
+              </h3>
+            </div>
+            <Link
+              to="/estoque"
+              className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+            >
+              <span>Ir para Estoque</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          {stats?.estoque_critico && stats.estoque_critico.length > 0 ? (
+            <div className="divide-y divide-border">
+              {stats.estoque_critico.map((item) => (
+                <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{item.nome}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Saldo: <span className="font-medium text-foreground">{item.quantidade} {item.unidade}</span>{' '}
+                      (Mínimo: {item.estoque_minimo} {item.unidade})
+                    </p>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    {item.status_previsao === 'zerado' ? (
+                      <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-destructive/15 text-destructive border border-destructive/20 inline-flex items-center gap-1">
+                        🔴 Zerado! Repor já
+                      </span>
+                    ) : item.status_previsao === 'urgente' ? (
+                      <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-destructive/10 text-destructive border border-destructive/20 inline-flex items-center gap-1">
+                        🔴 Acaba em ~{item.dias_restantes} dias
+                      </span>
+                    ) : item.status_previsao === 'atencao' ? (
+                      <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 inline-flex items-center gap-1">
+                        🟡 Acaba em ~{item.dias_restantes} dias
+                      </span>
+                    ) : (
+                      <span className="text-xs px-2.5 py-1 rounded-full font-semibold bg-secondary text-muted-foreground border border-border inline-flex items-center gap-1">
+                        ⚪ Abaixo do mínimo
+                      </span>
+                    )}
+                    {item.consumo_diario > 0 && (
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        Consumo: ~{item.consumo_diario} {item.unidade}/dia
+                      </p>
+                    )}
+                  </div>
                 </div>
               ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              <Check size={28} className="mx-auto text-success mb-2" />
+              <p className="text-sm font-medium text-foreground">Todos os insumos estão acima do mínimo!</p>
+              <p className="text-xs mt-1">Nenhum risco de falta de produto no momento.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Painel 2: Oportunidades de Retorno (Clientes Ausentes > 30 Dias) */}
+        <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Users className="text-chart-4" size={18} />
+              <h3 className="font-barlow-condensed font-bold text-lg text-foreground">
+                Clientes Ausentes (Resgate &gt; 30 dias)
+              </h3>
+            </div>
+            <Link
+              to="/clientes"
+              className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+            >
+              <span>Ver Clientes</span>
+              <ExternalLink size={12} />
+            </Link>
+          </div>
+
+          {stats?.clientes_ausentes && stats.clientes_ausentes.length > 0 ? (
+            <div className="divide-y divide-border">
+              {stats.clientes_ausentes.map((cliente) => (
+                <div key={cliente.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{cliente.nome}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                      <span>{cliente.telefone || 'Sem telefone'}</span>
+                      <span>•</span>
+                      <span>{cliente.historico_lavagens} lavagens já feitas</span>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs px-2 py-0.5 rounded font-medium bg-secondary text-muted-foreground">
+                      Há {cliente.dias_ausente} dias
+                    </span>
+
+                    {cliente.telefone && (
+                      <a
+                        href={gerarLinkWhatsapp(cliente.telefone, cliente.nome)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 shadow-sm"
+                        title="Enviar mensagem amigável no WhatsApp"
+                      >
+                        <MessageCircle size={13} />
+                        <span className="hidden sm:inline">WhatsApp</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-muted-foreground">
+              <Users size={28} className="mx-auto text-primary mb-2" />
+              <p className="text-sm font-medium text-foreground">Nenhum cliente ausente há mais de 30 dias!</p>
+              <p className="text-xs mt-1">A frequência de retorno da clientela está em dia.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* 3. Stats do Mês + Lavagens por Tipo */}
-      {user?.role === 'admin' && (
-        <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {statsCardsMes.map((s, i) => (
-              <div key={s.label} className={`bg-card rounded-xl border-l-4 ${s.border} p-4 animate-fade-up`} style={{ animationDelay: `${i * 80}ms` }}>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">{s.label}</p>
-                    <p className="text-2xl font-barlow-condensed font-bold text-foreground mt-1">{s.value}</p>
-                  </div>
-                  <s.icon className="text-muted-foreground" size={22} />
-                </div>
-              </div>
-            ))}
-            <div className="bg-card rounded-xl border-l-4 border-chart-4 p-4 animate-fade-up" style={{ animationDelay: '160ms' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">Total por Tipo (Mês)</p>
-                  <div className="mt-1 space-y-1">
-                    {stats.lavagensPorTipoMes.map((t) => (
-                      <p key={t.nome} className="text-sm font-barlow-condensed font-bold text-foreground">
-                        {t.nome}: <span className="text-chart-4">{t.quantidade}</span>
-                      </p>
-                    ))}
-                  </div>
-                </div>
-                <Package className="text-muted-foreground" size={22} />
-              </div>
-            </div>
+      {/* BLOCO OPERACIONAL: FILA DE LAVAGENS PENDENTES */}
+      <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Clock className="text-primary" size={18} />
+            <h3 className="font-barlow-condensed font-bold text-lg text-foreground">
+              Fila de Atendimento do Pátio
+            </h3>
           </div>
+          <Link
+            to="/lavagens"
+            className="text-xs text-primary font-semibold hover:underline flex items-center gap-1"
+          >
+            <span>Ver Todas as Lavagens</span>
+            <ExternalLink size={12} />
+          </Link>
+        </div>
 
-          {/* 4. Gráficos 6 meses */}
-          <div className="grid lg:grid-cols-2 gap-4">
-            <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '320ms' }}>
-              <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens e Receita - Últimos 6 meses</h2>
-              <figure
-                className="m-0"
-                aria-label="Gráfico dos últimos 6 meses: quantidade de lavagens em barras com o número escrito acima de cada uma e receita em linha tracejada. Os valores exatos estão na tabela seguinte."
-              >
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={stats.last6Months} {...chartA11yProps('Lavagens e receita nos últimos 6 meses', 'Barras: quantidade de lavagens por mês, com o número escrito acima de cada barra. Linha tracejada: receita em reais por mês. Os valores exatos estão na tabela seguinte.')}>
-                      <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
-                      <YAxis yAxisId="left" tick={tickStyle} axisLine={false} tickLine={false} />
-                      <YAxis yAxisId="right" orientation="right" tick={tickStyle} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        cursor={cursorStyle}
-                        content={<ChartTooltip items={series6meses} colors={chartColors} contentStyle={tooltipStyle} />}
-                      />
-                      <Legend content={<ChartLegend items={series6meses} colors={chartColors} />} />
-                      <Bar
-                        yAxisId="left"
-                        dataKey="lavagens"
-                        name={series6meses[0].name}
-                        fill={chartColors[0]}
-                        radius={BAR_RADIUS}
-                        isAnimationActive={false}
-                      >
-                        {/* Rotulo direto: a barra sozinha nao diz quantas lavagens houve */}
-                        <LabelList dataKey="lavagens" content={<BarValue color={labelInk} />} />
-                      </Bar>
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="receita"
-                        name={series6meses[1].name}
-                        stroke={chartColors[0]}
-                        strokeWidth={2}
-                        strokeDasharray={series6meses[1].dash}
-                        dot={{ fill: chartColors[0] }}
-                        activeDot={{ r: 4 }}
-                        isAnimationActive={false}
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-                <ChartDataTable
-                  caption="Quantidade de lavagens e receita nos últimos 6 meses"
-                  rowLabel="Mês"
-                  columns={series6meses}
-                  rows={stats.last6Months.map(m => ({ label: m.mes, values: [m.lavagens, m.receita] }))}
-                />
-              </figure>
-            </div>
-
-            <div className="bg-card rounded-xl border border-border p-5 animate-fade-up" style={{ animationDelay: '400ms' }}>
-              <h2 className="font-barlow-condensed font-bold text-foreground mb-4">Lavagens por Tipo - Últimos 6 meses</h2>
-              <figure
-                className="m-0"
-                aria-label="Gráfico de barras empilhadas das lavagens por tipo nos últimos 6 meses. Cada tipo tem uma cor própria da paleta Okabe-Ito, a legenda nomeia cada tipo, e os valores exatos estão na tabela seguinte e no tooltip ao passar o mouse."
-              >
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={stats.lavagensPorTipo} {...chartA11yProps('Lavagens por tipo nos últimos 6 meses', 'Barras empilhadas por mês. Cada tipo de lavagem tem uma cor própria, nomeada na legenda. Os valores exatos de cada segmento estão na tabela seguinte.')}>
-                      <XAxis dataKey="mes" tick={tickStyle} axisLine={false} tickLine={false} />
-                      <YAxis tick={tickStyle} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        cursor={cursorStyle}
-                        content={<ChartTooltip items={seriesPorTipo} colors={chartColors} contentStyle={tooltipStyle} />}
-                      />
-                      <Legend content={<ChartLegend items={seriesPorTipo} colors={chartColors} />} />
-                      {/* Sem LabelList: numero dentro de segmento espremido vira ruido
-                          visual. O valor fica no tooltip e na tabela sr-only. */}
-                      {tiposLavagem.map((t, i) => {
-                        // So a ultima barra da pilha recebe raio. Arredondar todas
-                        // curva o topo de cada segmento dentro da pilha e deixa um
-                        // serrilhado entre as camadas.
-                        const ehTopo = i === tiposLavagem.length - 1;
-                        return (
-                          <Bar
-                            key={t.id}
-                            dataKey={t.nome}
-                            stackId="a"
-                            name={t.nome}
-                            fill={chartColors[i % chartColors.length]}
-                            radius={ehTopo ? BAR_RADIUS : undefined}
-                            stroke={SEGMENT_STROKE}
-                            strokeWidth={SEGMENT_GAP}
-                            isAnimationActive={false}
-                          />
-                        );
-                      })}
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <ChartDataTable
-                  caption="Lavagens por tipo de lavagem nos últimos 6 meses"
-                  rowLabel="Mês"
-                  columns={seriesPorTipo}
-                  rows={stats.lavagensPorTipo.map(m => ({
-                    label: m.mes,
-                    values: tiposLavagem.map(t => Number(m[t.nome] ?? 0)),
-                  }))}
-                />
-              </figure>
-            </div>
+        {pendentes.length === 0 ? (
+          <div className="py-6 text-center text-muted-foreground">
+            <Check size={24} className="mx-auto text-success mb-2" />
+            <p className="text-sm">Nenhuma lavagem pendente no pátio agora.</p>
           </div>
-        </>
-      )}
+        ) : (
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de lavagens pendentes">
+            <table className="w-full text-sm">
+              <caption className="sr-only">Lavagens aguardando ou em atendimento</caption>
+              <thead>
+                <tr className="table-header border-b border-border">
+                  <th scope="col" className="text-left py-2 px-3 font-semibold text-muted-foreground">Cliente</th>
+                  <th scope="col" className="text-left py-2 px-3 font-semibold text-muted-foreground">Veículo</th>
+                  <th scope="col" className="text-left py-2 px-3 font-semibold text-muted-foreground">Serviço</th>
+                  <th scope="col" className="text-center py-2 px-3 font-semibold text-muted-foreground">Status</th>
+                  <th scope="col" className="text-right py-2 px-3 font-semibold text-muted-foreground">Valor</th>
+                  <th scope="col" className="py-2 px-3 text-right"><span className="sr-only">Ações</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendentes.map((l) => {
+                  const c = getCliente(l.cliente_id);
+                  const v = veiculos.find((x) => x.id === l.veiculo_id);
+                  const t = getTipoLavagem(l.tipo_lavagem_id);
+                  return (
+                    <tr key={l.id} className="table-row-hover border-t border-border">
+                      <td className="py-2 px-3 font-medium text-foreground">{c?.nome || '—'}</td>
+                      <td className="py-2 px-3 text-muted-foreground">{v ? `${v.modelo} (${v.placa})` : '—'}</td>
+                      <td className="py-2 px-3 text-foreground">{t?.nome || '—'}</td>
+                      <td className="py-2 px-3 text-center">
+                        <span
+                          className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${
+                            l.status === 'em_progresso' ? 'badge-andamento' : 'badge-pendente'
+                          }`}
+                        >
+                          {l.status === 'em_progresso' ? 'Em andamento' : 'Pendente'}
+                        </span>
+                      </td>
+                      <td className="py-2 px-3 text-right text-primary font-bold">
+                        R$ {l.valor.toFixed(2)}
+                      </td>
+                      <td className="py-2 px-3 text-right">
+                        <div className="inline-flex items-center gap-1.5">
+                          {l.status === 'pendente' && (
+                            <button
+                              onClick={() => handleUpdateStatus(l.id, 'em_progresso')}
+                              className="bg-accent/10 text-accent-text text-xs px-2.5 py-1 rounded-full font-semibold hover:bg-accent/20 transition-colors inline-flex items-center gap-1"
+                              title="Iniciar lavagem"
+                            >
+                              <PlayCircle size={12} /> Iniciar
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleUpdateStatus(l.id, 'concluida')}
+                            className="bg-success/10 text-success text-xs px-2.5 py-1 rounded-full font-semibold hover:bg-success/20 transition-colors inline-flex items-center gap-1"
+                            title="Concluir lavagem"
+                          >
+                            <Check size={12} /> Concluir
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

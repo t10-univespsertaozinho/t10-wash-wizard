@@ -79,3 +79,54 @@ export interface Conflict {
   localUpdatedAt: string;
   remoteUpdatedAt: string;
 }
+
+export interface FluxoDiarioItem {
+  data: string;
+  dia: string;
+  lavagens: number;
+  receita: number;
+}
+
+export interface DashboardStats {
+  financeiro: {
+    receita_semana: number;
+    lavagens_semana: number;
+    ticket_medio: number;
+    receita_semana_anterior: number;
+    lavagens_semana_anterior: number;
+    variacao_receita_pct: number;
+    variacao_ticket_pct: number;
+    fluxo_diario_7d: FluxoDiarioItem[];
+  };
+  fidelizacao: {
+    total_clientes_com_lavagem: number;
+    clientes_recorrentes: number;
+    taxa_recorrencia_pct: number;
+  };
+  clientes_ausentes: Array<{
+    id: string;
+    nome: string;
+    telefone: string;
+    ultima_visita: string;
+    dias_ausente: number;
+    historico_lavagens: number;
+  }>;
+  mix_servicos: Array<{
+    id: string;
+    nome: string;
+    total_atendimentos: number;
+    faturamento_total: number;
+    pct_volume: number;
+    pct_receita: number;
+  }>;
+  estoque_critico: Array<{
+    id: string;
+    nome: string;
+    quantidade: number;
+    estoque_minimo: number;
+    unidade: string;
+    consumo_diario: number;
+    dias_restantes: number | null;
+    status_previsao: 'zerado' | 'urgente' | 'atencao' | 'moderado' | 'repor';
+  }>;
+}

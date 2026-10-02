@@ -439,6 +439,227 @@ app.post('/api/movimentacoes', requireAdmin, async (req, res) => {
 });
 
 // ==========================================
+// DASHBOARD & ANALYTICS API
+// ==========================================
+app.get('/api/dashboard/stats', async (req, res) => {
+  try {
+    // 1. Resumo Financeiro da Semana Atual vs Semana Anterior
+    const semanaAtual = await get(`
+      SELECT 
+        COUNT(*) as lavagens, 
+        COALESCE(SUM(valor), 0) as receita
+      FROM lavagens
+      WHERE status = 'concluida' AND data >= datetime('now', '-7 days')
+    `);
+
+    const semanaAnterior = await get(`
+      SELECT 
+        COUNT(*) as lavagens, 
+        COALESCE(SUM(valor), 0) as receita
+      FROM lavagens
+      WHERE status = 'concluida' 
+        AND data >= datetime('now', '-14 days') 
+        AND data < datetime('now', '-7 days')
+    `);
+
+    const receitaSemana = Number(semanaAtual?.receita || 0);
+    const lavagensSemana = Number(semanaAtual?.lavagens || 0);
+    const ticketMedio = lavagensSemana > 0 ? Number((receitaSemana / lavagensSemana).toFixed(2)) : 0;
+
+    const receitaSemanaAnterior = Number(semanaAnterior?.receita || 0);
+    const lavagensSemanaAnterior = Number(semanaAnterior?.lavagens || 0);
+    const ticketMedioAnterior = lavagensSemanaAnterior > 0 ? (receitaSemanaAnterior / lavagensSemanaAnterior) : 0;
+
+    let variacaoReceitaPct = 0;
+    if (receitaSemanaAnterior > 0) {
+      variacaoReceitaPct = Number((((receitaSemana - receitaSemanaAnterior) / receitaSemanaAnterior) * 100).toFixed(1));
+    } else if (receitaSemana > 0) {
+      variacaoReceitaPct = 100;
+    }
+
+    let variacaoTicketPct = 0;
+    if (ticketMedioAnterior > 0) {
+      variacaoTicketPct = Number((((ticketMedio - ticketMedioAnterior) / ticketMedioAnterior) * 100).toFixed(1));
+    } else if (ticketMedio > 0) {
+      variacaoTicketPct = 100;
+    }
+
+    // Fluxo Diário dos Últimos 7 dias (Série temporal contínua para o gráfico)
+    const ultimos7DiasRows = await all(`
+      SELECT 
+        substr(data, 1, 10) as dia_data,
+        COUNT(*) as lavagens,
+        COALESCE(SUM(valor), 0) as receita
+      FROM lavagens
+      WHERE status = 'concluida' AND data >= date('now', '-6 days')
+      GROUP BY substr(data, 1, 10)
+    `);
+
+    const mapaDias = new Map();
+    ultimos7DiasRows.forEach(r => {
+      mapaDias.set(r.dia_data, { lavagens: Number(r.lavagens), receita: Number(r.receita) });
+    });
+
+    const diasSemanaNomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const fluxoDiario7d = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dataIso = d.toISOString().slice(0, 10);
+      const diaNome = diasSemanaNomes[d.getDay()];
+      const registro = mapaDias.get(dataIso) || { lavagens: 0, receita: 0 };
+      fluxoDiario7d.push({
+        data: dataIso,
+        dia: diaNome,
+        lavagens: registro.lavagens,
+        receita: registro.receita
+      });
+    }
+
+    // 2. Taxa de Recorrência e Fidelização
+    const recorrenciaRows = await all(`
+      SELECT cliente_id, COUNT(*) as qtd
+      FROM lavagens
+      WHERE status = 'concluida'
+      GROUP BY cliente_id
+    `);
+    const totalClientesComLavagem = recorrenciaRows.length;
+    const clientesRecorrentes = recorrenciaRows.filter(r => r.qtd >= 2).length;
+    const taxaRecorrenciaPct = totalClientesComLavagem > 0 
+      ? Number(((clientesRecorrentes / totalClientesComLavagem) * 100).toFixed(1)) 
+      : 0;
+
+    // 3. Radar de Clientes Ausentes (> 30 dias)
+    const clientesAusentes = await all(`
+      SELECT 
+        c.id, 
+        c.nome, 
+        c.telefone,
+        MAX(l.data) as ultima_visita,
+        CAST(julianday('now') - julianday(MAX(l.data)) AS INTEGER) as dias_ausente,
+        COUNT(l.id) as historico_lavagens
+      FROM clientes c
+      JOIN lavagens l ON l.cliente_id = c.id
+      WHERE l.status = 'concluida'
+      GROUP BY c.id, c.nome, c.telefone
+      HAVING dias_ausente >= 30
+      ORDER BY historico_lavagens DESC, dias_ausente ASC
+      LIMIT 5
+    `);
+
+    // 4. Mix de Serviços dos Últimos 30 Dias (Volume vs Receita)
+    const mixTipos = await all(`
+      SELECT 
+        t.id, 
+        t.nome,
+        COUNT(l.id) as total_atendimentos,
+        COALESCE(SUM(l.valor), 0) as faturamento_total
+      FROM tipos_lavagem t
+      LEFT JOIN lavagens l ON l.tipo_lavagem_id = t.id AND l.status = 'concluida' AND l.data >= datetime('now', '-30 days')
+      GROUP BY t.id, t.nome
+      ORDER BY faturamento_total DESC
+    `);
+
+    const totalAtendimentos30d = mixTipos.reduce((s, t) => s + Number(t.total_atendimentos), 0);
+    const totalFaturamento30d = mixTipos.reduce((s, t) => s + Number(t.faturamento_total), 0);
+
+    const mixServicos = mixTipos.map(item => {
+      const atendimentos = Number(item.total_atendimentos);
+      const faturamento = Number(item.faturamento_total);
+      return {
+        id: item.id,
+        nome: item.nome,
+        total_atendimentos: atendimentos,
+        faturamento_total: faturamento,
+        pct_volume: totalAtendimentos30d > 0 ? Number(((atendimentos / totalAtendimentos30d) * 100).toFixed(1)) : 0,
+        pct_receita: totalFaturamento30d > 0 ? Number(((faturamento / totalFaturamento30d) * 100).toFixed(1)) : 0,
+      };
+    });
+
+    // 5. Insumos em Estado Crítico com Cálculo do Runway
+    const produtosCriticos = await all(`
+      WITH consumo_recente AS (
+        SELECT 
+          produto_id,
+          COALESCE(SUM(quantidade), 0) as total_saida,
+          COUNT(DISTINCT substr(data, 1, 10)) as dias_registrados
+        FROM movimentacoes
+        WHERE tipo = 'saida' AND data >= datetime('now', '-30 days')
+        GROUP BY produto_id
+      )
+      SELECT 
+        p.id,
+        p.nome,
+        p.quantidade,
+        p.estoque_minimo,
+        p.unidade,
+        p.preco_unitario,
+        COALESCE(c.total_saida, 0) as total_saida_30d
+      FROM produtos p
+      LEFT JOIN consumo_recente c ON c.produto_id = p.id
+      WHERE p.quantidade <= p.estoque_minimo
+      ORDER BY p.quantidade ASC
+    `);
+
+    const estoqueCritico = produtosCriticos.map(p => {
+      const qtd = Number(p.quantidade);
+      const estoqueMin = Number(p.estoque_minimo);
+      const saida30d = Number(p.total_saida_30d);
+      const consumoDiario = Number((saida30d / 30.0).toFixed(2));
+      
+      let diasRestantes = null;
+      let statusPrevisao = 'alerta';
+
+      if (qtd <= 0) {
+        diasRestantes = 0;
+        statusPrevisao = 'zerado';
+      } else if (consumoDiario > 0) {
+        diasRestantes = Math.floor(qtd / consumoDiario);
+        if (diasRestantes <= 3) statusPrevisao = 'urgente';
+        else if (diasRestantes <= 7) statusPrevisao = 'atencao';
+        else statusPrevisao = 'moderado';
+      } else {
+        statusPrevisao = 'repor';
+      }
+
+      return {
+        id: p.id,
+        nome: p.nome,
+        quantidade: qtd,
+        estoque_minimo: estoqueMin,
+        unidade: p.unidade,
+        consumo_diario: consumoDiario,
+        dias_restantes: diasRestantes,
+        status_previsao: statusPrevisao
+      };
+    });
+
+    res.json({
+      financeiro: {
+        receita_semana: receitaSemana,
+        lavagens_semana: lavagensSemana,
+        ticket_medio: ticketMedio,
+        receita_semana_anterior: receitaSemanaAnterior,
+        lavagens_semana_anterior: lavagensSemanaAnterior,
+        variacao_receita_pct: variacaoReceitaPct,
+        variacao_ticket_pct: variacaoTicketPct,
+        fluxo_diario_7d: fluxoDiario7d
+      },
+      fidelizacao: {
+        total_clientes_com_lavagem: totalClientesComLavagem,
+        clientes_recorrentes: clientesRecorrentes,
+        taxa_recorrencia_pct: taxaRecorrenciaPct
+      },
+      clientes_ausentes: clientesAusentes,
+      mix_servicos: mixServicos,
+      estoque_critico: estoqueCritico
+    });
+  } catch (err) {
+    handleServerError(res, err);
+  }
+});
+
+// ==========================================
 // BACKUP & RESET API
 // ==========================================
 const tables = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'lavagens', 'produtos', 'movimentacoes'];

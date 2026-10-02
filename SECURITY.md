@@ -83,7 +83,8 @@ O controle é reforçado **nas duas pontas**: o frontend esconde/bloqueia rotas 
 
 | Recurso | Rota(s) da API | admin | operador |
 |---------|-----------------|:-----:|:--------:|
-| Dashboard, Clientes, Veículos, Lavagens (listar/criar/editar/excluir) | `/api/clientes*`, `/api/veiculos*`, `/api/lavagens*` | ✓ | ✓ |
+| Dashboard Analítico & BI | `GET /api/dashboard/stats` | ✓ | ✓ |
+| Clientes, Veículos, Lavagens (listar/criar/editar/excluir) | `/api/clientes*`, `/api/veiculos*`, `/api/lavagens*` | ✓ | ✓ |
 | Tipos de Lavagem (criar/editar/excluir) — leitura é liberada para todos | `POST/PUT/DELETE /api/tipos-lavagem*` | ✓ | ✗ |
 | Estoque (produtos) — leitura é liberada para todos | `POST/PUT/DELETE /api/produtos*` | ✓ | ✗ |
 | Movimentações de estoque | `POST /api/movimentacoes` | ✓ | ✗ |
@@ -92,6 +93,14 @@ O controle é reforçado **nas duas pontas**: o frontend esconde/bloqueia rotas 
 | Backup/Restore | `/api/backup/export`, `/api/backup/import`, `/api/backup/reset` | ✓ | ✗ |
 
 > Nota de escopo: este é um sistema de um único lava-rápido, não multi-tenant — toda a equipe autenticada compartilha intencionalmente a mesma base de clientes/veículos/lavagens/produtos. RBAC aqui controla **o que cada papel pode fazer**, não isolamento de dados por usuário.
+
+### 3.3 Integridade e Blindagem dos Indicadores Analíticos (BI)
+
+O módulo de Business Intelligence (`GET /api/dashboard/stats`) segue regras estritas de integridade relacional para assegurar precisão contábil e operacional:
+
+- **Filtro Estrito por Status:** Todas as métricas de receita (faturamento semanal, faturamento por serviço e ticket médio) filtram exclusivamente lavagens com `status = 'concluida'`. Lavagens com status `pendente`, `em_progresso` ou `cancelada` são sumariamente expurgadas das agregações financeiras para prevenir qualquer distorção no caixa.
+- **Isolamento de Datas no Servidor:** As comparações temporais (semana atual vs. semana anterior, radar de ausência > 30 dias e runway de estoque) utilizam funções canônicas do SQLite (`datetime('now')`, `date('now')` e `julianday('now')`), prevenindo adulterações de data enviadas pelo cliente.
+- **Proteção contra Divisão por Zero:** Todas as métricas derivadas (Ticket Médio, Variação %, Taxa de Recorrência e Runway) utilizam estruturas de fallback e `NULLIF` no SQL/JS, garantindo respostas estáveis mesmo em bases recém-inicializadas ou zeradas.
 
 ---
 

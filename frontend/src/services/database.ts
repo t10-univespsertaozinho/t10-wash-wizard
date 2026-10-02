@@ -1,4 +1,4 @@
-import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque } from '@/types';
+import { Cliente, Veiculo, TipoLavagem, Lavagem, Produto, MovimentacaoEstoque, DashboardStats } from '@/types';
 import { TOKEN_STORAGE_KEY } from '@/utils/security';
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
@@ -203,4 +203,9 @@ export const importBackup = async (formData: FormData) => {
 
 export const resetDatabase = async () => {
   return req('/backup/reset', { method: 'POST' });
+};
+
+// Analytics & Dashboard Functions
+export const getDashboardStats = async (): Promise<DashboardStats> => {
+  return req('/dashboard/stats');
 };

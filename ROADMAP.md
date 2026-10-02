@@ -1,13 +1,18 @@
 # Wash Wizard — Roadmap
 
-> **Última atualização:** 2026-09-21
-> Ponteiro de planejamento técnico. Para o estado atual da arquitetura, veja `README.md` e `AGENTS.md`. Para o histórico de mudanças, veja `HISTORY.md`.
+> **Última atualização:** 2026-10-02  
+> Ponteiro de planejamento técnico e arquitetural. Para a arquitetura vigente, consulte `README.md`, `SECURITY.md` e `AGENTS.md`.
 
 ## Onde estamos
 
-A base operacional (CRUD de clientes/veículos/lavagens/estoque, autenticação JWT, RBAC, backup CSV) está estável e documentada em `README.md` e `SECURITY.md`. A próxima fase do projeto desloca o foco de "registrar operações" para "extrair valor dos dados operacionais já registrados": Data Science e Analytics Avançado sobre o histórico de lavagens, clientes e estoque.
+A evolução do Wash Wizard estabeleceu duas camadas sólidas:
 
-Isso não substitui o sistema transacional (SQLite continua sendo o sistema de registro/OLTP). A camada analítica é aditiva: lê do SQLite, nunca escreve nele.
+1. **Camada Transacional (OLTP - Estável & Concluída):** CRUD robusto de clientes, veículos, lavagens e estoque; autenticação via JWT com RBAC reforçado no backend; sistema de backup e restauração relacional em CSV; e integridade referencial com SQLite (`PRAGMA foreign_keys = ON`).
+2. **Módulo de Business Intelligence Operacional (BI Prático - CONCLUÍDO):**
+   - **Backend Analítico (`GET /api/dashboard/stats`):** Agregações SQL avançadas com *Common Table Expressions* (CTEs), cálculo de ticket médio semanal, comparativos temporais percentuais, apuração de clientes recorrentes, identificação de clientes ausentes (> 30 dias), análise de mix de serviços (volume vs. faturamento) e cálculo preditivo de *Runway* de estoque (dias restantes de suprimentos).
+   - **Frontend Executivo (`Dashboard.tsx`):** Painel responsivo em React 18 reorganizado em 3 blocos (4 Cards de KPIs de topo, gráficos Recharts com acessibilidade Okabe-Ito no centro e painéis de ação imediata na base, incluindo acionamento direto via API do WhatsApp).
+
+A próxima fase do projeto expande essa inteligência analítica em direção ao **Data Science Avançado e Datamart Columnar**, sem alterar o SQLite como sistema de registro principal.
 
 ---
 
