@@ -22,11 +22,25 @@ function mensagemDeErro(e: unknown, padrao: string): string {
   return padrao;
 }
 
+/**
+ * Credenciais provisórias devolvidas pelo import de backup.
+ *
+ * O backup nunca carrega hashes de senha (ver SECURITY.md), então cada usuário
+ * restaurado recebe uma senha aleatória. Elas aparecem UMA única vez, aqui:
+ * sem exibi-las, o próprio admin ficaria trancado fora após restaurar
+ * `users.csv`.
+ */
+interface SenhaTemporaria {
+  email: string;
+  senha_temporaria: string;
+}
+
 export default function Configuracoes() {
   const { user } = useAuth();
   
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [senhasTemporarias, setSenhasTemporarias] = useState<SenhaTemporaria[]>([]);
 
   if (user?.role !== 'admin') {
     return (
@@ -39,6 +53,7 @@ export default function Configuracoes() {
   const handleExportBackup = async () => {
     setLoading(true);
     setMessage(null);
+    setSenhasTemporarias([]);
     try {
       const data = await exportBackup();
       // Criar zip ou baixar multiplos arquivos.
@@ -80,9 +95,15 @@ export default function Configuracoes() {
       }
 
       const res = await importBackup(formData);
+      const senhas: SenhaTemporaria[] = res.senhas_temporarias ?? [];
+      setSenhasTemporarias(senhas);
       setMessage({ type: 'success', text: `Backup importado! ${res.records} registros restaurados.` });
-      // Recarregar a página após alguns segundos para refletir os novos dados
-      setTimeout(() => window.location.reload(), 2000);
+
+      // Se usuários foram restaurados, as senhas provisórias precisam ser
+      // anotadas antes de qualquer reload — então não recarregamos a página.
+      if (senhas.length === 0) {
+        setTimeout(() => window.location.reload(), 2000);
+      }
     } catch (e: unknown) {
       setMessage({ type: 'error', text: mensagemDeErro(e, 'Erro ao importar backup.') });
     } finally {
@@ -176,6 +197,44 @@ export default function Configuracoes() {
           </div>
         </div>
       </div>
+
+      {/* Senhas provisórias do import — exibidas uma única vez */}
+      {senhasTemporarias.length > 0 && (
+        <div
+          className="bg-amber-500/10 border-2 border-amber-500/40 rounded-xl p-5"
+          role="alert"
+          aria-live="assertive"
+        >
+          <h2 className="font-barlow-condensed font-bold text-lg mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">
+            <AlertTriangle size={18} aria-hidden="true" /> Anote as senhas provisórias agora
+          </h2>
+          <p className="text-sm text-muted-foreground mb-3">
+            Por segurança, o arquivo de backup não contém senhas. Cada usuário restaurado
+            recebeu uma senha provisória, exibida <strong>somente agora</strong>. Anote-as e
+            troque-as no primeiro acesso — ao sair desta tela elas não poderão ser recuperadas.
+          </p>
+          <ul className="space-y-1.5">
+            {senhasTemporarias.map((s) => (
+              <li
+                key={s.email}
+                className="flex flex-wrap items-center justify-between gap-2 bg-background/60 rounded-lg px-3 py-2"
+              >
+                <span className="text-sm">{s.email}</span>
+                <code className="font-mono text-sm font-bold select-all">{s.senha_temporaria}</code>
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={() => {
+              setSenhasTemporarias([]);
+              window.location.reload();
+            }}
+            className="mt-4 bg-amber-600 text-white font-bold py-2 px-4 rounded-lg hover:brightness-110 transition-all text-sm"
+          >
+            Já anotei, recarregar
+          </button>
+        </div>
+      )}
 
       {/* Reset DB */}
       <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-5">

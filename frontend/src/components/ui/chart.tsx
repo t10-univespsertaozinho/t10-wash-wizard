@@ -65,7 +65,21 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
-  const sanitizeCSS = (val: string) => typeof val === 'string' ? val.replace(/[<>]/g, '') : val;
+  // Este <style> é injetado via dangerouslySetInnerHTML, então nada que não
+  // seja comprovadamente uma cor CSS pode entrar. Remover apenas `<` e `>` não
+  // bastaria: um `}` fecharia a regra e permitiria sobrescrever estilos
+  // arbitrários da página (UI redressing). A allowlist abaixo é estrita.
+  const CSS_COLOR =
+    /^(#[0-9a-fA-F]{3,8}|(?:rgb|hsl)a?\([\d\s.,%/+-]+\)|var\(--[a-zA-Z0-9_-]+\)|[a-zA-Z]{3,20})$/;
+
+  const safeColor = (val: unknown): string | null => {
+    if (typeof val !== "string") return null;
+    const trimmed = val.trim();
+    return CSS_COLOR.test(trimmed) ? trimmed : null;
+  };
+
+  // O id entra no seletor [data-chart=...] e também precisa ser restrito.
+  const safeIdent = (val: string) => val.replace(/[^a-zA-Z0-9_-]/g, "");
 
   return (
     <style
@@ -73,12 +87,15 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
         __html: Object.entries(THEMES)
           .map(
             ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+${prefix} [data-chart=${safeIdent(id)}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${sanitizeCSS(color as string)};` : null;
+    const color = safeColor(
+      itemConfig.theme?.[theme as keyof typeof itemConfig.theme] ?? itemConfig.color,
+    );
+    return color ? `  --color-${safeIdent(key)}: ${color};` : null;
   })
+  .filter(Boolean)
   .join("\n")}
 }
 `,

@@ -86,3 +86,19 @@ CREATE INDEX IF NOT EXISTS idx_lavagens_cliente_id ON lavagens(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_lavagens_veiculo_id ON lavagens(veiculo_id);
 CREATE INDEX IF NOT EXISTS idx_lavagens_tipo_lavagem_id ON lavagens(tipo_lavagem_id);
 CREATE INDEX IF NOT EXISTS idx_movimentacoes_produto_id ON movimentacoes(produto_id);
+
+-- Trilha de auditoria append-only para alterações financeiras em lavagens.
+-- Registra quem mudou valor/pagamento/status, quando, e qual era o valor
+-- anterior — sem isso uma alteração retroativa de valor é invisível no BI.
+CREATE TABLE IF NOT EXISTS auditoria_lavagens (
+  id TEXT PRIMARY KEY,
+  lavagem_id TEXT NOT NULL REFERENCES lavagens(id) ON DELETE CASCADE,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+  campo TEXT NOT NULL,
+  valor_anterior TEXT,
+  valor_novo TEXT,
+  data TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_lavagens_lavagem_id ON auditoria_lavagens(lavagem_id);
+CREATE INDEX IF NOT EXISTS idx_auditoria_lavagens_user_id ON auditoria_lavagens(user_id);
