@@ -1,5 +1,8 @@
 import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react-swc";
+// Usa o mesmo plugin do vite.config.ts. Antes apontava para
+// @vitejs/plugin-react-swc, que nunca esteve nas dependências — o que fazia
+// `npm test` falhar na carga da config com ERR_MODULE_NOT_FOUND.
+import react from "@vitejs/plugin-react";
 import path from "path";
 
 export default defineConfig({
@@ -11,6 +14,6 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: { "@": path.resolve(import.meta.dirname, "./src") },
   },
 });

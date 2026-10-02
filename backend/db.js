@@ -22,19 +22,20 @@ const db = new sqlite3.Database(dbPath, (err) => {
       if (err) console.error('Erro ao habilitar foreign keys:', err);
     });
 
-    // Inicializar schema apenas se o banco não existir ou estiver vazio
-    if (!dbExists) {
-      const schema = fs.readFileSync(schemaPath, 'utf8');
-      db.exec(schema, (err) => {
-        if (err) {
-          console.error('Erro ao executar o schema:', err);
-        } else {
-          console.log('Schema inicializado com sucesso.');
-        }
-      });
-    } else {
-      console.log('Banco de dados já existe, schema ignorado.');
-    }
+    // O schema é inteiramente idempotente (CREATE TABLE/INDEX IF NOT EXISTS),
+    // então é aplicado em toda inicialização. Isso faz dele também a migração:
+    // tabelas novas (ex: auditoria_lavagens) passam a existir em bancos antigos
+    // sem precisar recriar o arquivo nem perder dados.
+    const schema = fs.readFileSync(schemaPath, 'utf8');
+    db.exec(schema, (err) => {
+      if (err) {
+        console.error('Erro ao aplicar o schema:', err);
+      } else {
+        console.log(dbExists
+          ? 'Schema verificado (banco existente, estruturas novas aplicadas).'
+          : 'Schema inicializado com sucesso.');
+      }
+    });
   }
 });
 
