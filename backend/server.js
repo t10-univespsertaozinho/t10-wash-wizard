@@ -894,7 +894,66 @@ app.get('/api/dashboard/stats', async (req, res) => {
       };
     });
 
-    // 5. Insumos em Estado Crítico com Cálculo do Runway
+    // 5. [B1] Faturamento por Forma de Pagamento (últimos 30 dias)
+    // Os dados já eram coletados em cada lavagem (pagamento), mas nunca
+    // agregados — este bloco fecha a lacuna: PIX/Dinheiro/Cartão/outros no
+    // mesmo período do mix de serviços.
+    const pagamentosRows = await all(`
+      SELECT 
+        COALESCE(NULLIF(TRIM(pagamento), ''), 'Pendente') as forma_pagamento,
+        COUNT(*) as lavagens,
+        COALESCE(SUM(valor), 0) as receita
+      FROM lavagens
+      WHERE status = 'concluida' AND data >= datetime('now', '-30 days')
+      GROUP BY COALESCE(NULLIF(TRIM(pagamento), ''), 'Pendente')
+      ORDER BY receita DESC
+    `);
+
+    const totalReceitaPagtos = pagamentosRows.reduce((s, p) => s + Number(p.receita), 0);
+    const pagamentos = pagamentosRows.map(p => {
+      const receita = Number(p.receita);
+      return {
+        forma_pagamento: String(p.forma_pagamento),
+        lavagens: Number(p.lavagens),
+        receita,
+        // pct da receita no período — usado no gráfico de distribuição
+        pct_receita: totalReceitaPagtos > 0 ? Number(((receita / totalReceitaPagtos) * 100).toFixed(1)) : 0,
+      };
+    });
+
+    // 6. [B2] Desempenho por Operador (30 dias) — lavagens, receita e ticket
+    // médio por quem executou. lavagens.user_id sempre foi gravado; este é o
+    // primeiro consumo real desse dado para gestão de equipe.
+    const desempenhoOperadores = await all(`
+      SELECT 
+        u.id,
+        u.nome,
+        COUNT(l.id) as total_lavagens,
+        COALESCE(SUM(l.valor), 0) as receita,
+        ROUND(COALESCE(SUM(l.valor), 0) / NULLIF(COUNT(l.id), 0), 2) as ticket_medio
+      FROM users u
+      LEFT JOIN lavagens l 
+        ON l.user_id = u.id 
+        AND l.status = 'concluida' 
+        AND l.data >= datetime('now', '-30 days')
+      WHERE u.role = 'operador'
+      GROUP BY u.id, u.nome
+      ORDER BY receita DESC
+    `);
+
+    // 7. [B3] Tempo Médio de Atendimento — data_conclusao nunca era lido por
+    // nenhuma consulta; agora vira o indicador "min / lavagem" do dashboard.
+    const tempoAtendimentoRow = await get(`
+      SELECT 
+        COUNT(*) as total_finalizadas,
+        COALESCE(ROUND(AVG((julianday(data_conclusao) - julianday(data)) * 24 * 60), 1), 0) as tempo_medio_min
+      FROM lavagens
+      WHERE status = 'concluida' 
+        AND data_conclusao IS NOT NULL 
+        AND data IS NOT NULL
+    `);
+
+    // 8. Insumos em Estado Crítico com Cálculo do Runway
     const produtosCriticos = await all(`
       WITH consumo_recente AS (
         SELECT 
@@ -970,7 +1029,19 @@ app.get('/api/dashboard/stats', async (req, res) => {
       },
       clientes_ausentes: clientesAusentes,
       mix_servicos: mixServicos,
-      estoque_critico: estoqueCritico
+      estoque_critico: estoqueCritico,
+      pagamentos,
+      desempenho_operadores: desempenhoOperadores.map(op => ({
+        id: op.id,
+        nome: op.nome,
+        total_lavagens: Number(op.total_lavagens),
+        receita: Number(op.receita),
+        ticket_medio: Number(op.ticket_medio),
+      })),
+      tempo_atendimento: {
+        total_finalizadas: Number(tempoAtendimentoRow?.total_finalizadas || 0),
+        tempo_medio_min: Number(tempoAtendimentoRow?.tempo_medio_min || 0),
+      }
     });
   } catch (err) {
     handleServerError(res, err);

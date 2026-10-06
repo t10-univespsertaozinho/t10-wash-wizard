@@ -20,6 +20,8 @@ import {
   MessageCircle,
   Car,
   ChevronRight,
+  CreditCard,
+  Timer,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ResponsiveContainer, Bar, Line, ComposedChart, XAxis, YAxis, Tooltip, Legend } from 'recharts';
@@ -130,6 +132,45 @@ export default function Dashboard() {
     const porReceita = [...stats.mix_servicos].sort((a, b) => b.faturamento_total - a.faturamento_total)[0];
     const porVolume = [...stats.mix_servicos].sort((a, b) => b.total_atendimentos - a.total_atendimentos)[0];
     return { porReceita, porVolume };
+  }, [stats]);
+
+  // [B1] Formas de pagamento agrupadas: "Cartão Débito"/"Cartão Crédito"
+  // aparecem juntas como "Cartão", para o painel ser leitura de negócio
+  // (PIX, Dinheiro, Cartão) em vez de espelhar o select do formulário.
+  const pagamentosAgrupados = useMemo(() => {
+    if (!stats?.pagamentos || stats.pagamentos.length === 0) return [];
+    const grupos = new Map<string, { lavagens: number; receita: number }>();
+    for (const p of stats.pagamentos) {
+      const chave = p.forma_pagamento.startsWith('Cartão')
+        ? 'Cartão'
+        : p.forma_pagamento.trim() === ''
+          ? 'Pendente'
+          : p.forma_pagamento;
+      const atual = grupos.get(chave) ?? { lavagens: 0, receita: 0 };
+      grupos.set(chave, {
+        lavagens: atual.lavagens + p.lavagens,
+        receita: atual.receita + p.receita,
+      });
+    }
+    const total = [...grupos.values()].reduce((s, p) => s + p.receita, 0);
+    return [...grupos.entries()]
+      .map(([nome, p]) => ({
+        nome,
+        lavagens: p.lavagens,
+        receita: p.receita,
+        pct: total > 0 ? Number(((p.receita / total) * 100).toFixed(1)) : 0,
+      }))
+      .sort((a, b) => b.receita - a.receita);
+  }, [stats]);
+
+  // [B3] Formatação do tempo médio: "42 min" ou "1 h 05 min"
+  const tempoMedioTexto = useMemo(() => {
+    const min = stats?.tempo_atendimento?.tempo_medio_min ?? 0;
+    if (min === 0) return '—';
+    if (min < 60) return `${Math.round(min)} min`;
+    const h = Math.floor(min / 60);
+    const m = Math.round(min % 60);
+    return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')} min`;
   }, [stats]);
 
   // Função auxiliar para gerar link WhatsApp
@@ -507,6 +548,135 @@ export default function Dashboard() {
               <ChevronRight size={14} />
             </Link>
           </div>
+        </div>
+      </div>
+
+      {/* BLOCO 2.5: GESTÃO OPERACIONAL E EQUIPE (B1, B2, B3) */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* Card B3: Tempo Médio de Lavagem */}
+        <div className="bg-card rounded-xl border-l-4 border-chart-3 border border-border p-5 shadow-sm animate-fade-up">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-semibold">
+              Tempo Médio de Lavagem
+            </span>
+            <Timer className="text-chart-3" size={18} />
+          </div>
+          <p className="mt-3 text-3xl font-barlow-condensed font-bold text-foreground">
+            {loading ? (
+              <span className="animate-pulse">Carregando...</span>
+            ) : (
+              <>
+                {tempoMedioTexto}
+                <span className="text-base font-normal text-muted-foreground ml-1">/ lavagem</span>
+              </>
+            )}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {stats && stats.tempo_atendimento.total_finalizadas > 0
+              ? `Base: ${stats.tempo_atendimento.total_finalizadas} lavagens concluídas`
+              : 'Sem lavagens concluídas com hora final registrada'}
+          </p>
+        </div>
+
+        {/* Card B1: Faturamento por Forma de Pagamento */}
+        <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
+          <div className="flex items-center gap-2 mb-3">
+            <CreditCard className="text-chart-2" size={18} />
+            <div>
+              <h3 className="font-barlow-condensed font-bold text-lg text-foreground">
+                Faturamento por Pagamento
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Como o caixa recebeu (PIX, Dinheiro, Cartão) nos últimos 30 dias
+              </p>
+            </div>
+          </div>
+
+          {pagamentosAgrupados.length > 0 ? (
+            <div className="space-y-3 mt-4">
+              {pagamentosAgrupados.map((p, i) => {
+                const cor = chartColors[i % Math.max(chartColors.length, 1)];
+                return (
+                  <div key={p.nome} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium text-foreground truncate flex items-center gap-2">
+                        <span
+                          className="w-3 h-3 rounded-sm shrink-0"
+                          style={{ backgroundColor: cor }}
+                          aria-hidden="true"
+                        />
+                        {p.nome}
+                      </span>
+                      <span className="text-muted-foreground shrink-0">
+                        R$ {p.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {' '}({p.lavagens} lav.)
+                      </span>
+                    </div>
+                    <div className="w-full bg-secondary rounded-full h-2 overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{ width: `${Math.min(p.pct, 100)}%`, backgroundColor: cor }}
+                        title={`${p.pct}% da receita`}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                      <span>{p.pct}% da receita</span>
+                      <span>Ticket: R$ {(p.receita / Math.max(p.lavagens, 1)).toFixed(2)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-2">Nenhum pagamento registrado nos últimos 30 dias.</p>
+          )}
+        </div>
+
+        {/* Card B2: Desempenho da Equipe */}
+        <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
+          <div className="flex items-center gap-2 mb-3">
+            <Users className="text-chart-4" size={18} />
+            <div>
+              <h3 className="font-barlow-condensed font-bold text-lg text-foreground">
+                Desempenho da Equipe
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Lavagens e receita por operador nos últimos 30 dias
+              </p>
+            </div>
+          </div>
+
+          {stats?.desempenho_operadores && stats.desempenho_operadores.length > 0 ? (
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de desempenho por operador">
+              <table className="w-full text-sm">
+                <caption className="sr-only">Lavagens concluídas, receita e ticket médio por operador nos últimos 30 dias</caption>
+                <thead>
+                  <tr className="table-header border-b border-border">
+                    <th scope="col" className="text-left py-2 px-3 font-semibold text-muted-foreground">Operador</th>
+                    <th scope="col" className="text-center py-2 px-3 font-semibold text-muted-foreground">Lavagens</th>
+                    <th scope="col" className="text-right py-2 px-3 font-semibold text-muted-foreground">Receita</th>
+                    <th scope="col" className="text-right py-2 px-3 font-semibold text-muted-foreground">Ticket</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.desempenho_operadores.map((op) => (
+                    <tr key={op.id} className="table-row-hover border-t border-border">
+                      <td className="py-2 px-3 font-medium text-foreground">{op.nome}</td>
+                      <td className="py-2 px-3 text-center tabular-nums text-muted-foreground">{op.total_lavagens}</td>
+                      <td className="py-2 px-3 text-right tabular-nums text-primary font-bold">
+                        {op.receita > 0 ? `R$ ${op.receita.toFixed(2)}` : '—'}
+                      </td>
+                      <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                        {op.ticket_medio > 0 ? `R$ ${op.ticket_medio.toFixed(2)}` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">Nenhum operador registrado.</p>
+          )}
         </div>
       </div>
 
