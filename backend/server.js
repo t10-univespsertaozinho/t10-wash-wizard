@@ -24,7 +24,11 @@ const localOriginRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 // Tabelas e colunas usadas pelas rotas de backup. Declaradas aqui no topo
 // porque o fileFilter do multer precisa da allowlist de tabelas.
-const tables = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'lavagens', 'produtos', 'movimentacoes'];
+// auditoria_lavagens entra na lista de propósito: ela é uma tabela de dados
+// como as demais, e ficar fora quebrava dois controles ao mesmo tempo — o
+// reset a deixava viva com referências órfãs para lavagens apagadas, e o
+// export a deixava de fora, perdendo a trilha de auditoria a cada restore.
+const tables = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'lavagens', 'produtos', 'movimentacoes', 'auditoria_lavagens'];
 
 // Erro de origem bloqueada, com status próprio para o error handler devolver
 // 403 limpo em vez de cair no handler default do Express (que responderia 500
@@ -986,6 +990,7 @@ const TABLE_COLUMNS = {
   lavagens: ['id', 'cliente_id', 'veiculo_id', 'tipo_lavagem_id', 'status', 'valor', 'data', 'user_id', 'pagamento', 'observacao', 'data_conclusao'],
   produtos: ['id', 'nome', 'quantidade', 'estoque_minimo', 'categoria', 'unidade', 'preco_unitario', 'user_id', 'created_at'],
   movimentacoes: ['id', 'produto_id', 'tipo', 'quantidade', 'observacao', 'user_id', 'data'],
+  auditoria_lavagens: ['id', 'lavagem_id', 'user_id', 'campo', 'valor_anterior', 'valor_novo', 'data'],
 };
 
 // Colunas que podem SAIR do servidor. password_hash é deliberadamente omitido:
@@ -1050,8 +1055,10 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
     await exec('BEGIN TRANSACTION;');
 
     try {
-      // Odem de dependência
-      const order = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'produtos', 'lavagens', 'movimentacoes'];
+      // Ordem de dependência. auditoria_lavagens vem logo após lavagens:
+      // suas linhas referenciam lavagens(id), e a ordem decide se o
+      // foreign_key_check do fim do fluxo passa ou derruba o import inteiro.
+      const order = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'produtos', 'lavagens', 'auditoria_lavagens', 'movimentacoes'];
       
       // Limpar tabelas que estão sendo importadas
       for (const table of order) {
@@ -1137,6 +1144,10 @@ app.post('/api/backup/reset', requireAdmin, async (req, res) => {
       try {
         await exec('BEGIN TRANSACTION;');
         try {
+          // Com as FKs desligadas o ON DELETE CASCADE de auditoria_lavagens
+          // não dispara, então ela precisa ser apagada explicitamente junto
+          // com as demais — senão o reset deixaria linhas de auditoria de
+          // lavagens que já não existem.
           for (const table of tables) {
             await exec(`DELETE FROM ${table};`);
           }
