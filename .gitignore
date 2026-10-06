@@ -41,3 +41,7 @@ dist-ssr
 # Dados sensíveis (produção)
 data/
 storage/
+
+# Documentação interna de segurança (Sensível - NÃO commitar)
+docs/security_audit/
+relatorio_auditoria_*.md
