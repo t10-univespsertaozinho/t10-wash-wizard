@@ -10,7 +10,7 @@ import { stringify } from 'csv-stringify/sync';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db, { get, all, run, exec } from './db.js';
+import db, { dbReady, get, all, run, exec } from './db.js';
 import { JWT_SECRET, JWT_EXPIRES_IN, JWT_ALGORITHM } from './config.js';
 import { requireAuth, requireAdmin } from './middleware/auth.js';
 
@@ -1194,9 +1194,19 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 
 // Inicia o servidor se não estiver sendo executado como Serverless Function (ex: Vercel)
+//
+// O listen espera o dbReady: as rotas fazem INSERT em tabelas que só existem
+// depois que o schema roda (ex: auditoria_lavagens). Sem esta espera, subir a
+// porta em paralelo com a aplicação do schema abria uma janela em que o
+// primeiro PUT de lavagem respondia 500 com "no such table".
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Backend SQLite rodando na porta ${PORT}`);
+  dbReady.then(() => {
+    app.listen(PORT, () => {
+      console.log(`Backend SQLite rodando na porta ${PORT}`);
+    });
+  }).catch((err) => {
+    console.error('Servidor não iniciado: banco de dados indisponível.', err);
+    process.exit(1);
   });
 }
 
