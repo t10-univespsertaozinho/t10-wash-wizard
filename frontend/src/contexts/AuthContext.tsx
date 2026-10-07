@@ -12,10 +12,27 @@ export interface AppUser {
   role: UserRole;
 }
 
+/**
+ * Resultado do login. Antes `login` devolvia só um booleano, e a tela de login
+ * traduzia qualquer falha como "Email ou senha inválidos" — inclusive bloqueio
+ * do rate-limiter, servidor fora do ar e queda de rede, o que mandava o usuário
+ * conferir a senha quando o problema era outro (FA-11).
+ */
+export type LoginErro = 'credenciais' | 'rate_limit' | 'servidor' | 'rede';
+
+export interface LoginResult {
+  sucesso: boolean;
+  erro?: LoginErro;
+  /** Mensagem devolvida pelo backend, quando houver. */
+  detalhe?: string;
+  /** Segundos até poder tentar de novo (header Retry-After do 429). */
+  retryAfter?: number;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: AppUser | null;
-  login: (email: string, senha: string) => Promise<boolean>;
+  login: (email: string, senha: string) => Promise<LoginResult>;
   logout: () => Promise<void>;
   loading: boolean;
 }
@@ -50,22 +67,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadAuth();
   }, []);
 
-  const login = useCallback(async (email: string, senha: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, senha: string): Promise<LoginResult> => {
+    let res: Response;
     try {
-      const res = await fetch(`${API_URL}/auth/login`, {
+      res = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, senha }),
       });
-      if (!res.ok) return false;
-
-      const { token, user } = await res.json();
-      localStorage.setItem(TOKEN_STORAGE_KEY, token);
-      setAppUser(user);
-      return true;
     } catch {
-      return false;
+      // fetch só rejeita por falha de transporte: backend desligado, DNS, CORS.
+      return { sucesso: false, erro: 'rede' };
     }
+
+    if (!res.ok) {
+      const corpo = await res.json().catch(() => null);
+      const detalhe = corpo?.error;
+
+      if (res.status === 429) {
+        const header = Number(res.headers.get('Retry-After'));
+        return {
+          sucesso: false,
+          erro: 'rate_limit',
+          detalhe,
+          retryAfter: Number.isFinite(header) && header > 0 ? header : undefined,
+        };
+      }
+      if (res.status >= 500) return { sucesso: false, erro: 'servidor', detalhe };
+      return { sucesso: false, erro: 'credenciais', detalhe };
+    }
+
+    const { token, user } = await res.json();
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    setAppUser(user);
+    return { sucesso: true };
   }, []);
 
   const logout = useCallback(async () => {

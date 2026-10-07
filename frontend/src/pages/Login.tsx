@@ -1,6 +1,23 @@
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, type LoginResult } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+
+// Cada causa de falha pede uma ação diferente do usuário: corrigir a senha,
+// esperar o bloqueio passar ou avisar quem cuida do servidor (FA-11).
+function mensagemDeFalha({ erro, detalhe, retryAfter }: LoginResult): string {
+  switch (erro) {
+    case 'rate_limit':
+      return retryAfter
+        ? `Muitas tentativas de login. Aguarde ${retryAfter}s e tente novamente.`
+        : detalhe || 'Muitas tentativas de login. Aguarde alguns minutos e tente novamente.';
+    case 'servidor':
+      return 'O servidor respondeu com erro. Tente novamente em instantes ou avise o responsável pelo sistema.';
+    case 'rede':
+      return 'Não foi possível falar com o servidor. Verifique sua conexão — se o problema persistir, o backend pode estar fora do ar.';
+    default:
+      return 'Email ou senha inválidos';
+  }
+}
 
 export default function Login() {
   const { login } = useAuth();
@@ -15,14 +32,20 @@ export default function Login() {
     setLoading(true);
     setErro('');
 
-    const sucesso = await login(email, senha);
+    try {
+      const resultado = await login(email, senha);
 
-    if (sucesso) {
-      navigate('/');
-    } else {
-      setErro('Email ou senha inválidos');
+      if (resultado.sucesso) {
+        navigate('/');
+      } else {
+        setErro(mensagemDeFalha(resultado));
+      }
+    } catch (err) {
+      console.error('Falha inesperada no login:', err);
+      setErro('Ocorreu uma falha inesperada ao entrar. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   /**
