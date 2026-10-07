@@ -44,11 +44,11 @@ export default function EditarCliente() {
       <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 animate-fade-up">
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Editar Cliente</h2>
         <div>
-          <label htmlFor="editar-cliente-nome" className="block text-base font-semibold text-secondary-foreground mb-1.5">Nome Completo</label>
+          <label htmlFor="editar-cliente-nome" className="block text-base font-semibold text-foreground mb-1.5">Nome Completo</label>
           <input id="editar-cliente-nome" className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do cliente" required />
         </div>
         <div>
-          <label htmlFor="editar-cliente-telefone" className="block text-base font-semibold text-secondary-foreground mb-1.5">Telefone / WhatsApp</label>
+          <label htmlFor="editar-cliente-telefone" className="block text-base font-semibold text-foreground mb-1.5">Telefone / WhatsApp</label>
           <input id="editar-cliente-telefone" className="input-t10" value={telefone} onChange={handleTelefoneChange} placeholder="16 99999-9999" maxLength={15} />
         </div>
         <div className="flex gap-3">

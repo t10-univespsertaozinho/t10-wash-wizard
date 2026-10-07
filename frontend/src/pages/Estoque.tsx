@@ -7,9 +7,9 @@ export default function Estoque() {
   const { produtos, produtosBaixoEstoque, deleteProduto } = useApp();
 
   const statusBadge = (p: typeof produtos[0]) => {
-    if (p.quantidade === 0) return <span className="badge-zerado text-sm px-3 py-1 rounded-md font-semibold">Zerado</span>;
-    if (p.quantidade <= p.estoque_minimo) return <span className="badge-baixo text-sm px-3 py-1 rounded-md font-semibold">Baixo</span>;
-    return <span className="badge-ok text-sm px-3 py-1 rounded-md font-semibold">OK</span>;
+    if (p.quantidade === 0) return <span className="badge-zerado text-sm px-3 py-1 rounded-md font-semibold border">Zerado</span>;
+    if (p.quantidade <= p.estoque_minimo) return <span className="badge-baixo text-sm px-3 py-1 rounded-md font-semibold border">Baixo</span>;
+    return <span className="badge-ok text-sm px-3 py-1 rounded-md font-semibold border">OK</span>;
   };
 
   return (
@@ -55,9 +55,9 @@ export default function Estoque() {
             {produtos.map(p => (
               <tr key={p.id} className="table-row-hover border-t border-border">
                 <td className="py-4 px-4 text-base font-medium text-foreground">{p.nome}</td>
-                <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{p.categoria}</td>
+                <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{p.categoria}</td>
                 <td className="py-4 px-4 text-center text-base">{p.quantidade} {p.unidade}</td>
-                <td className="py-4 px-4 text-center text-sm font-medium text-secondary-foreground">{p.estoque_minimo}</td>
+                <td className="py-4 px-4 text-center text-sm font-medium text-muted-foreground">{p.estoque_minimo}</td>
                 <td className="py-4 px-4 text-right text-base text-primary font-semibold">R$ {p.preco_unitario.toFixed(2)}</td>
                 <td className="py-4 px-4 text-center">{statusBadge(p)}</td>
                 <td className="py-4 px-4 text-right">
@@ -74,7 +74,7 @@ export default function Estoque() {
                 </td>
               </tr>
             ))}
-            {produtos.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-secondary-foreground">Nenhum produto cadastrado.</td></tr>}
+            {produtos.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-muted-foreground">Nenhum produto cadastrado.</td></tr>}
           </tbody>
         </table>
       </div>

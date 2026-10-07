@@ -122,8 +122,8 @@ export default function Veiculos() {
                   <tr key={v.id} className="table-row-hover border-t border-border">
                     <td className="py-4 px-4 text-base font-medium text-foreground">{cliente?.nome || '—'}</td>
                     <td className="py-4 px-4 text-base">{v.modelo}</td>
-                    <td className="py-4 px-4 font-mono text-sm font-medium text-secondary-foreground">{v.placa}</td>
-                    <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{v.cor}</td>
+                    <td className="py-4 px-4 font-mono text-sm font-medium text-muted-foreground">{v.placa}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{v.cor}</td>
                     <td className="py-4 px-4 text-right">
                       {podeExcluir && (
                         <ConfirmDialogButton
@@ -140,7 +140,7 @@ export default function Veiculos() {
                 );
               })}
               {filtrados.length === 0 && (
-                <tr><td colSpan={5} className="py-8 text-center text-secondary-foreground text-sm">Nenhum veículo cadastrado.</td></tr>
+                <tr><td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>
               )}
             </tbody>
           </table>

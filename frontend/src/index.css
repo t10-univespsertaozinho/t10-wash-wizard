@@ -35,7 +35,6 @@
     /* WCAG 1.4.11 - 12.15:1 contra background e card */
     --ring: 49 100% 60%;
     --focus-ring: 49 100% 60%;
-    --placeholder: 220 14% 65%;
     /* Paleta Okabe-Ito: os hex exatos da paleta de referencia.
        Sao cores COMPLETAS de proposito, nao a tripla "H S% L%" que os outros
        tokens usam. A tripla obriga quem consome a montar a cor em JS, e esse
@@ -53,17 +52,6 @@
     --chart-4: #CC79A7; /* rosa */
     --chart-5: #009E73; /* verde */
     --chart-6: #D55E00; /* tijolo */
-    /* WCAG 1.4.3 - pares opacos de badge, minimo 4.5:1 dentro de cada par */
-    --badge-pendente-bg: 45 30% 14%;
-    --badge-pendente-fg: 45 100% 62%;
-    --badge-andamento-bg: 214 34% 14%;
-    --badge-andamento-fg: 205 90% 64%;
-    --badge-concluida-bg: 150 30% 14%;
-    --badge-concluida-fg: 150 70% 60%;
-    --badge-cancelada-bg: 350 32% 15%;
-    --badge-cancelada-fg: 345 80% 66%;
-    --badge-info-bg: 285 30% 15%;
-    --badge-info-fg: 285 55% 74%;
     --radius: 0.625rem;
     --sidebar-background: 228 18% 13%;
     --sidebar-foreground: 0 0% 75%;
@@ -105,7 +93,6 @@
     /* WCAG 1.4.11 - 9:1 contra background e card */
     --ring: 212 85% 30%;
     --focus-ring: 212 85% 30%;
-    --placeholder: 215 16% 40%;
     /* Okabe-Ito no claro: mesmo matiz e mesma saturacao, so a luminosidade cai.
        Ambar e cyan reprovam 3:1 sobre branco, e mexer no matiz para escurecer
        quebraria justamente a separacao para daltônicos. Adjustando so a
@@ -116,17 +103,6 @@
     --chart-4: #BC508C; /* rosa    4.50:1 */
     --chart-5: #008762; /* verde   4.52:1 */
     --chart-6: #C35600; /* tijolo  4.51:1 */
-    /* WCAG 1.4.3 - pares opacos de badge, minimo 4.5:1 dentro de cada par */
-    --badge-pendente-bg: 28 90% 95%;
-    --badge-pendente-fg: 28 90% 36%;
-    --badge-andamento-bg: 212 85% 95%;
-    --badge-andamento-fg: 212 85% 39%;
-    --badge-concluida-bg: 152 65% 94%;
-    --badge-concluida-fg: 152 65% 30.5%;
-    --badge-cancelada-bg: 347 80% 95%;
-    --badge-cancelada-fg: 347 80% 39%;
-    --badge-info-bg: 285 60% 95%;
-    --badge-info-fg: 285 55% 34%;
     --sidebar-background: 0 0% 96%;
     --sidebar-foreground: 225 20% 10%;
     --sidebar-primary: 25 95% 33%;
@@ -156,53 +132,47 @@
 }
 
 @layer components {
-  /* WCAG 1.4.3 - cada badge usa um par opaco (bg/fg) definido por tema,
-     garantindo >= 4.5:1 independente do fundo em que for aplicado. */
+  /* WCAG 1.4.3 - badges com pares de alto contraste em ambos os temas.
+     Cada class entrega bg/fg/borda; o `border` (espessura) fica no componente
+     que consome, entao a mesma classe tambem serve para avatares e alertas. */
   .badge-pendente {
-    background-color: hsl(var(--badge-pendente-bg));
-    color: hsl(var(--badge-pendente-fg));
+    @apply bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800;
   }
   .badge-andamento {
-    background-color: hsl(var(--badge-andamento-bg));
-    color: hsl(var(--badge-andamento-fg));
+    @apply bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800;
   }
   .badge-concluida {
-    background-color: hsl(var(--badge-concluida-bg));
-    color: hsl(var(--badge-concluida-fg));
+    @apply bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800;
   }
   .badge-cancelada {
-    background-color: hsl(var(--badge-cancelada-bg));
-    color: hsl(var(--badge-cancelada-fg));
+    @apply bg-red-100 text-red-900 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800;
   }
   .badge-ok {
-    background-color: hsl(var(--badge-concluida-bg));
-    color: hsl(var(--badge-concluida-fg));
+    @apply bg-emerald-100 text-emerald-900 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800;
   }
   .badge-baixo {
-    background-color: hsl(var(--badge-pendente-bg));
-    color: hsl(var(--badge-pendente-fg));
+    @apply bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800;
   }
   .badge-zerado {
-    background-color: hsl(var(--badge-cancelada-bg));
-    color: hsl(var(--badge-cancelada-fg));
+    @apply bg-red-100 text-red-900 border-red-300 dark:bg-red-950/60 dark:text-red-300 dark:border-red-800;
   }
   .badge-info {
-    background-color: hsl(var(--badge-info-bg));
-    color: hsl(var(--badge-info-fg));
+    @apply bg-sky-100 text-sky-900 border-sky-300 dark:bg-sky-950/60 dark:text-sky-300 dark:border-sky-800;
+  }
+  .badge-role-admin {
+    @apply bg-purple-100 text-purple-900 border-purple-300 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800;
+  }
+  .badge-role-operador {
+    @apply bg-muted text-muted-foreground border-border;
   }
   .input-t10 {
-    @apply w-full h-12 rounded-lg border border-border bg-input px-4 text-base font-medium text-foreground focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all;
-  }
-  /* WCAG 1.4.11 / 1.4.3 - placeholder com contraste mínimo de 4.5:1 no fundo do campo */
-  .input-t10::placeholder {
-    color: hsl(var(--placeholder));
-    opacity: 1;
+    @apply w-full h-12 rounded-lg border border-input bg-background px-4 text-base font-medium text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all;
   }
   .table-header {
-    @apply text-sm font-bold uppercase tracking-wider text-secondary-foreground bg-secondary/60;
+    @apply bg-muted/80 text-foreground font-bold uppercase text-sm tracking-wider border-b border-border;
   }
   .table-row-hover {
-    @apply transition-colors hover:bg-secondary/50;
+    @apply transition-colors hover:bg-muted/40;
   }
   /*
    * Interacao dos graficos. O Recharts nao traz folha de estilo propria aqui,

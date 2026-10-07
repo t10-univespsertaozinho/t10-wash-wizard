@@ -104,7 +104,7 @@ export default function ClienteDetalhe() {
   const statusBadge = (s: string) => {
     const map: Record<string, string> = { pendente: 'badge-pendente', em_progresso: 'badge-andamento', concluida: 'badge-concluida', cancelada: 'badge-cancelada' };
     const labels: Record<string, string> = { pendente: 'Pendente', em_progresso: 'Em progresso', concluida: 'Concluída', cancelada: 'Cancelada' };
-    return <span className={`text-sm px-3 py-1 rounded-md font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
+    return <span className={`text-sm px-3 py-1 rounded-md font-semibold border ${map[s] || ''}`}>{labels[s] || s}</span>;
   };
 
   const colors = ['badge-andamento', 'badge-pendente', 'badge-concluida', 'badge-info'];
@@ -119,8 +119,8 @@ export default function ClienteDetalhe() {
         </div>
         <div>
           <h2 className="text-2xl font-extrabold tracking-tight text-foreground">{cliente.nome}</h2>
-          <p className="text-base font-medium text-secondary-foreground">{cliente.telefone}</p>
-          <p className="text-base font-medium text-secondary-foreground mt-1">Cadastro: {formatarData(cliente.created_at)}</p>
+          <p className="text-base font-medium text-muted-foreground">{cliente.telefone}</p>
+          <p className="text-base font-medium text-muted-foreground mt-1">Cadastro: {formatarData(cliente.created_at)}</p>
         </div>
         <div className="ml-auto flex gap-6 text-center">
           <div>
@@ -171,7 +171,7 @@ export default function ClienteDetalhe() {
                         <input className="input-t10" aria-label={`Modelo do veículo ${v.placa}`} value={editandoModelo} onChange={e => setEditandoModelo(e.target.value)} />
                       </td>
                       <td className="py-4 px-4">
-                        <input className="input-t10 text-sm py-1 uppercase font-mono" aria-label={`Placa do veículo ${v.modelo}`} value={editPlacaValue} onChange={handleEditPlacaChange} maxLength={8} />
+                        <input className="input-t10 uppercase font-mono" aria-label={`Placa do veículo ${v.modelo}`} value={editPlacaValue} onChange={handleEditPlacaChange} maxLength={8} />
                       </td>
                       <td className="py-4 px-4">
                         <input className="input-t10" aria-label={`Cor do veículo ${v.modelo}`} value={editandoCor} onChange={e => setEditandoCor(e.target.value)} />
@@ -186,8 +186,8 @@ export default function ClienteDetalhe() {
                   ) : (
                     <>
                       <td className="py-4 px-4 text-base font-medium text-foreground">{v.modelo}</td>
-                      <td className="py-4 px-4 font-mono text-sm font-medium text-secondary-foreground">{v.placa}</td>
-                      <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{v.cor}</td>
+                      <td className="py-4 px-4 font-mono text-sm font-medium text-muted-foreground">{v.placa}</td>
+                      <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{v.cor}</td>
                       <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
@@ -215,7 +215,7 @@ export default function ClienteDetalhe() {
                   )}
                 </tr>
               ))}
-              {veiculosCliente.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-secondary-foreground text-sm">Nenhum veículo cadastrado.</td></tr>}
+              {veiculosCliente.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>}
             </tbody>
           </table>
         </div>
@@ -235,7 +235,7 @@ export default function ClienteDetalhe() {
                 const t = getTipoLavagem(l.tipo_lavagem_id);
                 return (
                   <tr key={l.id} className="table-row-hover border-t border-border">
-                    <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{formatarData(l.data)}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{formatarData(l.data)}</td>
                     <td className="py-4 px-4 text-base">{v?.modelo || '—'}</td>
                     <td className="py-4 px-4 text-base">{t?.nome || '—'}</td>
                     <td className="py-4 px-4 text-right text-base text-primary font-semibold">{formatarMoeda(l.valor)}</td>
@@ -243,7 +243,7 @@ export default function ClienteDetalhe() {
                   </tr>
                 );
               })}
-              {lavagensCliente.length === 0 && <tr><td colSpan={5} className="py-4 text-center text-secondary-foreground text-sm">Nenhuma lavagem registrada.</td></tr>}
+              {lavagensCliente.length === 0 && <tr><td colSpan={5} className="py-4 text-center text-muted-foreground text-sm">Nenhuma lavagem registrada.</td></tr>}
             </tbody>
           </table>
         </div>

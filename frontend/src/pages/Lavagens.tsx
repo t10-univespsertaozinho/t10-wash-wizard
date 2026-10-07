@@ -12,7 +12,7 @@ export default function Lavagens() {
   const statusBadge = (s: string) => {
     const map: Record<string, string> = { pendente: 'badge-pendente', em_progresso: 'badge-andamento', concluida: 'badge-concluida', cancelada: 'badge-cancelada' };
     const labels: Record<string, string> = { pendente: 'Pendente', em_progresso: 'Em progresso', concluida: 'Concluída', cancelada: 'Cancelada' };
-    return <span className={`text-sm px-3 py-1 rounded-md font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
+    return <span className={`text-sm px-3 py-1 rounded-md font-semibold border ${map[s] || ''}`}>{labels[s] || s}</span>;
   };
 
   const filters = [
@@ -64,9 +64,9 @@ export default function Lavagens() {
               const t = getTipoLavagem(l.tipo_lavagem_id);
               return (
                 <tr key={l.id} className="table-row-hover border-t border-border">
-                  <td className="py-4 px-4 text-sm font-medium text-secondary-foreground whitespace-nowrap">{new Date(l.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                  <td className="py-4 px-4 text-sm font-medium text-muted-foreground whitespace-nowrap">{new Date(l.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
                   <td className="py-4 px-4 text-base font-medium text-foreground">{c?.nome || '—'}</td>
-                  <td className="py-4 px-4 text-base">{v ? `${v.modelo} ` : '—'}<span className="font-mono text-sm font-medium text-secondary-foreground">{v?.placa}</span></td>
+                  <td className="py-4 px-4 text-base">{v ? `${v.modelo} ` : '—'}<span className="font-mono text-sm font-medium text-muted-foreground">{v?.placa}</span></td>
                   <td className="py-4 px-4 text-base">{t?.nome || '—'}</td>
                   <td className="py-4 px-4 text-right text-base text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
                   <td className="py-4 px-4 text-base font-medium text-secondary-foreground">{l.pagamento}</td>
@@ -87,7 +87,7 @@ export default function Lavagens() {
                 </tr>
               );
             })}
-            {sorted.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-secondary-foreground">Nenhuma lavagem encontrada.</td></tr>}
+            {sorted.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-muted-foreground">Nenhuma lavagem encontrada.</td></tr>}
           </tbody>
         </table>
       </div>

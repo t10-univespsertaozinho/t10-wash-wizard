@@ -57,10 +57,10 @@ export default function Clientes() {
             {filtered.map(c => (
               <tr key={c.id} className="table-row-hover border-t border-border">
                 <td className="py-4 px-4 text-base font-medium text-foreground">{c.nome}</td>
-                <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{c.telefone}</td>
+                <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{c.telefone}</td>
                 <td className="py-4 px-4 text-center text-base">{veiculos.filter(v => v.cliente_id === c.id).length}</td>
                 <td className="py-4 px-4 text-center text-base">{lavagens.filter(l => l.cliente_id === c.id).length}</td>
-                <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
+                <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
                 <td className="py-4 px-4 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Link
@@ -94,7 +94,7 @@ export default function Clientes() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={6} className="py-8 text-center text-secondary-foreground">Nenhum cliente encontrado.</td></tr>
+              <tr><td colSpan={6} className="py-8 text-center text-muted-foreground">Nenhum cliente encontrado.</td></tr>
             )}
           </tbody>
         </table>

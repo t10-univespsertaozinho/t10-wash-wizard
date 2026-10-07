@@ -30,11 +30,11 @@ export default function NovoCliente() {
           <p role="alert" aria-live="assertive" className="text-destructive text-sm">{error}</p>
         )}
         <div>
-          <label htmlFor="cliente-nome" className="block text-base font-semibold text-secondary-foreground mb-1.5">Nome Completo</label>
+          <label htmlFor="cliente-nome" className="block text-base font-semibold text-foreground mb-1.5">Nome Completo</label>
           <input id="cliente-nome" className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do cliente" required />
         </div>
         <div>
-          <label htmlFor="cliente-telefone" className="block text-base font-semibold text-secondary-foreground mb-1.5">Telefone / WhatsApp</label>
+          <label htmlFor="cliente-telefone" className="block text-base font-semibold text-foreground mb-1.5">Telefone / WhatsApp</label>
           <input id="cliente-telefone" className="input-t10" value={telefone} onChange={handleTelefoneChange} placeholder="16 99999-9999" maxLength={15} />
         </div>
         <button type="submit" className="w-full bg-primary text-primary-foreground font-bold h-12 rounded-lg hover:brightness-110 transition-all text-base">

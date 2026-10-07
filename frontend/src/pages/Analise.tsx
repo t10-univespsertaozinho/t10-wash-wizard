@@ -60,7 +60,11 @@ export default function Analise() {
             ) : (
               <User size={16} />
             )}
-            Perfil: <span className="font-semibold text-foreground capitalize">{user?.role}</span> ({user?.nome})
+            Perfil:{' '}
+            <span className={`text-sm px-3 py-1 rounded-md font-semibold border ${user?.role === 'admin' ? 'badge-role-admin' : 'badge-role-operador'}`}>
+              {user?.role === 'admin' ? 'Admin' : 'Operador'}
+            </span>{' '}
+            ({user?.nome})
           </p>
         </div>
 
@@ -106,18 +110,18 @@ export default function Analise() {
 
         {/* Destaque Prático para o Sr. Reinaldo */}
         {destaqueMix && destaqueMix.porReceita && destaqueMix.porVolume && (
-          <div className="bg-amber-950/30 border border-amber-500/40 rounded-xl p-6 mb-5 space-y-2.5">
-            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">💡 Visão do Negócio:</p>
-            <p className="text-base font-medium text-foreground leading-relaxed">
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-500/40 rounded-xl p-6 mb-5 space-y-2.5">
+            <p className="text-lg font-bold text-amber-900 dark:text-amber-300 mb-3">💡 Visão do Negócio:</p>
+            <p className="text-base font-medium text-amber-950 dark:text-slate-100 leading-relaxed">
               • Mais rentável:{' '}
-              <strong className="font-bold text-amber-700 dark:text-amber-300">{destaqueMix.porReceita.nome}</strong> traz{' '}
-              <strong className="font-bold text-amber-700 dark:text-amber-300">{destaqueMix.porReceita.pct_receita}%</strong> do
+              <strong className="font-bold text-amber-800 dark:text-amber-300">{destaqueMix.porReceita.nome}</strong> traz{' '}
+              <strong className="font-bold text-amber-800 dark:text-amber-300">{destaqueMix.porReceita.pct_receita}%</strong> do
               dinheiro.
             </p>
-            <p className="text-base font-medium text-foreground leading-relaxed">
+            <p className="text-base font-medium text-amber-950 dark:text-slate-100 leading-relaxed">
               • Mais popular:{' '}
-              <strong className="font-bold text-amber-700 dark:text-amber-300">{destaqueMix.porVolume.nome}</strong> lidera em{' '}
-              <strong className="font-bold text-amber-700 dark:text-amber-300">{destaqueMix.porVolume.pct_volume}%</strong> da
+              <strong className="font-bold text-amber-800 dark:text-amber-300">{destaqueMix.porVolume.nome}</strong> lidera em{' '}
+              <strong className="font-bold text-amber-800 dark:text-amber-300">{destaqueMix.porVolume.pct_volume}%</strong> da
               fila.
             </p>
           </div>
@@ -268,22 +272,22 @@ export default function Analise() {
               <table className="w-full">
                 <caption className="sr-only">Lavagens concluídas, receita e ticket médio por operador nos últimos 30 dias</caption>
                 <thead>
-                  <tr className="bg-secondary/50 border-b border-border">
-                    <th scope="col" className="text-left py-3 px-3 text-sm font-bold uppercase tracking-wider text-secondary-foreground">Operador</th>
-                    <th scope="col" className="text-center py-3 px-3 text-sm font-bold uppercase tracking-wider text-secondary-foreground">Lavagens</th>
-                    <th scope="col" className="text-right py-3 px-3 text-sm font-bold uppercase tracking-wider text-secondary-foreground">Receita</th>
-                    <th scope="col" className="text-right py-3 px-3 text-sm font-bold uppercase tracking-wider text-secondary-foreground">Ticket</th>
+                  <tr className="table-header">
+                    <th scope="col" className="text-left py-4 px-4">Operador</th>
+                    <th scope="col" className="text-center py-4 px-4">Lavagens</th>
+                    <th scope="col" className="text-right py-4 px-4">Receita</th>
+                    <th scope="col" className="text-right py-4 px-4">Ticket</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.desempenho_operadores.map((op) => (
                     <tr key={op.id} className="table-row-hover border-t border-border">
-                      <td className="py-3.5 px-3 text-base font-medium text-foreground">{op.nome}</td>
-                      <td className="py-3.5 px-3 text-center tabular-nums text-base font-medium text-secondary-foreground">{op.total_lavagens}</td>
-                      <td className="py-3.5 px-3 text-right tabular-nums text-base font-bold text-primary">
+                      <td className="py-4 px-4 text-base font-medium text-foreground">{op.nome}</td>
+                      <td className="py-4 px-4 text-center tabular-nums text-base font-medium text-foreground">{op.total_lavagens}</td>
+                      <td className="py-4 px-4 text-right tabular-nums text-base font-bold text-primary">
                         {op.receita > 0 ? formatarMoeda(op.receita) : '—'}
                       </td>
-                      <td className="py-3.5 px-3 text-right tabular-nums text-base font-medium text-secondary-foreground">
+                      <td className="py-4 px-4 text-right tabular-nums text-base font-medium text-foreground">
                         {op.ticket_medio > 0 ? formatarMoeda(op.ticket_medio) : '—'}
                       </td>
                     </tr>
@@ -343,7 +347,7 @@ export default function Analise() {
                         href={linkWhatsapp}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 shadow-sm"
+                        className="bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold px-3 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 shadow-sm"
                         title="Enviar mensagem amigável no WhatsApp"
                       >
                         <MessageCircle size={14} />

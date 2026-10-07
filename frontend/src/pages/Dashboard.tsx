@@ -100,7 +100,11 @@ export default function Dashboard() {
             ) : (
               <User size={14} />
             )}
-            Perfil: <span className="font-semibold text-foreground capitalize">{user?.role}</span> ({user?.nome})
+            Perfil:{' '}
+            <span className={`text-sm px-3 py-1 rounded-md font-semibold border ${user?.role === 'admin' ? 'badge-role-admin' : 'badge-role-operador'}`}>
+              {user?.role === 'admin' ? 'Admin' : 'Operador'}
+            </span>{' '}
+            ({user?.nome})
           </p>
         </div>
 
@@ -122,7 +126,7 @@ export default function Dashboard() {
                   seedTestData().then(() => carregarDadosAnaliticos(true));
                 }
               }}
-              className="bg-accent/10 text-accent-text hover:bg-accent/20 px-4 rounded-lg text-base font-semibold transition-colors flex items-center gap-2 border border-accent/20 h-11"
+              className="bg-accent/10 text-accent-text hover:bg-accent/20 px-6 rounded-lg text-base font-bold transition-colors flex items-center gap-2 border border-accent/20 h-12"
             >
               <Droplets size={18} /> Recarregar Demonstração
             </button>
@@ -246,12 +250,12 @@ export default function Dashboard() {
         </div>
 
         {/* Card 4: Alerta de Insumos Críticos */}
-        <div className="bg-card rounded-xl border-l-4 border-amber-500 border border-border p-5 shadow-sm animate-fade-up">
+        <div className="bg-card rounded-xl border-l-4 border-amber-600 border border-border p-5 shadow-sm animate-fade-up">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
               Estoque de Atenção
             </span>
-            <Package className="text-amber-500" size={24} />
+            <Package className="text-amber-600" size={24} />
           </div>
           <div className="mt-2">
             <p className="text-3xl xl:text-4xl font-barlow-condensed font-extrabold text-foreground leading-tight">
@@ -262,7 +266,7 @@ export default function Dashboard() {
               )}
               <span className="text-sm font-normal text-muted-foreground ml-1">em baixa</span>
             </p>
-            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 mt-1 truncate">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mt-1 truncate">
               {stats && stats.estoque_critico.length > 0
                 ? `${stats.estoque_critico[0].nome} (${stats.estoque_critico[0].quantidade} ${stats.estoque_critico[0].unidade})`
                 : 'Todos os insumos operando bem'}
@@ -369,7 +373,7 @@ export default function Dashboard() {
       <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="text-amber-500" size={20} />
+            <AlertTriangle className="text-amber-600" size={20} />
             <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
               Alerta de Compras (Insumos em Baixa)
             </h3>
@@ -405,7 +409,7 @@ export default function Dashboard() {
                       🔴 Acaba em ~{item.dias_restantes} dias
                     </span>
                   ) : item.status_previsao === 'atencao' ? (
-                    <span className="text-sm px-2.5 py-1 rounded-full font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 inline-flex items-center gap-1">
+                    <span className="text-sm px-3 py-1 rounded-md font-semibold border badge-baixo inline-flex items-center gap-1">
                       🟡 Acaba em ~{item.dias_restantes} dias
                     </span>
                   ) : (
@@ -459,13 +463,13 @@ export default function Dashboard() {
             <table className="w-full text-sm">
               <caption className="sr-only">Lavagens aguardando ou em atendimento</caption>
               <thead>
-                <tr className="table-header border-b border-border">
-                  <th scope="col" className="text-left py-2 px-3 font-semibold text-muted-foreground">Cliente</th>
-                  <th scope="col" className="text-left py-2 px-3 font-semibold text-muted-foreground">Veículo</th>
-                  <th scope="col" className="text-left py-2 px-3 font-semibold text-muted-foreground">Serviço</th>
-                  <th scope="col" className="text-center py-2 px-3 font-semibold text-muted-foreground">Status</th>
-                  <th scope="col" className="text-right py-2 px-3 font-semibold text-muted-foreground">Valor</th>
-                  <th scope="col" className="py-2 px-3 text-right"><span className="sr-only">Ações</span></th>
+                <tr className="table-header">
+                  <th scope="col" className="text-left py-4 px-4">Cliente</th>
+                  <th scope="col" className="text-left py-4 px-4">Veículo</th>
+                  <th scope="col" className="text-left py-4 px-4">Serviço</th>
+                  <th scope="col" className="text-center py-4 px-4">Status</th>
+                  <th scope="col" className="text-right py-4 px-4">Valor</th>
+                  <th scope="col" className="py-4 px-4 text-right"><span className="sr-only">Ações</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -475,22 +479,22 @@ export default function Dashboard() {
                   const t = getTipoLavagem(l.tipo_lavagem_id);
                   return (
                     <tr key={l.id} className="table-row-hover border-t border-border">
-                      <td className="py-2 px-3 font-medium text-foreground">{c?.nome || '—'}</td>
-                      <td className="py-2 px-3 text-muted-foreground">{v ? `${v.modelo} (${v.placa})` : '—'}</td>
-                      <td className="py-2 px-3 text-foreground">{t?.nome || '—'}</td>
-                      <td className="py-2 px-3 text-center">
+                      <td className="py-4 px-4 text-base font-medium text-foreground">{c?.nome || '—'}</td>
+                      <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{v ? `${v.modelo} (${v.placa})` : '—'}</td>
+                      <td className="py-4 px-4 text-base text-foreground">{t?.nome || '—'}</td>
+                      <td className="py-4 px-4 text-center">
                         <span
-                          className={`text-sm px-2.5 py-0.5 rounded-full font-semibold ${
+                          className={`text-sm px-3 py-1 rounded-md font-semibold border ${
                             l.status === 'em_progresso' ? 'badge-andamento' : 'badge-pendente'
                           }`}
                         >
                           {l.status === 'em_progresso' ? 'Em andamento' : 'Pendente'}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-right text-primary font-bold">
+                      <td className="py-4 px-4 text-right text-base text-primary font-bold">
                         {formatarMoeda(l.valor)}
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-4 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5">
                           {l.status === 'pendente' && (
                             <button

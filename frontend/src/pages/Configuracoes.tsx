@@ -149,7 +149,7 @@ export default function Configuracoes() {
             <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse"></div>
             SQLite Local (Conectado via API)
           </span>
-          <span className="text-sm font-medium text-secondary-foreground">
+          <span className="text-sm font-medium text-muted-foreground">
             {import.meta.env.VITE_API_URL || '/api (Proxy Local)'}
           </span>
         </div>
@@ -162,7 +162,7 @@ export default function Configuracoes() {
         </h2>
         
         <div className="space-y-4">
-          <p className="text-sm font-medium text-secondary-foreground">
+          <p className="text-sm font-medium text-muted-foreground">
             O CSV é usado apenas para backup. Não modifique a estrutura dos arquivos exportados para garantir a consistência no momento da importação.
           </p>
           
@@ -208,7 +208,7 @@ export default function Configuracoes() {
           <h2 className="font-barlow-condensed font-bold text-lg mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">
             <AlertTriangle size={18} aria-hidden="true" /> Anote as senhas provisórias agora
           </h2>
-          <p className="text-sm font-medium text-secondary-foreground mb-3">
+          <p className="text-sm font-medium text-muted-foreground mb-3">
             Por segurança, o arquivo de backup não contém senhas. Cada usuário restaurado
             recebeu uma senha provisória, exibida <strong>somente agora</strong>. Anote-as e
             troque-as no primeiro acesso — ao sair desta tela elas não poderão ser recuperadas.

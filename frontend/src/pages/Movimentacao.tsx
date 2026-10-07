@@ -70,7 +70,7 @@ export default function Movimentacao() {
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Nova Movimentação</h2>
         
         <div>
-          <label htmlFor="movimentacao-produto" className="block text-base font-semibold text-secondary-foreground mb-1.5">Produto</label>
+          <label htmlFor="movimentacao-produto" className="block text-base font-semibold text-foreground mb-1.5">Produto</label>
           <select id="movimentacao-produto" className="input-t10" value={produtoId} onChange={e => setProdutoId(e.target.value)} required>
             <option value="">Selecione...</option>
             {produtosOrdenados.map(p => {
@@ -85,7 +85,7 @@ export default function Movimentacao() {
         </div>
 
         <fieldset>
-          <legend className="block text-base font-semibold text-secondary-foreground mb-1.5">Tipo</legend>
+          <legend className="block text-base font-semibold text-foreground mb-1.5">Tipo</legend>
           <div className="flex gap-2">
             <input
               type="radio"
@@ -121,7 +121,7 @@ export default function Movimentacao() {
         </fieldset>
 
         <div>
-          <label htmlFor="movimentacao-quantidade" className="block text-base font-semibold text-secondary-foreground mb-1.5">Quantidade</label>
+          <label htmlFor="movimentacao-quantidade" className="block text-base font-semibold text-foreground mb-1.5">Quantidade</label>
           <input id="movimentacao-quantidade" className="input-t10" type="number" min="0" step="any" inputMode="decimal" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />
         </div>
 
@@ -145,18 +145,18 @@ export default function Movimentacao() {
                 }
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">{p?.nome || '—'}</p>
-                  <p className="text-sm font-medium text-secondary-foreground">{new Date(m.data).toLocaleDateString('pt-BR')} às {new Date(m.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{new Date(m.data).toLocaleDateString('pt-BR')} às {new Date(m.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
                 <div className="text-right">
                   <p className={`text-sm font-bold ${m.tipo === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                     {m.tipo === 'entrada' ? '+' : '-'}{m.quantidade}
                   </p>
-                  <p className="text-sm font-medium text-secondary-foreground">{p?.unidade}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{p?.unidade}</p>
                 </div>
               </div>
             );
           })}
-          {sorted.length === 0 && <p className="p-6 text-center text-sm font-medium text-secondary-foreground">Nenhuma movimentação.</p>}
+          {sorted.length === 0 && <p className="p-6 text-center text-sm font-medium text-muted-foreground">Nenhuma movimentação.</p>}
         </div>
       </div>
     </div>

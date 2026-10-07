@@ -69,7 +69,7 @@ export default function Login() {
           <h1 className="text-5xl font-barlow-condensed font-extrabold text-primary tracking-tight">
             T10 🚗
           </h1>
-          <p className="text-sm font-medium text-secondary-foreground mt-2">Lava Rápido — Serrana/SP</p>
+          <p className="text-sm font-medium text-muted-foreground mt-2">Lava Rápido — Serrana/SP</p>
         </div>
         <form onSubmit={handleSubmit} className="bg-card rounded-xl p-8 border border-border space-y-5">
           {erro && (
@@ -83,7 +83,7 @@ export default function Login() {
             </div>
           )}
           <div>
-            <label htmlFor="login-email" className="block text-base font-semibold text-secondary-foreground mb-1.5">Email</label>
+            <label htmlFor="login-email" className="block text-base font-semibold text-foreground mb-1.5">Email</label>
             <input 
               id="login-email"
               name="email"
@@ -99,7 +99,7 @@ export default function Login() {
             />
           </div>
           <div>
-            <label htmlFor="login-senha" className="block text-base font-semibold text-secondary-foreground mb-1.5">Senha</label>
+            <label htmlFor="login-senha" className="block text-base font-semibold text-foreground mb-1.5">Senha</label>
             <input 
               id="login-senha"
               name="senha"

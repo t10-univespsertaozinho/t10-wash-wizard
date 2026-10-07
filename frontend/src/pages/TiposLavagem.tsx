@@ -20,15 +20,15 @@ export default function TiposLavagem() {
       <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 animate-fade-up h-fit">
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Novo Tipo</h2>
         <div>
-          <label htmlFor="tipo-nome" className="block text-base font-semibold text-secondary-foreground mb-1.5">Nome</label>
+          <label htmlFor="tipo-nome" className="block text-base font-semibold text-foreground mb-1.5">Nome</label>
           <input id="tipo-nome" className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Ex: Lavagem Premium" required />
         </div>
         <div>
-          <label htmlFor="tipo-descricao" className="block text-base font-semibold text-secondary-foreground mb-1.5">Descrição</label>
+          <label htmlFor="tipo-descricao" className="block text-base font-semibold text-foreground mb-1.5">Descrição</label>
           <input id="tipo-descricao" className="input-t10" value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Descrição do serviço" />
         </div>
         <div>
-          <label htmlFor="tipo-preco" className="block text-base font-semibold text-secondary-foreground mb-1.5">Preço (R$)</label>
+          <label htmlFor="tipo-preco" className="block text-base font-semibold text-foreground mb-1.5">Preço (R$)</label>
           <input id="tipo-preco" className="input-t10" type="number" step="0.01" value={preco} onChange={e => setPreco(e.target.value)} placeholder="0.00" required />
         </div>
         <button type="submit" className="w-full bg-primary text-primary-foreground font-bold h-12 rounded-lg hover:brightness-110 transition-all text-base">Cadastrar</button>
@@ -48,7 +48,7 @@ export default function TiposLavagem() {
             {tiposLavagem.map(t => (
               <tr key={t.id} className="table-row-hover border-t border-border">
                 <td className="py-4 px-4 text-base font-medium text-foreground">{t.nome}</td>
-                <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{t.descricao}</td>
+                <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{t.descricao}</td>
                 <td className="py-4 px-4 text-right text-base text-primary font-bold">R$ {t.preco.toFixed(2)}</td>
                 <td className="py-4 px-4 text-right">
                   <button

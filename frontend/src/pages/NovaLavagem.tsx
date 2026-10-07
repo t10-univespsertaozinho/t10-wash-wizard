@@ -69,32 +69,32 @@ export default function NovaLavagem() {
           <div role="alert" aria-live="assertive" className="badge-cancelada text-sm rounded-lg px-4 py-2 text-center">{erro}</div>
         )}
         <div>
-          <label htmlFor="lavagem-cliente" className="block text-base font-semibold text-secondary-foreground mb-1.5">Cliente</label>
+          <label htmlFor="lavagem-cliente" className="block text-base font-semibold text-foreground mb-1.5">Cliente</label>
           <select id="lavagem-cliente" className="input-t10" value={clienteId} onChange={e => { setClienteId(e.target.value); setVeiculoId(''); }} required>
             <option value="">Selecione...</option>
             {[...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="lavagem-veiculo" className="block text-base font-semibold text-secondary-foreground mb-1.5">Veículo</label>
+          <label htmlFor="lavagem-veiculo" className="block text-base font-semibold text-foreground mb-1.5">Veículo</label>
           <select id="lavagem-veiculo" className="input-t10" value={veiculoId} onChange={e => setVeiculoId(e.target.value)} required disabled={!clienteId}>
             <option value="">{clienteId ? 'Selecione o veículo...' : 'Selecione um cliente primeiro'}</option>
             {veiculosCliente.map(v => <option key={v.id} value={v.id}>{v.modelo} — {v.placa}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="lavagem-tipo" className="block text-base font-semibold text-secondary-foreground mb-1.5">Tipo de Lavagem</label>
+          <label htmlFor="lavagem-tipo" className="block text-base font-semibold text-foreground mb-1.5">Tipo de Lavagem</label>
           <select id="lavagem-tipo" className="input-t10" value={tipoId} onChange={e => handleTipoChange(e.target.value)} required>
             <option value="">Selecione...</option>
             {tiposLavagem.map(t => <option key={t.id} value={t.id}>{t.nome} — R$ {t.preco.toFixed(2)}</option>)}
           </select>
         </div>
         <div>
-          <label htmlFor="lavagem-valor" className="block text-base font-semibold text-secondary-foreground mb-1.5">Valor (R$)</label>
+          <label htmlFor="lavagem-valor" className="block text-base font-semibold text-foreground mb-1.5">Valor (R$)</label>
           <input id="lavagem-valor" className="input-t10" type="number" step="0.01" min="0" value={valor} onChange={e => setValor(e.target.value)} required />
         </div>
         <div>
-          <label htmlFor="lavagem-pagamento" className="block text-base font-semibold text-secondary-foreground mb-1.5">Forma de Pagamento</label>
+          <label htmlFor="lavagem-pagamento" className="block text-base font-semibold text-foreground mb-1.5">Forma de Pagamento</label>
           <select id="lavagem-pagamento" className="input-t10" value={pagamento} onChange={e => setPagamento(e.target.value)}>
             <option>Dinheiro</option>
             <option>PIX</option>
@@ -104,7 +104,7 @@ export default function NovaLavagem() {
           </select>
         </div>
         <div>
-          <label htmlFor="lavagem-obs" className="block text-base font-semibold text-secondary-foreground mb-1.5">Observações</label>
+          <label htmlFor="lavagem-obs" className="block text-base font-semibold text-foreground mb-1.5">Observações</label>
           <textarea id="lavagem-obs" className="input-t10 min-h-[80px] resize-y" value={obs} onChange={e => setObs(e.target.value)} placeholder="Opcional..." />
         </div>
         <button type="submit" disabled={salvando} className="w-full bg-primary text-primary-foreground font-bold h-12 rounded-lg hover:brightness-110 transition-all text-base disabled:opacity-50">
