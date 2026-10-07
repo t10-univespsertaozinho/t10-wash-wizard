@@ -54,11 +54,11 @@ export default function Analise() {
               Inteligência de Negócio
             </span>
           </div>
-          <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+          <p className="text-base text-secondary-foreground flex items-center gap-2 mt-1">
             {user?.role === 'admin' ? (
-              <Shield size={14} className="text-accent-text" />
+              <Shield size={16} className="text-accent-text" />
             ) : (
-              <User size={14} />
+              <User size={16} />
             )}
             Perfil: <span className="font-semibold text-foreground capitalize">{user?.role}</span> ({user?.nome})
           </p>
@@ -67,7 +67,7 @@ export default function Analise() {
         <button
           onClick={() => carregarDadosAnaliticos(true)}
           disabled={refreshing}
-          className="w-11 h-11 rounded-lg border border-border hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50 flex items-center justify-center"
+          className="w-11 h-11 rounded-lg border border-border hover:bg-secondary text-secondary-foreground hover:text-foreground transition-colors disabled:opacity-50 flex items-center justify-center"
           title="Atualizar dados analíticos"
           aria-label="Atualizar dados"
         >
@@ -92,13 +92,13 @@ export default function Analise() {
       )}
 
       {/* MIX DE SERVIÇOS - DETALHADO (30 dias) */}
-      <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-card rounded-xl border border-border p-6 shadow-sm animate-fade-up">
+        <div className="flex items-center justify-between mb-5">
           <div>
             <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
               Mix de Serviços (Últimos 30 Dias)
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-secondary-foreground mt-1">
               Participação de cada serviço no faturamento e no volume de atendimentos
             </p>
           </div>
@@ -106,17 +106,17 @@ export default function Analise() {
 
         {/* Destaque Prático para o Sr. Reinaldo */}
         {destaqueMix && destaqueMix.porReceita && destaqueMix.porVolume && (
-          <div className="bg-secondary/40 rounded-lg p-4 text-sm border border-border/80 mb-4 space-y-1.5">
+          <div className="bg-secondary/40 rounded-lg p-5 text-sm border border-border/80 mb-4 space-y-2">
             <p className="text-foreground">
               <span className="font-semibold text-primary">💡 Visão do Negócio:</span>
             </p>
-            <p className="text-muted-foreground">
+            <p className="text-secondary-foreground">
               • Mais rentável:{' '}
               <strong className="text-foreground">{destaqueMix.porReceita.nome}</strong> traz{' '}
               <strong className="text-foreground">{destaqueMix.porReceita.pct_receita}%</strong> do
               dinheiro.
             </p>
-            <p className="text-muted-foreground">
+            <p className="text-secondary-foreground">
               • Mais popular:{' '}
               <strong className="text-foreground">{destaqueMix.porVolume.nome}</strong> lidera em{' '}
               <strong className="text-foreground">{destaqueMix.porVolume.pct_volume}%</strong> da
@@ -127,18 +127,18 @@ export default function Analise() {
 
         {/* Barras de Comparação dos Serviços */}
         {stats?.mix_servicos && stats.mix_servicos.length > 0 ? (
-          <div className="grid md:grid-cols-2 gap-x-8 gap-y-4">
+          <div className="grid md:grid-cols-2 gap-x-10 gap-y-5">
             {stats.mix_servicos.map((servico) => (
-              <div key={servico.id} className="space-y-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium text-foreground truncate">{servico.nome}</span>
-                  <span className="text-muted-foreground">
+              <div key={servico.id} className="space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-base font-semibold text-foreground truncate">{servico.nome}</span>
+                  <span className="text-sm font-semibold text-amber-700 dark:text-amber-400 shrink-0">
                     {formatarMoeda(servico.faturamento_total)} ({servico.total_atendimentos} atend.)
                   </span>
                 </div>
 
                 {/* Barra de Receita */}
-                <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden flex">
+                <div className="w-full bg-secondary rounded-full h-3 overflow-hidden flex">
                   <div
                     className="bg-primary h-full rounded-full transition-all"
                     style={{ width: `${Math.min(servico.pct_receita, 100)}%` }}
@@ -146,7 +146,7 @@ export default function Analise() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div className="flex items-center justify-between text-sm font-medium text-secondary-foreground">
                   <span>Receita: {servico.pct_receita}%</span>
                   <span>Volume: {servico.pct_volume}%</span>
                 </div>
@@ -154,10 +154,10 @@ export default function Analise() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">Nenhum serviço registrado nos últimos 30 dias.</p>
+          <p className="text-sm text-secondary-foreground">Nenhum serviço registrado nos últimos 30 dias.</p>
         )}
 
-        <div className="pt-4 border-t border-border mt-4">
+        <div className="pt-4 border-t border-border mt-5">
           <Link
             to="/tipos-lavagem"
             className="text-sm text-primary font-semibold hover:underline flex items-center justify-between"
@@ -171,24 +171,22 @@ export default function Analise() {
       {/* GESTÃO OPERACIONAL E EQUIPE (B1, B2, B3) */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Card B3: Tempo Médio de Lavagem */}
-        <div className="bg-card rounded-xl border-l-4 border-chart-3 border border-border p-5 shadow-sm animate-fade-up">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
-              Tempo Médio de Lavagem
-            </span>
-            <Timer className="text-chart-3" size={20} />
+        <div className="bg-card rounded-xl border-l-4 border-chart-3 border border-border p-6 shadow-sm animate-fade-up">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-lg font-bold text-foreground">Tempo Médio de Lavagem</h3>
+            <Timer className="text-chart-3 shrink-0" size={24} />
           </div>
-          <p className="mt-3 text-3xl font-barlow-condensed font-bold text-foreground">
+          <p className="mt-4 text-5xl font-extrabold leading-none text-amber-700 dark:text-amber-400">
             {loading ? (
               <span className="animate-pulse">Carregando...</span>
             ) : (
               <>
                 {tempoMedioTexto}
-                <span className="text-base font-normal text-muted-foreground ml-1">/ lavagem</span>
+                <span className="text-base font-semibold text-secondary-foreground ml-2">/ lavagem</span>
               </>
             )}
           </p>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm font-medium text-secondary-foreground mt-3">
             {stats && stats.tempo_atendimento.total_finalizadas > 0
               ? `Base: ${stats.tempo_atendimento.total_finalizadas} lavagens concluídas`
               : 'Sem lavagens concluídas com hora final registrada'}
@@ -196,68 +194,72 @@ export default function Analise() {
         </div>
 
         {/* Card B1: Faturamento por Forma de Pagamento */}
-        <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
-          <div className="flex items-center gap-2 mb-3">
-            <CreditCard className="text-chart-2" size={20} />
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm animate-fade-up">
+          <div className="flex items-center gap-3 mb-3">
+            <CreditCard className="text-chart-2 shrink-0" size={24} />
             <div>
               <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
                 Faturamento por Pagamento
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-secondary-foreground mt-1">
                 Como o caixa recebeu (PIX, Dinheiro, Cartão) nos últimos 30 dias
               </p>
             </div>
           </div>
 
           {pagamentosAgrupados.length > 0 ? (
-            <div className="space-y-3 mt-4">
+            <div className="space-y-4 mt-4">
               {pagamentosAgrupados.map((p, i) => {
                 const cor = chartColors[i % Math.max(chartColors.length, 1)];
                 return (
-                  <div key={p.nome} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium text-foreground truncate flex items-center gap-2">
+                  <div key={p.nome} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-base font-semibold text-foreground truncate flex items-center gap-2">
                         <span
-                          className="w-3 h-3 rounded-sm shrink-0"
+                          className="w-3.5 h-3.5 rounded-sm shrink-0"
                           style={{ backgroundColor: cor }}
                           aria-hidden="true"
                         />
                         {p.nome}
                       </span>
-                      <span className="text-muted-foreground shrink-0">
+                      <span className="text-sm font-semibold text-secondary-foreground shrink-0">
                         {formatarMoedaExtenso(p.receita)}
                         {' '}({p.lavagens} lav.)
                       </span>
                     </div>
-                    <div className="w-full bg-secondary rounded-full h-2.5 overflow-hidden">
+                    <div className="w-full bg-secondary rounded-full h-3.5 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all"
                         style={{ width: `${Math.min(p.pct, 100)}%`, backgroundColor: cor }}
                         title={`${p.pct}% da receita`}
                       />
                     </div>
-                    <div className="flex items-center justify-between text-sm text-muted-foreground">
-                      <span>{p.pct}% da receita</span>
-                      <span>Ticket: {formatarMoeda(p.receita / Math.max(p.lavagens, 1))}</span>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-emerald-700 dark:text-emerald-400">
+                        {p.pct}% da receita
+                      </span>
+                      <span className="font-semibold text-secondary-foreground">
+                        Ticket: {formatarMoeda(p.receita / Math.max(p.lavagens, 1))}
+                      </span>
                     </div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground mt-2">Nenhum pagamento registrado nos últimos 30 dias.</p>
+            <p className="text-sm text-secondary-foreground mt-2">Nenhum pagamento registrado nos últimos 30 dias.</p>
           )}
         </div>
 
         {/* Card B2: Desempenho da Equipe */}
-        <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
-          <div className="flex items-center gap-2 mb-3">
-            <Users className="text-chart-4" size={20} />
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm animate-fade-up">
+          <div className="flex items-center gap-3 mb-3">
+            <Users className="text-chart-4 shrink-0" size={24} />
             <div>
               <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
                 Desempenho da Equipe
               </h3>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-secondary-foreground mt-1">
                 Lavagens e receita por operador nos últimos 30 dias
               </p>
             </div>
@@ -265,25 +267,25 @@ export default function Analise() {
 
           {stats?.desempenho_operadores && stats.desempenho_operadores.length > 0 ? (
             <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de desempenho por operador">
-              <table className="w-full text-sm">
+              <table className="w-full">
                 <caption className="sr-only">Lavagens concluídas, receita e ticket médio por operador nos últimos 30 dias</caption>
                 <thead>
-                  <tr className="table-header border-b border-border">
-                    <th scope="col" className="text-left py-2 px-3 font-semibold text-muted-foreground">Operador</th>
-                    <th scope="col" className="text-center py-2 px-3 font-semibold text-muted-foreground">Lavagens</th>
-                    <th scope="col" className="text-right py-2 px-3 font-semibold text-muted-foreground">Receita</th>
-                    <th scope="col" className="text-right py-2 px-3 font-semibold text-muted-foreground">Ticket</th>
+                  <tr className="bg-secondary/50 border-b border-border">
+                    <th scope="col" className="text-left py-3 px-3 text-sm font-bold uppercase tracking-wider text-secondary-foreground">Operador</th>
+                    <th scope="col" className="text-center py-3 px-3 text-sm font-bold uppercase tracking-wider text-secondary-foreground">Lavagens</th>
+                    <th scope="col" className="text-right py-3 px-3 text-sm font-bold uppercase tracking-wider text-secondary-foreground">Receita</th>
+                    <th scope="col" className="text-right py-3 px-3 text-sm font-bold uppercase tracking-wider text-secondary-foreground">Ticket</th>
                   </tr>
                 </thead>
                 <tbody>
                   {stats.desempenho_operadores.map((op) => (
                     <tr key={op.id} className="table-row-hover border-t border-border">
-                      <td className="py-2 px-3 font-medium text-foreground">{op.nome}</td>
-                      <td className="py-2 px-3 text-center tabular-nums text-muted-foreground">{op.total_lavagens}</td>
-                      <td className="py-2 px-3 text-right tabular-nums text-primary font-bold">
+                      <td className="py-3.5 px-3 text-base font-medium text-foreground">{op.nome}</td>
+                      <td className="py-3.5 px-3 text-center tabular-nums text-base font-medium text-secondary-foreground">{op.total_lavagens}</td>
+                      <td className="py-3.5 px-3 text-right tabular-nums text-base font-bold text-primary">
                         {op.receita > 0 ? formatarMoeda(op.receita) : '—'}
                       </td>
-                      <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
+                      <td className="py-3.5 px-3 text-right tabular-nums text-base font-medium text-secondary-foreground">
                         {op.ticket_medio > 0 ? formatarMoeda(op.ticket_medio) : '—'}
                       </td>
                     </tr>
@@ -292,16 +294,16 @@ export default function Analise() {
               </table>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">Nenhum operador registrado.</p>
+            <p className="text-sm text-secondary-foreground">Nenhum operador registrado.</p>
           )}
         </div>
       </div>
 
       {/* B4: OPORTUNIDADES DE RETORNO (CLIENTES AUSENTES > 30 DIAS) */}
-      <div className="bg-card rounded-xl border border-border p-5 shadow-sm animate-fade-up">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-card rounded-xl border border-border p-6 shadow-sm animate-fade-up">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2">
-            <Users className="text-chart-4" size={20} />
+            <Users className="text-chart-4" size={24} />
             <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
               Clientes Ausentes (Resgate &gt; 30 dias)
             </h3>
@@ -321,10 +323,10 @@ export default function Analise() {
               const linkWhatsapp = gerarLinkWhatsapp(cliente.telefone, cliente.nome);
 
               return (
-                <div key={cliente.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                <div key={cliente.id} className="py-3.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{cliente.nome}</p>
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                    <p className="text-base font-semibold text-foreground truncate">{cliente.nome}</p>
+                    <p className="text-sm text-secondary-foreground flex items-center gap-2">
                       <span>{cliente.telefone || 'Sem telefone'}</span>
                       <span>•</span>
                       <span>{cliente.historico_lavagens} lavagens já feitas</span>
@@ -332,7 +334,7 @@ export default function Analise() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm px-2 py-0.5 rounded font-medium bg-secondary text-muted-foreground">
+                    <span className="text-sm px-2.5 py-1 rounded font-medium bg-secondary text-secondary-foreground">
                       Há {cliente.dias_ausente} dias
                     </span>
 
@@ -353,7 +355,7 @@ export default function Analise() {
                       <button
                         type="button"
                         disabled
-                        className="bg-secondary text-muted-foreground text-sm font-semibold px-3 py-1.5 rounded-lg inline-flex items-center gap-1 cursor-not-allowed"
+                        className="bg-secondary text-secondary-foreground text-sm font-semibold px-3 py-1.5 rounded-lg inline-flex items-center gap-1 cursor-not-allowed"
                         title={`Cadastre um telefone válido de ${cliente.nome} para enviar a mensagem pelo WhatsApp`}
                       >
                         <MessageCircle size={14} />
@@ -366,9 +368,9 @@ export default function Analise() {
             })}
           </div>
         ) : (
-          <div className="py-8 text-center text-muted-foreground">
+          <div className="py-8 text-center text-secondary-foreground">
             <Users size={28} className="mx-auto text-primary mb-2" />
-            <p className="text-sm font-medium text-foreground">Nenhum cliente ausente há mais de 30 dias!</p>
+            <p className="text-base font-medium text-foreground">Nenhum cliente ausente há mais de 30 dias!</p>
             <p className="text-sm mt-1">A frequência de retorno da clientela está em dia.</p>
           </div>
         )}
