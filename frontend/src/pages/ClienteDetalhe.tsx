@@ -1,14 +1,23 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { useState } from 'react';
 import { Trash2, Plus, Car, Pencil, X, Check } from 'lucide-react';
 import { usePlacaMask } from '@/hooks/usePlacaMask';
 import { ConfirmDialogButton } from '@/components/ConfirmDialog';
+import { toast } from 'sonner';
+
+const mensagemErro = (err: unknown) =>
+  err instanceof Error ? err.message : 'Erro desconhecido';
 
 export default function ClienteDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getCliente, getVeiculosCliente, getLavagensCliente, getTipoLavagem, addVeiculo, updateVeiculo, deleteVeiculo, veiculos } = useApp();
+  // Exclusão passou a exigir admin no backend (FA-03): mostrar o botão para
+  // operador só renderia um 403 garantido.
+  const { user } = useAuth();
+  const podeExcluir = user?.role === 'admin';
 
   const [showForm, setShowForm] = useState(false);
   const [modelo, setModelo] = useState('');
@@ -19,6 +28,7 @@ export default function ClienteDetalhe() {
   const [editandoModelo, setEditandoModelo] = useState('');
   const [editandoPlaca, setEditandoPlaca] = useState('');
   const [editandoCor, setEditandoCor] = useState('');
+  const [salvando, setSalvando] = useState(false);
   const { value: editPlacaValue, handleChange: handleEditPlacaChange, setValue: setEditPlacaValue } = usePlacaMask();
 
   const cliente = getCliente(id!);
@@ -27,11 +37,23 @@ export default function ClienteDetalhe() {
   const veiculosCliente = getVeiculosCliente(id!);
   const lavagensCliente = getLavagensCliente(id!).sort((a, b) => b.data.localeCompare(a.data)).slice(0, 10);
 
-  const handleAddVeiculo = (e: React.FormEvent) => {
+  // O formulário só é limpo e fechado depois de o backend confirmar. Antes,
+  // limpar na hora fazia a tela declarar sucesso mesmo quando a API recusava o
+  // veículo (placa duplicada, token expirado, rede fora) — e a exceção morria
+  // como rejeição não tratada no console (FA-09).
+  const handleAddVeiculo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!modelo.trim() || !placa.trim()) return;
-    addVeiculo({ cliente_id: id!, modelo: modelo.trim(), placa: placa.trim(), cor: cor.trim() });
-    setModelo(''); setPlaca(''); setCor(''); setShowForm(false);
+    setSalvando(true);
+    try {
+      await addVeiculo({ cliente_id: id!, modelo: modelo.trim(), placa: placa.trim(), cor: cor.trim() });
+      toast.success('Veículo adicionado.');
+      setModelo(''); setPlaca(''); setCor(''); setShowForm(false);
+    } catch (err) {
+      toast.error(`Não foi possível adicionar o veículo: ${mensagemErro(err)}`);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   const iniciarEdicaoVeiculo = (v: { id: string; modelo: string; placa: string; cor: string }) => {
@@ -51,12 +73,31 @@ export default function ClienteDetalhe() {
 
   const salvarEdicaoVeiculo = async () => {
     if (!editandoVeiculoId || !editandoModelo.trim() || !editandoPlaca.trim()) return;
-    await updateVeiculo(editandoVeiculoId, { 
-      modelo: editandoModelo.trim(), 
-      placa: editandoPlaca.trim(), 
-      cor: editandoCor.trim() 
-    });
-    cancelarEdicaoVeiculo();
+    setSalvando(true);
+    try {
+      await updateVeiculo(editandoVeiculoId, {
+        modelo: editandoModelo.trim(),
+        placa: editandoPlaca.trim(),
+        cor: editandoCor.trim()
+      });
+      toast.success('Veículo atualizado.');
+      // A linha sai do modo de edição somente após a confirmação do servidor,
+      // para não exibir o valor antigo como se tivesse sido salvo.
+      cancelarEdicaoVeiculo();
+    } catch (err) {
+      toast.error(`Não foi possível salvar o veículo: ${mensagemErro(err)}`);
+    } finally {
+      setSalvando(false);
+    }
+  };
+
+  const handleDeleteVeiculo = async (veiculoId: string, descricao: string) => {
+    try {
+      await deleteVeiculo(veiculoId);
+      toast.success(`Veículo ${descricao} excluído.`);
+    } catch (err) {
+      toast.error(`Não foi possível excluir o veículo: ${mensagemErro(err)}`);
+    }
   };
 
   const statusBadge = (s: string) => {
@@ -110,7 +151,7 @@ export default function ClienteDetalhe() {
             <div className="flex gap-2">
               <label htmlFor="detalhe-veiculo-cor" className="sr-only">Cor</label>
               <input id="detalhe-veiculo-cor" className="input-t10" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
-              <button type="submit" className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-sm hover:brightness-110 transition-all whitespace-nowrap">Salvar</button>
+              <button type="submit" disabled={salvando} className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-sm hover:brightness-110 transition-all whitespace-nowrap disabled:opacity-50">{salvando ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </form>
         )}
@@ -136,7 +177,7 @@ export default function ClienteDetalhe() {
                       </td>
                       <td className="py-2 px-3 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <button type="button" onClick={salvarEdicaoVeiculo} aria-label={`Salvar alterações do veículo ${v.placa}`} title="Salvar" className="text-success hover:bg-success/10 p-1 rounded"><Check size={14} aria-hidden="true" /></button>
+                          <button type="button" onClick={salvarEdicaoVeiculo} disabled={salvando} aria-label={`Salvar alterações do veículo ${v.placa}`} title="Salvar" className="text-success hover:bg-success/10 p-1 rounded"><Check size={14} aria-hidden="true" /></button>
                           <button type="button" onClick={cancelarEdicaoVeiculo} aria-label={`Cancelar edição do veículo ${v.placa}`} title="Cancelar" className="text-muted-foreground hover:bg-secondary/60 p-1 rounded"><X size={14} aria-hidden="true" /></button>
                         </div>
                       </td>
@@ -157,14 +198,16 @@ export default function ClienteDetalhe() {
                           >
                             <Pencil size={14} aria-hidden="true" />
                           </button>
-                          <ConfirmDialogButton
-                            title="Excluir Veículo"
-                            ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
-                            description={`Tem certeza que deseja excluir o veículo "${v.modelo}"? Esta ação não pode ser desfeita.`}
-                            onConfirm={() => deleteVeiculo(v.id)}
-                            icon={<Trash2 size={14} />}
-                            variant="ghost"
-                          />
+                          {podeExcluir && (
+                            <ConfirmDialogButton
+                              title="Excluir Veículo"
+                              ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
+                              description={`Tem certeza que deseja excluir o veículo "${v.modelo}"? Esta ação não pode ser desfeita.`}
+                              onConfirm={() => handleDeleteVeiculo(v.id, v.placa)}
+                              icon={<Trash2 size={14} />}
+                              variant="ghost"
+                            />
+                          )}
                         </div>
                       </td>
                     </>

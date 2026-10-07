@@ -1,4 +1,6 @@
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Eye, Pencil, Trash2 } from 'lucide-react';
@@ -6,6 +8,19 @@ import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 
 export default function Clientes() {
   const { clientes, veiculos, lavagens, deleteCliente } = useApp();
+  const { user } = useAuth();
+  const podeExcluir = user?.role === 'admin';
+
+  // Sem o try/catch a recusa do backend virava rejeição não tratada e o cliente
+  // continuava na lista sem nenhuma explicação.
+  const handleDeleteCliente = async (id: string, nome: string) => {
+    try {
+      await deleteCliente(id);
+      toast.success(`Cliente ${nome} excluído.`);
+    } catch (err) {
+      toast.error(`Não foi possível excluir o cliente: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
+    }
+  };
   const [busca, setBusca] = useState('');
 
   const filtered = [...clientes].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).filter(c =>
@@ -64,14 +79,16 @@ export default function Clientes() {
                     >
                       <Pencil size={15} aria-hidden="true" />
                     </Link>
-                    <ConfirmDialogButton
+                    {podeExcluir && (
+                      <ConfirmDialogButton
                         title="Excluir Cliente"
                         ariaLabel={`Excluir cliente ${c.nome}`}
                         description={`Tem certeza que deseja excluir o cliente "${c.nome}"? Todos os veículos e lavagens associadas também serão excluídos.`}
-                        onConfirm={() => deleteCliente(c.id)}
+                        onConfirm={() => handleDeleteCliente(c.id, c.nome)}
                         icon={<Trash2 size={15} />}
                         variant="ghost"
                       />
+                    )}
                   </div>
                 </td>
               </tr>

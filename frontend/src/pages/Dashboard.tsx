@@ -24,6 +24,7 @@ import {
   Timer,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { ResponsiveContainer, Bar, Line, ComposedChart, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import {
   ChartDataTable,
@@ -79,10 +80,18 @@ export default function Dashboard() {
     carregarDadosAnaliticos();
   }, [carregarDadosAnaliticos]);
 
-  // Recarregar analíticos sempre que houver alteração nas lavagens locais
+  // Recarregar analíticos sempre que houver alteração nas lavagens locais.
+  // Sem o try/catch, uma falha de rede ou um token expirado virava rejeição não
+  // tratada: o card não mudava e o usuário não recebia nenhum aviso (FA-08).
   const handleUpdateStatus = async (id: string, novoStatus: 'em_progresso' | 'concluida') => {
-    await updateLavagemStatus(id, novoStatus);
-    carregarDadosAnaliticos(true);
+    try {
+      await updateLavagemStatus(id, novoStatus);
+      await carregarDadosAnaliticos(true);
+    } catch (err) {
+      const mensagem = err instanceof Error ? err.message : 'Erro desconhecido';
+      console.error('Erro ao atualizar o status da lavagem:', err);
+      toast.error(`Não foi possível atualizar o status da lavagem: ${mensagem}`);
+    }
   };
 
   // Cores do tooltip derivadas dos tokens do tema
@@ -276,7 +285,8 @@ export default function Dashboard() {
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
-                  <TrendingDown size={13} /> {stats?.financeiro.variacao_receita_pct}%
+                  {/* Com stats nulo (erro de carga) isto renderizava "undefined%" (FA-14) */}
+                  <TrendingDown size={13} /> {stats ? `${stats.financeiro.variacao_receita_pct}%` : '—'}
                 </span>
               )}
               <span className="text-muted-foreground">vs. semana anterior</span>
@@ -311,7 +321,7 @@ export default function Dashboard() {
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
-                  <TrendingDown size={13} /> {stats?.financeiro.variacao_ticket_pct}%
+                  <TrendingDown size={13} /> {stats ? `${stats.financeiro.variacao_ticket_pct}%` : '—'}
                 </span>
               )}
               <span className="text-muted-foreground">vs. semana anterior</span>
