@@ -11,7 +11,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db, { dbReady, get, all, run, exec } from './db.js';
-import { JWT_SECRET, JWT_EXPIRES_IN, JWT_ALGORITHM } from './config.js';
+import { JWT_SECRET, JWT_EXPIRES_IN, JWT_ALGORITHM, avisarSenhasSeedPadrao } from './config.js';
 import { requireAuth, requireAdmin, ehAdmin } from './middleware/auth.js';
 
 dotenv.config();
@@ -1135,6 +1135,96 @@ const IMPORT_COLUMNS = {
   users: ['id', 'email', 'nome', 'role', 'created_at'],
 };
 
+// Validação de domínio do CSV (FA-18). Antes, a única barreira era o CHECK do
+// SQLite: um `role` ou `status` inválido estourava como exceção do driver e
+// chegava ao admin como "Erro interno do servidor" 500, sem dizer qual linha do
+// arquivo estava errada. Validar aqui devolve 400 apontando linha e coluna, com
+// o mesmo rollback transacional de antes.
+const naoNegativo = (valor) => {
+  const n = Number(valor);
+  return Number.isFinite(n) && n >= 0;
+};
+
+const naoVazio = (valor) => valor !== null && valor !== undefined && String(valor).trim() !== '';
+
+// Por tabela: { coluna: [predicado, mensagem de erro] }. Colunas ausentes no
+// CSV são ignoradas (o import aceita subconjuntos de colunas); colunas
+// obrigatórias estão em COLUNAS_OBRIGATORIAS_IMPORT.
+const REGRAS_IMPORT = {
+  users: {
+    email: [(v) => RE_EMAIL.test(String(v || '')), 'e-mail inválido'],
+    role: [(v) => ROLES_VALIDOS.includes(v), `deve ser um de: ${ROLES_VALIDOS.join(', ')}`],
+  },
+  tipos_lavagem: {
+    preco: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+  },
+  lavagens: {
+    status: [(v) => STATUS_LAVAGEM.includes(v), `deve ser um de: ${STATUS_LAVAGEM.join(', ')}`],
+    valor: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+    data: [naoVazio, 'é obrigatória'],
+  },
+  produtos: {
+    quantidade: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+    estoque_minimo: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+    preco_unitario: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+  },
+  movimentacoes: {
+    tipo: [(v) => TIPOS_MOVIMENTACAO.includes(v), `deve ser um de: ${TIPOS_MOVIMENTACAO.join(', ')}`],
+    quantidade: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+  },
+  auditoria_lavagens: {
+    campo: [naoVazio, 'é obrigatório'],
+  },
+};
+
+// `id` é chave primária em todas as tabelas: vazio viraria NULL e o INSERT
+// falharia com a mensagem crua do SQLite.
+const COLUNAS_OBRIGATORIAS_IMPORT = {
+  users: ['id', 'email', 'nome', 'role'],
+  clientes: ['id', 'nome'],
+  veiculos: ['id', 'cliente_id', 'modelo', 'placa'],
+  tipos_lavagem: ['id', 'nome', 'preco'],
+  lavagens: ['id', 'cliente_id', 'veiculo_id', 'tipo_lavagem_id', 'status', 'valor', 'data'],
+  produtos: ['id', 'nome'],
+  movimentacoes: ['id', 'produto_id', 'tipo', 'quantidade'],
+  auditoria_lavagens: ['id', 'lavagem_id', 'campo'],
+};
+
+/**
+ * Valida um CSV já parseado. Lança ValidacaoError (400) na primeira linha
+ * problemática, citando tabela, linha e coluna. A linha informada é a do
+ * arquivo: índice 0 do array = linha 2, porque a linha 1 é o cabeçalho.
+ */
+function validarDominioImport(table, records, colunas) {
+  const obrigatorias = (COLUNAS_OBRIGATORIAS_IMPORT[table] || []).filter(c => colunas.includes(c));
+  const regras = REGRAS_IMPORT[table] || {};
+
+  records.forEach((record, i) => {
+    const linha = i + 2;
+
+    for (const coluna of obrigatorias) {
+      if (!naoVazio(record[coluna])) {
+        throw new ValidacaoError(
+          `${table}.csv, linha ${linha}, coluna "${coluna}": valor obrigatório está vazio. Nenhum dado foi importado.`
+        );
+      }
+    }
+
+    for (const [coluna, [valida, mensagem]] of Object.entries(regras)) {
+      if (!colunas.includes(coluna)) continue;
+      const valor = record[coluna];
+      // Coluna opcional em branco continua sendo aceita como NULL; só o que foi
+      // preenchido precisa respeitar o domínio.
+      if (!naoVazio(valor) && !obrigatorias.includes(coluna)) continue;
+      if (!valida(valor)) {
+        throw new ValidacaoError(
+          `${table}.csv, linha ${linha}, coluna "${coluna}": ${mensagem} (recebido: "${valor}"). Nenhum dado foi importado.`
+        );
+      }
+    }
+  });
+}
+
 app.get('/api/backup/export', requireAdmin, async (req, res) => {
   try {
     const backup = {};
@@ -1205,6 +1295,8 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
             `Permitidas: ${IMPORT_COLUMNS[table].join(', ')}`
           );
         }
+
+        validarDominioImport(table, records, columns);
 
         // Usuários restaurados nunca trazem hash do arquivo: cada um recebe uma
         // senha temporária aleatória, devolvida ao admin na resposta para que
@@ -1338,6 +1430,9 @@ const PORT = process.env.PORT || 3001;
 // primeiro PUT de lavagem respondia 500 com "no such table".
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   dbReady.then(() => {
+    // Credenciais de bootstrap publicadas na documentação são avisadas no boot,
+    // não só no seed: quem sobe o servidor é quem precisa ver o alerta (FA-17).
+    avisarSenhasSeedPadrao();
     app.listen(PORT, () => {
       console.log(`Backend SQLite rodando na porta ${PORT}`);
     });
@@ -1347,9 +1442,16 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   });
 }
 
-// Compatibilidade CommonJS e ES Modules para Vercel Serverless Function
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = app;
+// Compatibilidade CommonJS e ES Modules para Vercel Serverless Function.
+// O try/catch é necessário porque ferramentas que transformam ESM (o Vitest,
+// por exemplo) também definem `module`, mas com `default` somente-leitura —
+// atribuir ali lançava TypeError e impedia importar o app nos testes.
+try {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = app;
+  }
+} catch {
+  // Ambiente ESM puro: `export default` abaixo já cobre o caso.
 }
 
 export { app };
