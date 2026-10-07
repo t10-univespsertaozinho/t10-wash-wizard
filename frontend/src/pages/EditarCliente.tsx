@@ -36,7 +36,7 @@ export default function EditarCliente() {
   };
 
   if (!loading && !cliente) {
-    return <p className="text-muted-foreground">Cliente não encontrado.</p>;
+    return <p className="text-secondary-foreground">Cliente não encontrado.</p>;
   }
 
   return (
@@ -44,18 +44,18 @@ export default function EditarCliente() {
       <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-border p-6 space-y-5 animate-fade-up">
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Editar Cliente</h2>
         <div>
-          <label htmlFor="editar-cliente-nome" className="block text-sm uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Nome Completo</label>
+          <label htmlFor="editar-cliente-nome" className="block text-base font-semibold text-secondary-foreground mb-1.5">Nome Completo</label>
           <input id="editar-cliente-nome" className="input-t10" value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome do cliente" required />
         </div>
         <div>
-          <label htmlFor="editar-cliente-telefone" className="block text-sm uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Telefone / WhatsApp</label>
+          <label htmlFor="editar-cliente-telefone" className="block text-base font-semibold text-secondary-foreground mb-1.5">Telefone / WhatsApp</label>
           <input id="editar-cliente-telefone" className="input-t10" value={telefone} onChange={handleTelefoneChange} placeholder="16 99999-9999" maxLength={15} />
         </div>
         <div className="flex gap-3">
           <button type="button" onClick={() => navigate(`/clientes/${id}`)} className="flex-1 bg-secondary text-secondary-foreground font-semibold h-12 rounded-lg hover:brightness-110 transition-all text-base">
             Cancelar
           </button>
-          <button type="submit" className="flex-1 bg-primary text-primary-foreground font-semibold h-12 rounded-lg hover:brightness-110 transition-all text-base">
+          <button type="submit" className="flex-1 bg-primary text-primary-foreground font-bold h-12 rounded-lg hover:brightness-110 transition-all text-base">
             Salvar Alterações
           </button>
         </div>

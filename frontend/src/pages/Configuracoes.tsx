@@ -45,7 +45,7 @@ export default function Configuracoes() {
   if (user?.role !== 'admin') {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-muted-foreground">Você não tem acesso a esta página.</p>
+        <p className="text-secondary-foreground">Você não tem acesso a esta página.</p>
       </div>
     );
   }
@@ -133,14 +133,14 @@ export default function Configuracoes() {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <h2 className="font-barlow-condensed font-bold text-2xl text-foreground">Configurações do Sistema</h2>
-        <p className="text-sm text-muted-foreground mt-1">
+        <h2 className="text-3xl font-extrabold tracking-tight text-foreground">Configurações do Sistema</h2>
+        <p className="text-base font-medium text-secondary-foreground mt-1">
           Gerencie o banco de dados local SQLite e realize backups via arquivos CSV.
         </p>
       </div>
 
       {/* Status Atual */}
-      <div className="bg-card rounded-xl border border-border p-5">
+      <div className="bg-card rounded-xl border border-border p-6">
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground mb-4 flex items-center gap-2">
           <Database size={18} /> Conexão com o Banco de Dados
         </h2>
@@ -149,20 +149,20 @@ export default function Configuracoes() {
             <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse"></div>
             SQLite Local (Conectado via API)
           </span>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm font-medium text-secondary-foreground">
             {import.meta.env.VITE_API_URL || '/api (Proxy Local)'}
           </span>
         </div>
       </div>
 
       {/* Ferramentas de Backup */}
-      <div className="bg-card rounded-xl border border-border p-5">
+      <div className="bg-card rounded-xl border border-border p-6">
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground mb-4 flex items-center gap-2">
           <Shield size={18} /> Backup CSV (Importação / Exportação)
         </h2>
         
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm font-medium text-secondary-foreground">
             O CSV é usado apenas para backup. Não modifique a estrutura dos arquivos exportados para garantir a consistência no momento da importação.
           </p>
           
@@ -208,7 +208,7 @@ export default function Configuracoes() {
           <h2 className="font-barlow-condensed font-bold text-lg mb-2 flex items-center gap-2 text-amber-700 dark:text-amber-400">
             <AlertTriangle size={18} aria-hidden="true" /> Anote as senhas provisórias agora
           </h2>
-          <p className="text-sm text-muted-foreground mb-3">
+          <p className="text-sm font-medium text-secondary-foreground mb-3">
             Por segurança, o arquivo de backup não contém senhas. Cada usuário restaurado
             recebeu uma senha provisória, exibida <strong>somente agora</strong>. Anote-as e
             troque-as no primeiro acesso — ao sair desta tela elas não poderão ser recuperadas.
@@ -229,7 +229,7 @@ export default function Configuracoes() {
               setSenhasTemporarias([]);
               window.location.reload();
             }}
-            className="mt-4 bg-amber-600 text-white font-semibold h-11 px-4 rounded-lg hover:brightness-110 transition-all text-base"
+            className="mt-4 bg-amber-600 text-white font-bold h-12 px-6 rounded-lg hover:brightness-110 transition-all text-base"
           >
             Já anotei, recarregar
           </button>
@@ -237,7 +237,7 @@ export default function Configuracoes() {
       )}
 
       {/* Reset DB */}
-      <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-5">
+      <div className="bg-destructive/10 border-2 border-destructive/30 rounded-xl p-6">
         <h2 className="font-barlow-condensed font-bold text-lg text-destructive mb-3 flex items-center gap-2">
           <AlertTriangle size={18} /> Zona de Perigo
         </h2>
@@ -247,7 +247,7 @@ export default function Configuracoes() {
         <button
           onClick={handleResetDatabase}
           disabled={loading}
-          className="bg-destructive text-destructive-foreground font-semibold h-11 px-4 rounded-lg hover:brightness-110 transition-all text-base flex items-center gap-2 disabled:opacity-50"
+          className="bg-destructive text-destructive-foreground font-bold h-12 px-6 rounded-lg hover:brightness-110 transition-all text-base flex items-center gap-2 disabled:opacity-50"
         >
           <Trash2 size={16} />
           Resetar Banco de Dados

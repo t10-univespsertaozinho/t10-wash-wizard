@@ -33,7 +33,7 @@ export default function ClienteDetalhe() {
   const { value: editPlacaValue, handleChange: handleEditPlacaChange, setValue: setEditPlacaValue } = usePlacaMask();
 
   const cliente = getCliente(id!);
-  if (!cliente) return <p className="text-muted-foreground">Cliente não encontrado.</p>;
+  if (!cliente) return <p className="text-secondary-foreground">Cliente não encontrado.</p>;
 
   const veiculosCliente = getVeiculosCliente(id!);
   const lavagensCliente = getLavagensCliente(id!).sort((a, b) => b.data.localeCompare(a.data)).slice(0, 10);
@@ -104,7 +104,7 @@ export default function ClienteDetalhe() {
   const statusBadge = (s: string) => {
     const map: Record<string, string> = { pendente: 'badge-pendente', em_progresso: 'badge-andamento', concluida: 'badge-concluida', cancelada: 'badge-cancelada' };
     const labels: Record<string, string> = { pendente: 'Pendente', em_progresso: 'Em progresso', concluida: 'Concluída', cancelada: 'Cancelada' };
-    return <span className={`text-sm px-2.5 py-0.5 rounded-full font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
+    return <span className={`text-sm px-3 py-1 rounded-md font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
   };
 
   const colors = ['badge-andamento', 'badge-pendente', 'badge-concluida', 'badge-info'];
@@ -118,28 +118,28 @@ export default function ClienteDetalhe() {
           {cliente.nome[0]?.toUpperCase()}
         </div>
         <div>
-          <h2 className="text-xl font-barlow-condensed font-bold text-foreground">{cliente.nome}</h2>
-          <p className="text-sm text-muted-foreground">{cliente.telefone}</p>
-          <p className="text-sm text-muted-foreground mt-1">Cadastro: {formatarData(cliente.created_at)}</p>
+          <h2 className="text-2xl font-extrabold tracking-tight text-foreground">{cliente.nome}</h2>
+          <p className="text-base font-medium text-secondary-foreground">{cliente.telefone}</p>
+          <p className="text-base font-medium text-secondary-foreground mt-1">Cadastro: {formatarData(cliente.created_at)}</p>
         </div>
         <div className="ml-auto flex gap-6 text-center">
           <div>
             <p className="text-2xl font-barlow-condensed font-bold text-primary">{lavagensCliente.length}</p>
-            <p className="text-sm uppercase tracking-widest text-muted-foreground">Lavagens</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-secondary-foreground">Lavagens</p>
           </div>
           <div>
             <p className="text-2xl font-barlow-condensed font-bold text-accent-text">{veiculosCliente.length}</p>
-            <p className="text-sm uppercase tracking-widest text-muted-foreground">Veículos</p>
+            <p className="text-sm font-semibold uppercase tracking-wider text-secondary-foreground">Veículos</p>
           </div>
         </div>
       </div>
 
       {/* Veículos */}
-      <div className="bg-card rounded-xl border border-border p-5">
+      <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-barlow-condensed font-bold text-foreground flex items-center gap-2"><Car size={18} /> Veículos</h3>
-          <button onClick={() => setShowForm(!showForm)} className="text-sm bg-primary/10 text-primary px-4 py-2 rounded-lg font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1">
-            <Plus size={14} /> Adicionar
+          <button onClick={() => setShowForm(!showForm)} className="text-base font-bold bg-primary/10 text-primary h-12 px-6 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1">
+            <Plus size={18} /> Adicionar
           </button>
         </div>
 
@@ -152,7 +152,7 @@ export default function ClienteDetalhe() {
             <div className="flex gap-2">
               <label htmlFor="detalhe-veiculo-cor" className="sr-only">Cor</label>
               <input id="detalhe-veiculo-cor" className="input-t10" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
-              <button type="submit" disabled={salvando} className="bg-primary text-primary-foreground px-5 h-12 rounded-lg font-semibold text-base hover:brightness-110 transition-all whitespace-nowrap disabled:opacity-50">{salvando ? 'Salvando...' : 'Salvar'}</button>
+              <button type="submit" disabled={salvando} className="bg-primary text-primary-foreground px-6 h-12 rounded-lg font-bold text-base hover:brightness-110 transition-all whitespace-nowrap disabled:opacity-50">{salvando ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </form>
         )}
@@ -161,41 +161,41 @@ export default function ClienteDetalhe() {
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de veículos do cliente">
           <table className="w-full text-sm">
             <caption className="sr-only">Veículos do cliente, com modelo, placa, cor e ações</caption>
-            <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Modelo</th><th scope="col" className="text-left py-2 px-3">Placa</th><th scope="col" className="text-left py-2 px-3">Cor</th><th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th></tr></thead>
+            <thead><tr className="table-header"><th scope="col" className="text-left py-4 px-4">Modelo</th><th scope="col" className="text-left py-4 px-4">Placa</th><th scope="col" className="text-left py-4 px-4">Cor</th><th scope="col" className="py-4 px-4"><span className="sr-only">Ações</span></th></tr></thead>
             <tbody>
               {veiculosCliente.map(v => (
                 <tr key={v.id} className="table-row-hover border-t border-border">
                   {editandoVeiculoId === v.id ? (
                     <>
-                      <td className="py-2 px-3">
-                        <input className="input-t10 text-sm py-1" aria-label={`Modelo do veículo ${v.placa}`} value={editandoModelo} onChange={e => setEditandoModelo(e.target.value)} />
+                      <td className="py-4 px-4">
+                        <input className="input-t10" aria-label={`Modelo do veículo ${v.placa}`} value={editandoModelo} onChange={e => setEditandoModelo(e.target.value)} />
                       </td>
-                      <td className="py-2 px-3">
+                      <td className="py-4 px-4">
                         <input className="input-t10 text-sm py-1 uppercase font-mono" aria-label={`Placa do veículo ${v.modelo}`} value={editPlacaValue} onChange={handleEditPlacaChange} maxLength={8} />
                       </td>
-                      <td className="py-2 px-3">
-                        <input className="input-t10 text-sm py-1" aria-label={`Cor do veículo ${v.modelo}`} value={editandoCor} onChange={e => setEditandoCor(e.target.value)} />
+                      <td className="py-4 px-4">
+                        <input className="input-t10" aria-label={`Cor do veículo ${v.modelo}`} value={editandoCor} onChange={e => setEditandoCor(e.target.value)} />
                       </td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button type="button" onClick={salvarEdicaoVeiculo} disabled={salvando} aria-label={`Salvar alterações do veículo ${v.placa}`} title="Salvar" className="text-success hover:bg-success/10 p-1 rounded"><Check size={14} aria-hidden="true" /></button>
-                          <button type="button" onClick={cancelarEdicaoVeiculo} aria-label={`Cancelar edição do veículo ${v.placa}`} title="Cancelar" className="text-muted-foreground hover:bg-secondary/60 p-1 rounded"><X size={14} aria-hidden="true" /></button>
+                          <button type="button" onClick={cancelarEdicaoVeiculo} aria-label={`Cancelar edição do veículo ${v.placa}`} title="Cancelar" className="text-secondary-foreground hover:bg-secondary/60 p-1 rounded"><X size={14} aria-hidden="true" /></button>
                         </div>
                       </td>
                     </>
                   ) : (
                     <>
-                      <td className="py-2 px-3 font-medium text-foreground">{v.modelo}</td>
-                      <td className="py-2 px-3 font-mono text-primary text-sm">{v.placa}</td>
-                      <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
-                      <td className="py-2 px-3 text-right">
+                      <td className="py-4 px-4 text-base font-medium text-foreground">{v.modelo}</td>
+                      <td className="py-4 px-4 font-mono text-sm font-medium text-secondary-foreground">{v.placa}</td>
+                      <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{v.cor}</td>
+                      <td className="py-4 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
                             onClick={() => iniciarEdicaoVeiculo(v)}
                             aria-label={`Editar veículo ${v.modelo}, placa ${v.placa}`}
                             title="Editar"
-                            className="text-muted-foreground hover:text-primary transition-colors p-1"
+                            className="text-secondary-foreground hover:text-primary transition-colors p-1"
                           >
                             <Pencil size={14} aria-hidden="true" />
                           </button>
@@ -215,35 +215,35 @@ export default function ClienteDetalhe() {
                   )}
                 </tr>
               ))}
-              {veiculosCliente.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>}
+              {veiculosCliente.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-secondary-foreground text-sm">Nenhum veículo cadastrado.</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
       {/* Histórico */}
-      <div className="bg-card rounded-xl border border-border p-5">
+      <div className="bg-card rounded-xl border border-border p-6">
         <h3 className="font-barlow-condensed font-bold text-foreground mb-4">Histórico de Lavagens</h3>
         {/* WCAG 2.1.1 / 1.4.10 - regiao rolavel por teclado, com rotulo para leitores de tela */}
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de histórico de lavagens do cliente">
           <table className="w-full text-sm">
             <caption className="sr-only">Histórico de lavagens do cliente, com data, veículo, tipo, valor e status</caption>
-            <thead><tr className="table-header"><th scope="col" className="text-left py-2 px-3">Data</th><th scope="col" className="text-left py-2 px-3">Veículo</th><th scope="col" className="text-left py-2 px-3">Tipo</th><th scope="col" className="text-right py-2 px-3">Valor</th><th scope="col" className="text-center py-2 px-3">Status</th></tr></thead>
+            <thead><tr className="table-header"><th scope="col" className="text-left py-4 px-4">Data</th><th scope="col" className="text-left py-4 px-4">Veículo</th><th scope="col" className="text-left py-4 px-4">Tipo</th><th scope="col" className="text-right py-4 px-4">Valor</th><th scope="col" className="text-center py-4 px-4">Status</th></tr></thead>
             <tbody>
               {lavagensCliente.map(l => {
                 const v = veiculos.find(x => x.id === l.veiculo_id);
                 const t = getTipoLavagem(l.tipo_lavagem_id);
                 return (
                   <tr key={l.id} className="table-row-hover border-t border-border">
-                    <td className="py-2 px-3 text-muted-foreground">{formatarData(l.data)}</td>
-                    <td className="py-2 px-3">{v?.modelo || '—'}</td>
-                    <td className="py-2 px-3">{t?.nome || '—'}</td>
-                    <td className="py-2 px-3 text-right text-primary font-semibold">{formatarMoeda(l.valor)}</td>
-                    <td className="py-2 px-3 text-center">{statusBadge(l.status)}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{formatarData(l.data)}</td>
+                    <td className="py-4 px-4 text-base">{v?.modelo || '—'}</td>
+                    <td className="py-4 px-4 text-base">{t?.nome || '—'}</td>
+                    <td className="py-4 px-4 text-right text-base text-primary font-semibold">{formatarMoeda(l.valor)}</td>
+                    <td className="py-4 px-4 text-center">{statusBadge(l.status)}</td>
                   </tr>
                 );
               })}
-              {lavagensCliente.length === 0 && <tr><td colSpan={5} className="py-4 text-center text-muted-foreground text-sm">Nenhuma lavagem registrada.</td></tr>}
+              {lavagensCliente.length === 0 && <tr><td colSpan={5} className="py-4 text-center text-secondary-foreground text-sm">Nenhuma lavagem registrada.</td></tr>}
             </tbody>
           </table>
         </div>

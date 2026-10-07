@@ -46,19 +46,19 @@ export default function Veiculos() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <div className="bg-card rounded-xl border border-border p-5">
+      <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
           <h3 className="font-barlow-condensed font-bold text-foreground flex items-center gap-2">
             <Car size={18} /> Cadastro de Veículos
           </h3>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search size={14} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Search size={14} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-foreground" />
               <input
                 id="veiculos-busca"
                 type="search"
                 aria-label="Buscar veículos por modelo, placa ou cliente"
-                className="input-t10 pl-9 text-sm py-1.5"
+                className="input-t10 pl-9"
                 placeholder="Buscar por modelo, placa ou cliente..."
                 value={busca}
                 onChange={e => setBusca(e.target.value)}
@@ -66,9 +66,9 @@ export default function Veiculos() {
             </div>
             <button
               onClick={() => setShowForm(!showForm)}
-              className="text-base bg-primary text-primary-foreground h-11 px-4 rounded-lg font-semibold hover:brightness-110 transition-all flex items-center gap-1"
+              className="text-base bg-primary text-primary-foreground h-12 px-6 rounded-lg font-bold hover:brightness-110 transition-all flex items-center gap-1"
             >
-              <Plus size={16} /> Novo Veículo
+              <Plus size={18} /> Novo Veículo
             </button>
           </div>
         </div>
@@ -95,7 +95,7 @@ export default function Veiculos() {
             <div className="flex gap-2">
               <label htmlFor="veiculo-cor" className="sr-only">Cor</label>
               <input id="veiculo-cor" className="input-t10 flex-1" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
-              <button type="submit" className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-sm hover:brightness-110 transition-all whitespace-nowrap">
+              <button type="submit" className="bg-primary text-primary-foreground h-12 px-6 rounded-lg font-bold text-base hover:brightness-110 transition-all whitespace-nowrap">
                 Salvar
               </button>
             </div>
@@ -108,11 +108,11 @@ export default function Veiculos() {
             <caption className="sr-only">Veículos cadastrados, com cliente, modelo, placa, cor e ações</caption>
             <thead>
               <tr className="table-header">
-                <th scope="col" className="text-left py-2 px-3">Cliente</th>
-                <th scope="col" className="text-left py-2 px-3">Modelo</th>
-                <th scope="col" className="text-left py-2 px-3">Placa</th>
-                <th scope="col" className="text-left py-2 px-3">Cor</th>
-                <th scope="col" className="py-2 px-3"><span className="sr-only">Ações</span></th>
+                <th scope="col" className="text-left py-4 px-4">Cliente</th>
+                <th scope="col" className="text-left py-4 px-4">Modelo</th>
+                <th scope="col" className="text-left py-4 px-4">Placa</th>
+                <th scope="col" className="text-left py-4 px-4">Cor</th>
+                <th scope="col" className="py-4 px-4"><span className="sr-only">Ações</span></th>
               </tr>
             </thead>
             <tbody>
@@ -120,11 +120,11 @@ export default function Veiculos() {
                 const cliente = clientes.find(c => c.id === v.cliente_id);
                 return (
                   <tr key={v.id} className="table-row-hover border-t border-border">
-                    <td className="py-2 px-3 font-medium text-foreground">{cliente?.nome || '—'}</td>
-                    <td className="py-2 px-3">{v.modelo}</td>
-                    <td className="py-2 px-3 font-mono text-primary text-sm">{v.placa}</td>
-                    <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
-                    <td className="py-2 px-3 text-right">
+                    <td className="py-4 px-4 text-base font-medium text-foreground">{cliente?.nome || '—'}</td>
+                    <td className="py-4 px-4 text-base">{v.modelo}</td>
+                    <td className="py-4 px-4 font-mono text-sm font-medium text-secondary-foreground">{v.placa}</td>
+                    <td className="py-4 px-4 text-sm font-medium text-secondary-foreground">{v.cor}</td>
+                    <td className="py-4 px-4 text-right">
                       {podeExcluir && (
                         <ConfirmDialogButton
                           title="Excluir Veículo"
@@ -140,7 +140,7 @@ export default function Veiculos() {
                 );
               })}
               {filtrados.length === 0 && (
-                <tr><td colSpan={5} className="py-6 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>
+                <tr><td colSpan={5} className="py-8 text-center text-secondary-foreground text-sm">Nenhum veículo cadastrado.</td></tr>
               )}
             </tbody>
           </table>

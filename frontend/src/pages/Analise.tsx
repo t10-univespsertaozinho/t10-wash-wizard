@@ -98,7 +98,7 @@ export default function Analise() {
             <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
               Mix de Serviços (Últimos 30 Dias)
             </h3>
-            <p className="text-sm text-secondary-foreground mt-1">
+            <p className="text-base font-medium text-secondary-foreground mt-1">
               Participação de cada serviço no faturamento e no volume de atendimentos
             </p>
           </div>
@@ -106,20 +106,18 @@ export default function Analise() {
 
         {/* Destaque Prático para o Sr. Reinaldo */}
         {destaqueMix && destaqueMix.porReceita && destaqueMix.porVolume && (
-          <div className="bg-secondary/40 rounded-lg p-5 text-sm border border-border/80 mb-4 space-y-2">
-            <p className="text-foreground">
-              <span className="font-semibold text-primary">💡 Visão do Negócio:</span>
-            </p>
-            <p className="text-secondary-foreground">
+          <div className="bg-amber-950/30 border border-amber-500/40 rounded-xl p-6 mb-5 space-y-2.5">
+            <p className="text-lg font-bold text-amber-700 dark:text-amber-400">💡 Visão do Negócio:</p>
+            <p className="text-base font-medium text-foreground leading-relaxed">
               • Mais rentável:{' '}
-              <strong className="text-foreground">{destaqueMix.porReceita.nome}</strong> traz{' '}
-              <strong className="text-foreground">{destaqueMix.porReceita.pct_receita}%</strong> do
+              <strong className="font-bold text-amber-700 dark:text-amber-300">{destaqueMix.porReceita.nome}</strong> traz{' '}
+              <strong className="font-bold text-amber-700 dark:text-amber-300">{destaqueMix.porReceita.pct_receita}%</strong> do
               dinheiro.
             </p>
-            <p className="text-secondary-foreground">
+            <p className="text-base font-medium text-foreground leading-relaxed">
               • Mais popular:{' '}
-              <strong className="text-foreground">{destaqueMix.porVolume.nome}</strong> lidera em{' '}
-              <strong className="text-foreground">{destaqueMix.porVolume.pct_volume}%</strong> da
+              <strong className="font-bold text-amber-700 dark:text-amber-300">{destaqueMix.porVolume.nome}</strong> lidera em{' '}
+              <strong className="font-bold text-amber-700 dark:text-amber-300">{destaqueMix.porVolume.pct_volume}%</strong> da
               fila.
             </p>
           </div>
@@ -201,7 +199,7 @@ export default function Analise() {
               <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
                 Faturamento por Pagamento
               </h3>
-              <p className="text-sm text-secondary-foreground mt-1">
+              <p className="text-base font-medium text-secondary-foreground mt-1">
                 Como o caixa recebeu (PIX, Dinheiro, Cartão) nos últimos 30 dias
               </p>
             </div>
@@ -259,7 +257,7 @@ export default function Analise() {
               <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
                 Desempenho da Equipe
               </h3>
-              <p className="text-sm text-secondary-foreground mt-1">
+              <p className="text-base font-medium text-secondary-foreground mt-1">
                 Lavagens e receita por operador nos últimos 30 dias
               </p>
             </div>

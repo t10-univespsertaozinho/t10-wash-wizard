@@ -191,7 +191,7 @@
     color: hsl(var(--badge-info-fg));
   }
   .input-t10 {
-    @apply w-full rounded-lg border border-border bg-input px-4 py-2.5 text-foreground focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all;
+    @apply w-full h-12 rounded-lg border border-border bg-input px-4 text-base font-medium text-foreground focus:border-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--focus-ring))] focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all;
   }
   /* WCAG 1.4.11 / 1.4.3 - placeholder com contraste mínimo de 4.5:1 no fundo do campo */
   .input-t10::placeholder {
@@ -199,7 +199,7 @@
     opacity: 1;
   }
   .table-header {
-    @apply text-sm uppercase tracking-widest text-muted-foreground font-semibold bg-secondary/50;
+    @apply text-sm font-bold uppercase tracking-wider text-secondary-foreground bg-secondary/60;
   }
   .table-row-hover {
     @apply transition-colors hover:bg-secondary/50;
