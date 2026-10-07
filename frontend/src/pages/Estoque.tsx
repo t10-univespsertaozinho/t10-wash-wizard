@@ -7,19 +7,19 @@ export default function Estoque() {
   const { produtos, produtosBaixoEstoque, deleteProduto } = useApp();
 
   const statusBadge = (p: typeof produtos[0]) => {
-    if (p.quantidade === 0) return <span className="badge-zerado text-xs px-2.5 py-0.5 rounded-full font-semibold">Zerado</span>;
-    if (p.quantidade <= p.estoque_minimo) return <span className="badge-baixo text-xs px-2.5 py-0.5 rounded-full font-semibold">Baixo</span>;
-    return <span className="badge-ok text-xs px-2.5 py-0.5 rounded-full font-semibold">OK</span>;
+    if (p.quantidade === 0) return <span className="badge-zerado text-sm px-2.5 py-0.5 rounded-full font-semibold">Zerado</span>;
+    if (p.quantidade <= p.estoque_minimo) return <span className="badge-baixo text-sm px-2.5 py-0.5 rounded-full font-semibold">Baixo</span>;
+    return <span className="badge-ok text-sm px-2.5 py-0.5 rounded-full font-semibold">OK</span>;
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-end gap-2">
-        <Link to="/movimentacao" className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
-          <ArrowLeftRight size={14} /> Movimentação
+        <Link to="/movimentacao" className="flex items-center gap-1.5 text-base font-semibold h-11 px-4 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
+          <ArrowLeftRight size={18} /> Movimentação
         </Link>
-        <Link to="/novo-produto" className="flex items-center gap-1.5 text-xs font-bold px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all">
-          <Plus size={14} /> Novo Produto
+        <Link to="/novo-produto" className="flex items-center gap-1.5 text-base font-semibold h-11 px-4 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all">
+          <Plus size={18} /> Novo Produto
         </Link>
       </div>
 

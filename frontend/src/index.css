@@ -144,6 +144,9 @@
   }
   body {
     @apply bg-background text-foreground font-barlow antialiased;
+    /* Base tipográfica 16px — legibilidade em notebooks 15" e monitores ultrawide */
+    font-size: 16px;
+    line-height: 1.5;
   }
   /* WCAG 2.4.7 - indicador de foco visível como base para todo elemento focável */
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
@@ -196,7 +199,7 @@
     opacity: 1;
   }
   .table-header {
-    @apply text-[10px] uppercase tracking-widest text-muted-foreground font-semibold bg-secondary/50;
+    @apply text-sm uppercase tracking-widest text-muted-foreground font-semibold bg-secondary/50;
   }
   .table-row-hover {
     @apply transition-colors hover:bg-secondary/50;

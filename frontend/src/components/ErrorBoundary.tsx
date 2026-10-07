@@ -65,7 +65,7 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
             Tente novamente ou recarregue o sistema.
           </p>
           {import.meta.env.DEV && (
-            <pre className="text-left text-xs bg-secondary/60 text-muted-foreground rounded-lg p-3 overflow-x-auto whitespace-pre-wrap">
+            <pre className="text-left text-sm bg-secondary/60 text-muted-foreground rounded-lg p-3 overflow-x-auto whitespace-pre-wrap">
               {error.message}
             </pre>
           )}

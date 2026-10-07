@@ -66,9 +66,9 @@ export default function Veiculos() {
             </div>
             <button
               onClick={() => setShowForm(!showForm)}
-              className="text-xs bg-primary text-primary-foreground px-3 py-2 rounded-lg font-semibold hover:brightness-110 transition-all flex items-center gap-1"
+              className="text-base bg-primary text-primary-foreground h-11 px-4 rounded-lg font-semibold hover:brightness-110 transition-all flex items-center gap-1"
             >
-              <Plus size={12} /> Novo Veículo
+              <Plus size={16} /> Novo Veículo
             </button>
           </div>
         </div>
@@ -122,7 +122,7 @@ export default function Veiculos() {
                   <tr key={v.id} className="table-row-hover border-t border-border">
                     <td className="py-2 px-3 font-medium text-foreground">{cliente?.nome || '—'}</td>
                     <td className="py-2 px-3">{v.modelo}</td>
-                    <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
+                    <td className="py-2 px-3 font-mono text-primary text-sm">{v.placa}</td>
                     <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
                     <td className="py-2 px-3 text-right">
                       {podeExcluir && (

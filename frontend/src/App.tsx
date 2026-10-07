@@ -14,6 +14,7 @@ import { Loader2 } from "lucide-react";
 // Lazy-loaded pages
 const Login = lazy(() => import("@/pages/Login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Analise = lazy(() => import("@/pages/Analise"));
 const Clientes = lazy(() => import("@/pages/Clientes"));
 const NovoCliente = lazy(() => import("@/pages/NovoCliente"));
 const ClienteDetalhe = lazy(() => import("@/pages/ClienteDetalhe"));
@@ -106,6 +107,7 @@ const App = () => (
                     {/* Protected Admin Routes */}
                     <Route element={<ProtectedRoute adminOnly />}>
                       <Route element={<AppLayout />}>
+                        <Route path="/analise" element={<Analise />} />
                         <Route path="/tipos-lavagem" element={<TiposLavagem />} />
                         <Route path="/estoque" element={<Estoque />} />
                         <Route path="/novo-produto" element={<NovoProduto />} />

@@ -149,7 +149,7 @@ export default function Configuracoes() {
             <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse"></div>
             SQLite Local (Conectado via API)
           </span>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             {import.meta.env.VITE_API_URL || '/api (Proxy Local)'}
           </span>
         </div>
@@ -170,18 +170,18 @@ export default function Configuracoes() {
             <button
               onClick={handleExportBackup}
               disabled={loading}
-              className="flex-1 bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 bg-primary text-primary-foreground font-semibold h-12 rounded-lg hover:brightness-110 transition-all text-base flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? <RefreshCw className="animate-spin" size={16} /> : <DownloadCloud size={16} />}
+              {loading ? <RefreshCw className="animate-spin" size={18} /> : <DownloadCloud size={18} />}
               Exportar Backup (CSV)
             </button>
 
             <label
               htmlFor="import-backup-csv"
-              className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus-within:ring-2 focus-within:ring-[hsl(var(--focus-ring))] focus-within:ring-offset-2 focus-within:ring-offset-background"
+              className="flex-1 bg-secondary text-secondary-foreground font-semibold h-12 rounded-lg hover:brightness-110 transition-all text-base flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer focus-within:ring-2 focus-within:ring-[hsl(var(--focus-ring))] focus-within:ring-offset-2 focus-within:ring-offset-background"
             >
               <span aria-hidden="true" className="inline-flex">
-                {loading ? <RefreshCw className="animate-spin" size={16} /> : <UploadCloud size={16} />}
+                {loading ? <RefreshCw className="animate-spin" size={18} /> : <UploadCloud size={18} />}
               </span>
               Importar Backup (CSV)
               <input 
@@ -229,7 +229,7 @@ export default function Configuracoes() {
               setSenhasTemporarias([]);
               window.location.reload();
             }}
-            className="mt-4 bg-amber-600 text-white font-bold py-2 px-4 rounded-lg hover:brightness-110 transition-all text-sm"
+            className="mt-4 bg-amber-600 text-white font-semibold h-11 px-4 rounded-lg hover:brightness-110 transition-all text-base"
           >
             Já anotei, recarregar
           </button>
@@ -247,7 +247,7 @@ export default function Configuracoes() {
         <button
           onClick={handleResetDatabase}
           disabled={loading}
-          className="bg-destructive text-destructive-foreground font-bold py-2 px-4 rounded-lg hover:brightness-110 transition-all text-sm flex items-center gap-2 disabled:opacity-50"
+          className="bg-destructive text-destructive-foreground font-semibold h-11 px-4 rounded-lg hover:brightness-110 transition-all text-base flex items-center gap-2 disabled:opacity-50"
         >
           <Trash2 size={16} />
           Resetar Banco de Dados

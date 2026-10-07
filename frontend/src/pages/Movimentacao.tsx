@@ -70,7 +70,7 @@ export default function Movimentacao() {
         <h2 className="font-barlow-condensed font-bold text-lg text-foreground">Nova Movimentação</h2>
         
         <div>
-          <label htmlFor="movimentacao-produto" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Produto</label>
+          <label htmlFor="movimentacao-produto" className="block text-sm uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Produto</label>
           <select id="movimentacao-produto" className="input-t10" value={produtoId} onChange={e => setProdutoId(e.target.value)} required>
             <option value="">Selecione...</option>
             {produtosOrdenados.map(p => {
@@ -85,7 +85,7 @@ export default function Movimentacao() {
         </div>
 
         <fieldset>
-          <legend className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Tipo</legend>
+          <legend className="block text-sm uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Tipo</legend>
           <div className="flex gap-2">
             <input
               type="radio"
@@ -121,11 +121,11 @@ export default function Movimentacao() {
         </fieldset>
 
         <div>
-          <label htmlFor="movimentacao-quantidade" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Quantidade</label>
+          <label htmlFor="movimentacao-quantidade" className="block text-sm uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Quantidade</label>
           <input id="movimentacao-quantidade" className="input-t10" type="number" min="0" step="any" inputMode="decimal" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />
         </div>
 
-        <button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+        <button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground font-semibold h-12 rounded-lg hover:brightness-110 transition-all text-base disabled:opacity-50 disabled:cursor-not-allowed">
           {loading ? 'Registrando...' : 'Registrar'}
         </button>
       </form>
@@ -145,13 +145,13 @@ export default function Movimentacao() {
                 }
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-foreground">{p?.nome || '—'}</p>
-                  <p className="text-[10px] text-muted-foreground">{new Date(m.data).toLocaleDateString('pt-BR')} às {new Date(m.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+                  <p className="text-sm text-muted-foreground">{new Date(m.data).toLocaleDateString('pt-BR')} às {new Date(m.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
                 <div className="text-right">
                   <p className={`text-sm font-bold ${m.tipo === 'entrada' ? 'text-success' : 'text-destructive'}`}>
                     {m.tipo === 'entrada' ? '+' : '-'}{m.quantidade}
                   </p>
-                  <p className="text-[10px] text-muted-foreground">{p?.unidade}</p>
+                  <p className="text-sm text-muted-foreground">{p?.unidade}</p>
                 </div>
               </div>
             );

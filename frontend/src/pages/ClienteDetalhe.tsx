@@ -104,7 +104,7 @@ export default function ClienteDetalhe() {
   const statusBadge = (s: string) => {
     const map: Record<string, string> = { pendente: 'badge-pendente', em_progresso: 'badge-andamento', concluida: 'badge-concluida', cancelada: 'badge-cancelada' };
     const labels: Record<string, string> = { pendente: 'Pendente', em_progresso: 'Em progresso', concluida: 'Concluída', cancelada: 'Cancelada' };
-    return <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
+    return <span className={`text-sm px-2.5 py-0.5 rounded-full font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
   };
 
   const colors = ['badge-andamento', 'badge-pendente', 'badge-concluida', 'badge-info'];
@@ -120,16 +120,16 @@ export default function ClienteDetalhe() {
         <div>
           <h2 className="text-xl font-barlow-condensed font-bold text-foreground">{cliente.nome}</h2>
           <p className="text-sm text-muted-foreground">{cliente.telefone}</p>
-          <p className="text-xs text-muted-foreground mt-1">Cadastro: {formatarData(cliente.created_at)}</p>
+          <p className="text-sm text-muted-foreground mt-1">Cadastro: {formatarData(cliente.created_at)}</p>
         </div>
         <div className="ml-auto flex gap-6 text-center">
           <div>
             <p className="text-2xl font-barlow-condensed font-bold text-primary">{lavagensCliente.length}</p>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Lavagens</p>
+            <p className="text-sm uppercase tracking-widest text-muted-foreground">Lavagens</p>
           </div>
           <div>
             <p className="text-2xl font-barlow-condensed font-bold text-accent-text">{veiculosCliente.length}</p>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Veículos</p>
+            <p className="text-sm uppercase tracking-widest text-muted-foreground">Veículos</p>
           </div>
         </div>
       </div>
@@ -138,8 +138,8 @@ export default function ClienteDetalhe() {
       <div className="bg-card rounded-xl border border-border p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-barlow-condensed font-bold text-foreground flex items-center gap-2"><Car size={18} /> Veículos</h3>
-          <button onClick={() => setShowForm(!showForm)} className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1">
-            <Plus size={12} /> Adicionar
+          <button onClick={() => setShowForm(!showForm)} className="text-sm bg-primary/10 text-primary px-4 py-2 rounded-lg font-semibold hover:bg-primary/20 transition-colors flex items-center gap-1">
+            <Plus size={14} /> Adicionar
           </button>
         </div>
 
@@ -152,7 +152,7 @@ export default function ClienteDetalhe() {
             <div className="flex gap-2">
               <label htmlFor="detalhe-veiculo-cor" className="sr-only">Cor</label>
               <input id="detalhe-veiculo-cor" className="input-t10" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
-              <button type="submit" disabled={salvando} className="bg-primary text-primary-foreground px-4 rounded-lg font-bold text-sm hover:brightness-110 transition-all whitespace-nowrap disabled:opacity-50">{salvando ? 'Salvando...' : 'Salvar'}</button>
+              <button type="submit" disabled={salvando} className="bg-primary text-primary-foreground px-5 h-12 rounded-lg font-semibold text-base hover:brightness-110 transition-all whitespace-nowrap disabled:opacity-50">{salvando ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </form>
         )}
@@ -186,7 +186,7 @@ export default function ClienteDetalhe() {
                   ) : (
                     <>
                       <td className="py-2 px-3 font-medium text-foreground">{v.modelo}</td>
-                      <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
+                      <td className="py-2 px-3 font-mono text-primary text-sm">{v.placa}</td>
                       <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
                       <td className="py-2 px-3 text-right">
                         <div className="flex items-center justify-end gap-1">

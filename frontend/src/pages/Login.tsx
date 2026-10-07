@@ -83,7 +83,7 @@ export default function Login() {
             </div>
           )}
           <div>
-            <label htmlFor="login-email" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Email</label>
+            <label htmlFor="login-email" className="block text-sm uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Email</label>
             <input 
               id="login-email"
               name="email"
@@ -99,7 +99,7 @@ export default function Login() {
             />
           </div>
           <div>
-            <label htmlFor="login-senha" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Senha</label>
+            <label htmlFor="login-senha" className="block text-sm uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Senha</label>
             <input 
               id="login-senha"
               name="senha"
@@ -117,7 +117,7 @@ export default function Login() {
           <button 
             type="submit" 
             disabled={loading}
-            className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm disabled:opacity-50"
+            className="w-full bg-primary text-primary-foreground font-semibold h-12 rounded-lg hover:brightness-110 transition-all text-base disabled:opacity-50"
           >
             {loading ? 'Entrando...' : 'Entrar'}
           </button>

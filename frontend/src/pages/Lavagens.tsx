@@ -12,7 +12,7 @@ export default function Lavagens() {
   const statusBadge = (s: string) => {
     const map: Record<string, string> = { pendente: 'badge-pendente', em_progresso: 'badge-andamento', concluida: 'badge-concluida', cancelada: 'badge-cancelada' };
     const labels: Record<string, string> = { pendente: 'Pendente', em_progresso: 'Em progresso', concluida: 'Concluída', cancelada: 'Cancelada' };
-    return <span className={`text-xs px-2.5 py-0.5 rounded-full font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
+    return <span className={`text-sm px-2.5 py-0.5 rounded-full font-semibold ${map[s] || ''}`}>{labels[s] || s}</span>;
   };
 
   const filters = [
@@ -32,7 +32,7 @@ export default function Lavagens() {
             type="button"
             onClick={() => setFiltro(f.key)}
             aria-pressed={filtro === f.key}
-            className={`text-xs px-4 py-1.5 rounded-full font-semibold transition-colors ${filtro === f.key ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
+            className={`text-sm px-4 py-2 rounded-full font-semibold transition-colors ${filtro === f.key ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
             {f.label}
           </button>
         ))}
@@ -66,7 +66,7 @@ export default function Lavagens() {
                 <tr key={l.id} className="table-row-hover border-t border-border">
                   <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">{new Date(l.data).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</td>
                   <td className="py-3 px-4 font-medium text-foreground">{c?.nome || '—'}</td>
-                  <td className="py-3 px-4">{v ? `${v.modelo} ` : '—'}<span className="font-mono text-xs text-primary">{v?.placa}</span></td>
+                  <td className="py-3 px-4">{v ? `${v.modelo} ` : '—'}<span className="font-mono text-sm text-primary">{v?.placa}</span></td>
                   <td className="py-3 px-4">{t?.nome || '—'}</td>
                   <td className="py-3 px-4 text-right text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
                   <td className="py-3 px-4 text-muted-foreground">{l.pagamento}</td>
