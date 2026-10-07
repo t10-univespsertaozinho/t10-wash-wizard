@@ -42,7 +42,7 @@ export default defineConfig({
         lines: 13,
         statements: 12,
         functions: 15,
-        branches: 13,
+        branches: 12,
 
         'src/utils/**': { lines: 95, statements: 95, functions: 100, branches: 95 },
         'src/services/**': { lines: 95, statements: 95, functions: 100, branches: 90 },

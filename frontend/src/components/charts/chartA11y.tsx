@@ -63,11 +63,11 @@ export function ChartLegend({
   colors: string[];
 }) {
   return (
-    <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 text-xs text-muted-foreground">
+    <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 text-sm">
       {items.map((item, i) => (
         <li key={item.key} className="flex items-center gap-2">
           <Swatch kind={item.kind} color={colors[i % Math.max(colors.length, 1)]} dash={item.dash} />
-          <span className="font-medium text-foreground">{item.name}</span>
+          <span className="font-semibold text-slate-700 dark:text-slate-200">{item.name}</span>
         </li>
       ))}
     </ul>
@@ -107,7 +107,7 @@ export function ChartTooltip({
       style={contentStyle}
       className="min-w-[10rem] px-3.5 py-2.5 shadow-xl"
     >
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-200">
         {label}
       </p>
       <ul className="space-y-1">
@@ -115,7 +115,7 @@ export function ChartTooltip({
           const index = items.findIndex((item) => item.key === entry.dataKey);
           const item = items[index] ?? items[i];
           return (
-            <li key={String(entry.dataKey ?? i)} className="flex items-center gap-2 text-xs">
+            <li key={String(entry.dataKey ?? i)} className="flex items-center gap-2 text-sm">
               <Swatch kind={item.kind} color={colors[index % Math.max(colors.length, 1)]} dash={item.dash} size={12} />
               <span className="text-muted-foreground">{item.name}</span>
               <strong className="ml-auto font-semibold tabular-nums">
@@ -153,7 +153,7 @@ export function BarValue({ color, x = 0, y = 0, width = 0, value }: LabelGeometr
       y={y - 6}
       textAnchor="middle"
       fill={color}
-      fontSize={11}
+      fontSize={13}
       fontWeight={600}
       pointerEvents="none"
     >

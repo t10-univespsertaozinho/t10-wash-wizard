@@ -5,40 +5,36 @@ import { NavLink } from '@/components/NavLink';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useEffect, useRef, useState } from 'react';
 import {
-  LayoutDashboard, Droplets, List, Tags, Users, UserPlus,
-  Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings, Car,
-  AlertTriangle, RefreshCw
+  LayoutDashboard, Droplets, Tags, Users,
+  Package, ArrowLeftRight, LogOut, Menu, X, Settings, Car,
+  AlertTriangle, RefreshCw, BarChart3
 } from 'lucide-react';
 
 const navItemsAdmin = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/nova-lavagem', label: 'Nova Lavagem', icon: Plus },
   { to: '/lavagens', label: 'Lavagens', icon: Droplets },
-  { to: '/tipos-lavagem', label: 'Tipos de Lavagem', icon: Tags },
   { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
   { to: '/veiculos', label: 'Veículos', icon: Car },
+  { to: '/tipos-lavagem', label: 'Tipos de Lavagem', icon: Tags },
   { to: '/estoque', label: 'Estoque', icon: Package },
   { to: '/movimentacao', label: 'Movimentação', icon: ArrowLeftRight },
+  { to: '/analise', label: 'Análise & Relatórios', icon: BarChart3 },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
 const navItemsUser = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/nova-lavagem', label: 'Nova Lavagem', icon: Plus },
   { to: '/lavagens', label: 'Lavagens', icon: Droplets },
   { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
   { to: '/veiculos', label: 'Veículos', icon: Car },
 ];
 
 const pageTitle: Record<string, string> = {
   '/': 'Dashboard',
-  '/nova-lavagem': 'Nova Lavagem',
+  '/analise': 'Análise & Relatórios',
   '/lavagens': 'Lavagens',
   '/tipos-lavagem': 'Tipos de Lavagem',
   '/clientes': 'Clientes',
-  '/novo-cliente': 'Novo Cliente',
   '/veiculos': 'Veículos',
   '/estoque': 'Estoque',
   '/movimentacao': 'Movimentação',
@@ -115,7 +111,7 @@ export default function AppLayout() {
           >
             T10 🚗
           </NavLink>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">Gestão</p>
+          <p className="text-sm text-muted-foreground uppercase tracking-widest mt-0.5">Gestão</p>
           {/* Fecha a gaveta sem depender do overlay (que so o mouse alcança). */}
           <button
             ref={closeButtonRef}
@@ -135,7 +131,7 @@ export default function AppLayout() {
               end
               onClick={() => setSidebarOpen(false)}
               activeClassName="bg-primary/10 text-primary"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              className="flex items-center gap-3 px-3 py-2.5 min-h-11 rounded-lg text-sm font-medium transition-colors text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               <item.icon size={18} aria-hidden="true" />
               {item.label}
@@ -146,7 +142,7 @@ export default function AppLayout() {
           <div className="flex items-center gap-3">
             <div
               aria-hidden="true"
-              className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-bold"
+              className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold"
             >
               {user?.nome?.[0] || 'A'}
             </div>
@@ -197,18 +193,10 @@ export default function AppLayout() {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <ThemeToggle />
-            <NavLink
-              to="/nova-lavagem"
-              end
-              aria-label="Nova Lavagem"
-              className="bg-primary text-primary-foreground text-xs font-bold px-3 sm:px-4 py-2 rounded-lg hover:brightness-110 transition-all flex items-center gap-1.5"
-            >
-              <Plus size={14} aria-hidden="true" />
-              <span className="hidden sm:inline">Nova Lavagem</span>
-            </NavLink>
           </div>
         </header>
-        <main id="main-content" tabIndex={-1} className="flex-1 p-4 lg:p-6 overflow-y-auto focus:outline-none">
+        <main id="main-content" tabIndex={-1} className="flex-1 p-6 lg:p-8 overflow-y-auto focus:outline-none">
+          <div className="mx-auto w-full max-w-[1600px]">
           {/* Carga parcial nunca é apresentada como sucesso: se o Promise.all do
               AppContext falhar, as listas estão desatualizadas e o usuário
               precisa saber disso antes de tomar decisões (FA-12). */}
@@ -232,6 +220,7 @@ export default function AppLayout() {
             </div>
           )}
           <Outlet />
+          </div>
         </main>
       </div>
     </div>

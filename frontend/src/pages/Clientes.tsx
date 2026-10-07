@@ -1,14 +1,16 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Search, Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 
 export default function Clientes() {
   const { clientes, veiculos, lavagens, deleteCliente } = useApp();
   const { user } = useAuth();
+  const { openNovoCliente } = useModal();
   const podeExcluir = user?.role === 'admin';
 
   // Sem o try/catch a recusa do backend virava rejeição não tratada e o cliente
@@ -30,10 +32,19 @@ export default function Clientes() {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-md">
-        <label htmlFor="clientes-busca" className="sr-only">Buscar clientes por nome ou telefone</label>
-        <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input id="clientes-busca" type="search" className="input-t10 pl-9" placeholder="Buscar por nome ou telefone..." value={busca} onChange={e => setBusca(e.target.value)} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative max-w-md w-full">
+          <label htmlFor="clientes-busca" className="sr-only">Buscar clientes por nome ou telefone</label>
+          <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-foreground" />
+          <input id="clientes-busca" type="search" className="input-t10 pl-9" placeholder="Buscar por nome ou telefone..." value={busca} onChange={e => setBusca(e.target.value)} />
+        </div>
+        <button
+          type="button"
+          onClick={openNovoCliente}
+          className="bg-amber-400 hover:bg-amber-500 text-slate-950 h-12 px-5 text-base font-bold rounded-xl shadow-sm transition-all flex items-center gap-2"
+        >
+          <Plus size={18} /> Novo Cliente
+        </button>
       </div>
       <div
         className="bg-card rounded-xl border border-border overflow-x-auto"
@@ -45,29 +56,29 @@ export default function Clientes() {
                 <caption className="sr-only">Clientes cadastrados, com nome, telefone, veículos, lavagens, data de cadastro e ações</caption>
           <thead>
             <tr className="table-header">
-              <th scope="col" className="text-left py-3 px-4">Nome</th>
-              <th scope="col" className="text-left py-3 px-4">Telefone</th>
-              <th scope="col" className="text-center py-3 px-4">Veículos</th>
-              <th scope="col" className="text-center py-3 px-4">Lavagens</th>
-              <th scope="col" className="text-left py-3 px-4">Cadastro</th>
-              <th scope="col" className="text-right py-3 px-4">Ações</th>
+              <th scope="col" className="text-left py-4 px-4">Nome</th>
+              <th scope="col" className="text-left py-4 px-4">Telefone</th>
+              <th scope="col" className="text-center py-4 px-4">Veículos</th>
+              <th scope="col" className="text-center py-4 px-4">Lavagens</th>
+              <th scope="col" className="text-left py-4 px-4">Cadastro</th>
+              <th scope="col" className="text-right py-4 px-4">Ações</th>
             </tr>
           </thead>
           <tbody>
             {filtered.map(c => (
               <tr key={c.id} className="table-row-hover border-t border-border">
-                <td className="py-3 px-4 font-medium text-foreground">{c.nome}</td>
-                <td className="py-3 px-4 text-muted-foreground">{c.telefone}</td>
-                <td className="py-3 px-4 text-center">{veiculos.filter(v => v.cliente_id === c.id).length}</td>
-                <td className="py-3 px-4 text-center">{lavagens.filter(l => l.cliente_id === c.id).length}</td>
-                <td className="py-3 px-4 text-muted-foreground">{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
-                <td className="py-3 px-4 text-right">
+                <td className="py-4 px-4 text-base font-medium text-foreground">{c.nome}</td>
+                <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{c.telefone}</td>
+                <td className="py-4 px-4 text-center text-base">{veiculos.filter(v => v.cliente_id === c.id).length}</td>
+                <td className="py-4 px-4 text-center text-base">{lavagens.filter(l => l.cliente_id === c.id).length}</td>
+                <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{new Date(c.created_at).toLocaleDateString('pt-BR')}</td>
+                <td className="py-4 px-4 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Link
                       to={`/clientes/${c.id}`}
                       aria-label={`Ver detalhes do cliente ${c.nome}`}
                       title="Ver detalhes"
-                      className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-secondary/60 text-secondary-foreground hover:text-foreground transition-colors"
                     >
                       <Eye size={15} aria-hidden="true" />
                     </Link>
@@ -75,7 +86,7 @@ export default function Clientes() {
                       to={`/clientes/${c.id}/editar`}
                       aria-label={`Editar cliente ${c.nome}`}
                       title="Editar"
-                      className="p-1.5 rounded-lg hover:bg-secondary/60 text-muted-foreground hover:text-foreground transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-secondary/60 text-secondary-foreground hover:text-foreground transition-colors"
                     >
                       <Pencil size={15} aria-hidden="true" />
                     </Link>

@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
+import { ModalProvider } from "@/contexts/ModalContext";
 import AppLayout from "@/components/AppLayout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
@@ -14,13 +15,12 @@ import { Loader2 } from "lucide-react";
 // Lazy-loaded pages
 const Login = lazy(() => import("@/pages/Login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Analise = lazy(() => import("@/pages/Analise"));
 const Clientes = lazy(() => import("@/pages/Clientes"));
-const NovoCliente = lazy(() => import("@/pages/NovoCliente"));
 const ClienteDetalhe = lazy(() => import("@/pages/ClienteDetalhe"));
 const EditarCliente = lazy(() => import("@/pages/EditarCliente"));
 const Veiculos = lazy(() => import("@/pages/Veiculos"));
 const Lavagens = lazy(() => import("@/pages/Lavagens"));
-const NovaLavagem = lazy(() => import("@/pages/NovaLavagem"));
 const TiposLavagem = lazy(() => import("@/pages/TiposLavagem"));
 const Estoque = lazy(() => import("@/pages/Estoque"));
 const NovoProduto = lazy(() => import("@/pages/NovoProduto"));
@@ -81,7 +81,8 @@ const App = () => (
         <Sonner />
         <AuthProvider>
           <AppProvider>
-            <BrowserRouter>
+            <ModalProvider>
+              <BrowserRouter>
               {/* Acima do <Routes>: uma exceção de render em qualquer página cai
                   na tela de recuperação em vez de deixar a tela branca (FA-10). */}
               <ErrorBoundary>
@@ -94,18 +95,17 @@ const App = () => (
                       <Route element={<AppLayout />}>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/clientes" element={<Clientes />} />
-                        <Route path="/novo-cliente" element={<NovoCliente />} />
                         <Route path="/clientes/:id" element={<ClienteDetalhe />} />
                         <Route path="/clientes/:id/editar" element={<EditarCliente />} />
                         <Route path="/veiculos" element={<Veiculos />} />
                         <Route path="/lavagens" element={<Lavagens />} />
-                        <Route path="/nova-lavagem" element={<NovaLavagem />} />
                       </Route>
                     </Route>
 
                     {/* Protected Admin Routes */}
                     <Route element={<ProtectedRoute adminOnly />}>
                       <Route element={<AppLayout />}>
+                        <Route path="/analise" element={<Analise />} />
                         <Route path="/tipos-lavagem" element={<TiposLavagem />} />
                         <Route path="/estoque" element={<Estoque />} />
                         <Route path="/novo-produto" element={<NovoProduto />} />
@@ -119,6 +119,7 @@ const App = () => (
                 </Suspense>
               </ErrorBoundary>
             </BrowserRouter>
+            </ModalProvider>
           </AppProvider>
         </AuthProvider>
       </ThemeProvider>
