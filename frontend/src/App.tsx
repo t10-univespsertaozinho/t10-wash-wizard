@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
 import AppLayout from "@/components/AppLayout";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 
 // Lazy-loaded pages
@@ -81,38 +82,42 @@ const App = () => (
         <AuthProvider>
           <AppProvider>
             <BrowserRouter>
-              <Suspense fallback={<PageLoading />}>
-                <Routes>
-                  <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
+              {/* Acima do <Routes>: uma exceção de render em qualquer página cai
+                  na tela de recuperação em vez de deixar a tela branca (FA-10). */}
+              <ErrorBoundary>
+                <Suspense fallback={<PageLoading />}>
+                  <Routes>
+                    <Route path="/login" element={<PublicLayout><Login /></PublicLayout>} />
                   
-                  {/* Protected User Routes */}
-                  <Route element={<ProtectedRoute />}>
-                    <Route element={<AppLayout />}>
-                      <Route path="/" element={<Dashboard />} />
-                      <Route path="/clientes" element={<Clientes />} />
-                      <Route path="/novo-cliente" element={<NovoCliente />} />
-                      <Route path="/clientes/:id" element={<ClienteDetalhe />} />
-                      <Route path="/clientes/:id/editar" element={<EditarCliente />} />
-                      <Route path="/veiculos" element={<Veiculos />} />
-                      <Route path="/lavagens" element={<Lavagens />} />
-                      <Route path="/nova-lavagem" element={<NovaLavagem />} />
+                    {/* Protected User Routes */}
+                    <Route element={<ProtectedRoute />}>
+                      <Route element={<AppLayout />}>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/clientes" element={<Clientes />} />
+                        <Route path="/novo-cliente" element={<NovoCliente />} />
+                        <Route path="/clientes/:id" element={<ClienteDetalhe />} />
+                        <Route path="/clientes/:id/editar" element={<EditarCliente />} />
+                        <Route path="/veiculos" element={<Veiculos />} />
+                        <Route path="/lavagens" element={<Lavagens />} />
+                        <Route path="/nova-lavagem" element={<NovaLavagem />} />
+                      </Route>
                     </Route>
-                  </Route>
 
-                  {/* Protected Admin Routes */}
-                  <Route element={<ProtectedRoute adminOnly />}>
-                    <Route element={<AppLayout />}>
-                      <Route path="/tipos-lavagem" element={<TiposLavagem />} />
-                      <Route path="/estoque" element={<Estoque />} />
-                      <Route path="/novo-produto" element={<NovoProduto />} />
-                      <Route path="/movimentacao" element={<Movimentacao />} />
-                      <Route path="/configuracoes" element={<Configuracoes />} />
+                    {/* Protected Admin Routes */}
+                    <Route element={<ProtectedRoute adminOnly />}>
+                      <Route element={<AppLayout />}>
+                        <Route path="/tipos-lavagem" element={<TiposLavagem />} />
+                        <Route path="/estoque" element={<Estoque />} />
+                        <Route path="/novo-produto" element={<NovoProduto />} />
+                        <Route path="/movimentacao" element={<Movimentacao />} />
+                        <Route path="/configuracoes" element={<Configuracoes />} />
+                      </Route>
                     </Route>
-                  </Route>
 
-                  <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
-                </Routes>
-              </Suspense>
+                    <Route path="*" element={<PublicLayout><NotFound /></PublicLayout>} />
+                  </Routes>
+                </Suspense>
+              </ErrorBoundary>
             </BrowserRouter>
           </AppProvider>
         </AuthProvider>
