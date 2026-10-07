@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ResponsiveContainer, Bar, Line, ComposedChart, XAxis, YAxis, Tooltip, Legend } from 'recharts';
+import { ResponsiveContainer, Bar, Line, ComposedChart, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import {
   ChartDataTable,
   ChartLegend,
@@ -57,6 +57,7 @@ export default function Dashboard() {
     chartColors,
     tooltipStyle,
     tickStyle,
+    gridColor,
     cursorStyle,
     series7dias,
   } = useDashboardStats();
@@ -90,11 +91,11 @@ export default function Dashboard() {
             <h2 className="font-barlow-condensed font-bold text-3xl text-foreground">
               Painel do Proprietário
             </h2>
-            <span className="text-sm px-3 py-1 rounded-full font-semibold bg-primary/10 text-primary border border-primary/20">
+            <span className="bg-amber-100 text-amber-900 border border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 font-semibold px-3 py-1 rounded-full text-sm">
               Lava Rápido Maquininha
             </span>
           </div>
-          <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 flex items-center gap-2 mt-1">
             {user?.role === 'admin' ? (
               <Shield size={14} className="text-accent-text" />
             ) : (
@@ -155,7 +156,7 @@ export default function Dashboard() {
         {/* Card 1: Faturamento da Semana */}
         <div className="bg-card rounded-xl border-l-4 border-success border border-border p-5 shadow-sm animate-fade-up">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Faturamento da Semana
             </span>
             <DollarSign className="text-success" size={24} />
@@ -170,18 +171,18 @@ export default function Dashboard() {
             </p>
             <div className="flex items-center gap-1.5 mt-1 text-sm">
               {stats && stats.financeiro.variacao_receita_pct >= 0 ? (
-                <span className="inline-flex items-center gap-0.5 font-semibold text-success">
+                <span className="inline-flex items-center gap-0.5 font-bold text-emerald-700 dark:text-emerald-400">
                   <TrendingUp size={14} /> +{formatarPercentual(stats.financeiro.variacao_receita_pct)}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
+                <span className="inline-flex items-center gap-0.5 font-bold text-rose-700 dark:text-rose-400">
                   {/* Com stats nulo (erro de carga) isto renderizava "undefined%" (FA-14) */}
                   <TrendingDown size={14} /> {formatarPercentual(stats?.financeiro.variacao_receita_pct)}
                 </span>
               )}
-              <span className="text-muted-foreground">vs. semana anterior</span>
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">vs. semana anterior</span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">
               {stats?.financeiro.lavagens_semana ?? 0} lavagens concluídas nos últimos 7 dias
             </p>
           </div>
@@ -190,7 +191,7 @@ export default function Dashboard() {
         {/* Card 2: Ticket Médio por Carro */}
         <div className="bg-card rounded-xl border-l-4 border-primary border border-border p-5 shadow-sm animate-fade-up">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Ticket Médio
             </span>
             <Car className="text-primary" size={24} />
@@ -202,21 +203,21 @@ export default function Dashboard() {
               ) : (
                 formatarMoeda(stats?.financeiro.ticket_medio ?? 0)
               )}
-              <span className="text-sm font-normal text-muted-foreground ml-1">/ carro</span>
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300 ml-1">/ carro</span>
             </p>
             <div className="flex items-center gap-1.5 mt-1 text-sm">
               {stats && stats.financeiro.variacao_ticket_pct >= 0 ? (
-                <span className="inline-flex items-center gap-0.5 font-semibold text-success">
+                <span className="inline-flex items-center gap-0.5 font-bold text-emerald-700 dark:text-emerald-400">
                   <TrendingUp size={14} /> +{formatarPercentual(stats.financeiro.variacao_ticket_pct)}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
+                <span className="inline-flex items-center gap-0.5 font-bold text-rose-700 dark:text-rose-400">
                   <TrendingDown size={14} /> {formatarPercentual(stats?.financeiro.variacao_ticket_pct)}
                 </span>
               )}
-              <span className="text-muted-foreground">vs. semana anterior</span>
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">vs. semana anterior</span>
             </div>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">
               Gasto médio por cliente atendido no caixa
             </p>
           </div>
@@ -225,7 +226,7 @@ export default function Dashboard() {
         {/* Card 3: Fidelização e Recorrência */}
         <div className="bg-card rounded-xl border-l-4 border-chart-4 border border-border p-5 shadow-sm animate-fade-up">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Clientes Fiéis
             </span>
             <Users className="text-chart-4" size={24} />
@@ -237,13 +238,13 @@ export default function Dashboard() {
               ) : (
                 `${stats?.fidelizacao.taxa_recorrencia_pct ?? 0}%`
               )}
-              <span className="text-sm font-normal text-muted-foreground ml-1">recorrentes</span>
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300 ml-1">recorrentes</span>
             </p>
             <p className="text-sm text-foreground/90 font-medium mt-1">
               {stats?.fidelizacao.clientes_recorrentes ?? 0} de{' '}
               {stats?.fidelizacao.total_clientes_com_lavagem ?? 0} clientes já retornaram
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">
               Lavaram mais de uma vez no lava-rápido
             </p>
           </div>
@@ -252,7 +253,7 @@ export default function Dashboard() {
         {/* Card 4: Alerta de Insumos Críticos */}
         <div className="bg-card rounded-xl border-l-4 border-amber-600 border border-border p-5 shadow-sm animate-fade-up">
           <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">
+            <span className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Estoque de Atenção
             </span>
             <Package className="text-amber-600" size={24} />
@@ -264,14 +265,14 @@ export default function Dashboard() {
               ) : (
                 `${stats?.estoque_critico.length ?? 0} itens`
               )}
-              <span className="text-sm font-normal text-muted-foreground ml-1">em baixa</span>
+              <span className="text-sm font-medium text-slate-600 dark:text-slate-300 ml-1">em baixa</span>
             </p>
             <p className="text-sm font-semibold text-amber-700 dark:text-amber-400 mt-1 truncate">
               {stats && stats.estoque_critico.length > 0
                 ? `${stats.estoque_critico[0].nome} (${stats.estoque_critico[0].quantidade} ${stats.estoque_critico[0].unidade})`
                 : 'Todos os insumos operando bem'}
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300 mt-1">
               Abaixo da margem de segurança cadastrada
             </p>
           </div>
@@ -285,11 +286,11 @@ export default function Dashboard() {
             <h3 className="font-barlow-condensed font-bold text-xl text-foreground">
               Fluxo Diário de Atendimentos & Receita
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               Movimentação dos últimos 7 dias (Barra = Faturamento R$, Linha = Volume de Lavagens)
             </p>
           </div>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <div className="flex items-center gap-3 text-sm font-semibold text-slate-700 dark:text-slate-200">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: chartColors[0] }} />
               Receita (R$)
@@ -323,6 +324,7 @@ export default function Dashboard() {
                   axisLine={false}
                   tickLine={false}
                 />
+                <CartesianGrid stroke={gridColor} vertical={false} />
                 <Tooltip
                   cursor={cursorStyle}
                   content={

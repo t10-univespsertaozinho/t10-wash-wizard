@@ -6,7 +6,7 @@ import { DashboardStats } from '@/types';
 import { montarLinkWhatsapp } from '@/utils/format';
 import type { SeriesDescriptor } from '@/components/charts/chartSeries';
 
-const TOKENS = ['--card', '--foreground', '--muted-foreground', '--border'] as const;
+const TOKENS = ['--card', '--foreground', '--chart-tick', '--chart-grid', '--border'] as const;
 
 /**
  * Estado analitico compartilhado entre o Dashboard (resumo operacional) e a
@@ -61,12 +61,16 @@ export function useDashboardStats() {
 
   const tickStyle = useMemo(
     () => ({
-      fill: toHsl(tokens['--muted-foreground']),
+      fill: toHsl(tokens['--chart-tick']),
       fontSize: 13,
       fontFamily: 'inherit',
     }),
     [tokens]
   );
+
+  // WCAG 1.4.11 - grade do grafico: contraste sutil (nao compete com os dados),
+  // mas distinta em cada tema (Slate-200 no claro, Slate-700 no escuro).
+  const gridColor = useMemo(() => toHsl(tokens['--chart-grid']), [tokens]);
 
   const cursorStyle = useMemo(
     () => ({ fill: `color-mix(in srgb, ${chartColors[0]} 12%, transparent)` }),
@@ -149,6 +153,7 @@ export function useDashboardStats() {
     chartColors,
     tooltipStyle,
     tickStyle,
+    gridColor,
     cursorStyle,
     series7dias,
     destaqueMix,

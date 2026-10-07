@@ -52,6 +52,11 @@
     --chart-4: #CC79A7; /* rosa */
     --chart-5: #009E73; /* verde */
     --chart-6: #D55E00; /* tijolo */
+    /* WCAG 1.4.3 - eixos e grade do Recharts. Hex completo por tema, como a
+       paleta: o SVG nao resolve var() de forma confiavel, entao quem consome
+       le o token via useCssTokens e escreve direto no atributo fill/stroke. */
+    --chart-tick: #94a3b8; /* Slate-400, leitura sobre o card no tema escuro */
+    --chart-grid: #334155; /* Slate-700, grade sutil no tema escuro */
     --radius: 0.625rem;
     --sidebar-background: 228 18% 13%;
     --sidebar-foreground: 0 0% 75%;
@@ -103,6 +108,8 @@
     --chart-4: #BC508C; /* rosa    4.50:1 */
     --chart-5: #008762; /* verde   4.52:1 */
     --chart-6: #C35600; /* tijolo  4.51:1 */
+    --chart-tick: #334155; /* Slate-700 ~7:1 no tema claro */
+    --chart-grid: #e2e8f0; /* Slate-200, grade sutil no tema claro */
     --sidebar-background: 0 0% 96%;
     --sidebar-foreground: 225 20% 10%;
     --sidebar-primary: 25 95% 33%;

@@ -63,11 +63,11 @@ export function ChartLegend({
   colors: string[];
 }) {
   return (
-    <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 text-sm text-muted-foreground">
+    <ul className="flex flex-wrap items-center gap-x-5 gap-y-2 pt-3 text-sm">
       {items.map((item, i) => (
         <li key={item.key} className="flex items-center gap-2">
           <Swatch kind={item.kind} color={colors[i % Math.max(colors.length, 1)]} dash={item.dash} />
-          <span className="font-medium text-foreground">{item.name}</span>
+          <span className="font-semibold text-slate-700 dark:text-slate-200">{item.name}</span>
         </li>
       ))}
     </ul>
@@ -107,7 +107,7 @@ export function ChartTooltip({
       style={contentStyle}
       className="min-w-[10rem] px-3.5 py-2.5 shadow-xl"
     >
-      <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-200">
         {label}
       </p>
       <ul className="space-y-1">
