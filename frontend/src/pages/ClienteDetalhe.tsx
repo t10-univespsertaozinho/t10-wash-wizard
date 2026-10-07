@@ -6,6 +6,7 @@ import { Trash2, Plus, Car, Pencil, X, Check } from 'lucide-react';
 import { usePlacaMask } from '@/hooks/usePlacaMask';
 import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 import { toast } from 'sonner';
+import { formatarData, formatarMoeda } from '@/utils/format';
 
 const mensagemErro = (err: unknown) =>
   err instanceof Error ? err.message : 'Erro desconhecido';
@@ -119,7 +120,7 @@ export default function ClienteDetalhe() {
         <div>
           <h2 className="text-xl font-barlow-condensed font-bold text-foreground">{cliente.nome}</h2>
           <p className="text-sm text-muted-foreground">{cliente.telefone}</p>
-          <p className="text-xs text-muted-foreground mt-1">Cadastro: {new Date(cliente.created_at).toLocaleDateString('pt-BR')}</p>
+          <p className="text-xs text-muted-foreground mt-1">Cadastro: {formatarData(cliente.created_at)}</p>
         </div>
         <div className="ml-auto flex gap-6 text-center">
           <div>
@@ -234,10 +235,10 @@ export default function ClienteDetalhe() {
                 const t = getTipoLavagem(l.tipo_lavagem_id);
                 return (
                   <tr key={l.id} className="table-row-hover border-t border-border">
-                    <td className="py-2 px-3 text-muted-foreground">{new Date(l.data).toLocaleDateString('pt-BR')}</td>
+                    <td className="py-2 px-3 text-muted-foreground">{formatarData(l.data)}</td>
                     <td className="py-2 px-3">{v?.modelo || '—'}</td>
                     <td className="py-2 px-3">{t?.nome || '—'}</td>
-                    <td className="py-2 px-3 text-right text-primary font-semibold">R$ {l.valor.toFixed(2)}</td>
+                    <td className="py-2 px-3 text-right text-primary font-semibold">{formatarMoeda(l.valor)}</td>
                     <td className="py-2 px-3 text-center">{statusBadge(l.status)}</td>
                   </tr>
                 );

@@ -35,6 +35,12 @@ import { chartA11yProps, type SeriesDescriptor } from '@/components/charts/chart
 import { useChartPalette } from '@/components/charts/useChartPalette';
 import { getDashboardStats } from '@/services/database';
 import { DashboardStats } from '@/types';
+import {
+  formatarMoeda,
+  formatarMoedaExtenso,
+  formatarPercentual,
+  montarLinkWhatsapp,
+} from '@/utils/format';
 
 const TOKENS = ['--card', '--foreground', '--muted-foreground', '--border'] as const;
 const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
@@ -182,15 +188,14 @@ export default function Dashboard() {
     return m === 0 ? `${h} h` : `${h} h ${String(m).padStart(2, '0')} min`;
   }, [stats]);
 
-  // Função auxiliar para gerar link WhatsApp
-  const gerarLinkWhatsapp = (telefone: string, nomeCliente: string) => {
-    const limpo = telefone.replace(/\D/g, '');
-    const numeroCompleto = limpo.length <= 11 ? `55${limpo}` : limpo;
-    const mensagem = encodeURIComponent(
+  // Link de reengajamento. Devolve null quando o telefone não é discável — um
+  // cliente sem número gerava `https://wa.me/55?text=...`, um botão que só abria
+  // uma aba quebrada (FA-16).
+  const gerarLinkWhatsapp = (telefone: string | null | undefined, nomeCliente: string) =>
+    montarLinkWhatsapp(
+      telefone,
       `Olá, ${nomeCliente}! Aqui é do Lava Rápido Maquininha. Notamos que faz um tempo desde a sua última visita e preparamos um atendimento especial para deixar seu carro novinho de novo. Quando gostaria de passar aqui?`
     );
-    return `https://wa.me/${numeroCompleto}?text=${mensagem}`;
-  };
 
   return (
     <div className="space-y-6 pb-8">
@@ -272,21 +277,18 @@ export default function Dashboard() {
               {loading ? (
                 <span className="animate-pulse">Carregando...</span>
               ) : (
-                `R$ ${(stats?.financeiro.receita_semana ?? 0).toLocaleString('pt-BR', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}`
+                formatarMoedaExtenso(stats?.financeiro.receita_semana ?? 0)
               )}
             </p>
             <div className="flex items-center gap-1.5 mt-1 text-xs">
               {stats && stats.financeiro.variacao_receita_pct >= 0 ? (
                 <span className="inline-flex items-center gap-0.5 font-semibold text-success">
-                  <TrendingUp size={13} /> +{stats.financeiro.variacao_receita_pct}%
+                  <TrendingUp size={13} /> +{formatarPercentual(stats.financeiro.variacao_receita_pct)}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
                   {/* Com stats nulo (erro de carga) isto renderizava "undefined%" (FA-14) */}
-                  <TrendingDown size={13} /> {stats ? `${stats.financeiro.variacao_receita_pct}%` : '—'}
+                  <TrendingDown size={13} /> {formatarPercentual(stats?.financeiro.variacao_receita_pct)}
                 </span>
               )}
               <span className="text-muted-foreground">vs. semana anterior</span>
@@ -310,18 +312,18 @@ export default function Dashboard() {
               {loading ? (
                 <span className="animate-pulse">Carregando...</span>
               ) : (
-                `R$ ${(stats?.financeiro.ticket_medio ?? 0).toFixed(2)}`
+                formatarMoeda(stats?.financeiro.ticket_medio ?? 0)
               )}
               <span className="text-xs font-normal text-muted-foreground ml-1">/ carro</span>
             </p>
             <div className="flex items-center gap-1.5 mt-1 text-xs">
               {stats && stats.financeiro.variacao_ticket_pct >= 0 ? (
                 <span className="inline-flex items-center gap-0.5 font-semibold text-success">
-                  <TrendingUp size={13} /> +{stats.financeiro.variacao_ticket_pct}%
+                  <TrendingUp size={13} /> +{formatarPercentual(stats.financeiro.variacao_ticket_pct)}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-0.5 font-semibold text-destructive">
-                  <TrendingDown size={13} /> {stats ? `${stats.financeiro.variacao_ticket_pct}%` : '—'}
+                  <TrendingDown size={13} /> {formatarPercentual(stats?.financeiro.variacao_ticket_pct)}
                 </span>
               )}
               <span className="text-muted-foreground">vs. semana anterior</span>
@@ -524,7 +526,7 @@ export default function Dashboard() {
                     <div className="flex items-center justify-between text-xs">
                       <span className="font-medium text-foreground truncate">{servico.nome}</span>
                       <span className="text-muted-foreground">
-                        R$ {servico.faturamento_total.toFixed(2)} ({servico.total_atendimentos} atend.)
+                        {formatarMoeda(servico.faturamento_total)} ({servico.total_atendimentos} atend.)
                       </span>
                     </div>
 
@@ -618,7 +620,7 @@ export default function Dashboard() {
                         {p.nome}
                       </span>
                       <span className="text-muted-foreground shrink-0">
-                        R$ {p.receita.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        {formatarMoedaExtenso(p.receita)}
                         {' '}({p.lavagens} lav.)
                       </span>
                     </div>
@@ -631,7 +633,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                       <span>{p.pct}% da receita</span>
-                      <span>Ticket: R$ {(p.receita / Math.max(p.lavagens, 1)).toFixed(2)}</span>
+                      <span>Ticket: {formatarMoeda(p.receita / Math.max(p.lavagens, 1))}</span>
                     </div>
                   </div>
                 );
@@ -674,10 +676,10 @@ export default function Dashboard() {
                       <td className="py-2 px-3 font-medium text-foreground">{op.nome}</td>
                       <td className="py-2 px-3 text-center tabular-nums text-muted-foreground">{op.total_lavagens}</td>
                       <td className="py-2 px-3 text-right tabular-nums text-primary font-bold">
-                        {op.receita > 0 ? `R$ ${op.receita.toFixed(2)}` : '—'}
+                        {op.receita > 0 ? formatarMoeda(op.receita) : '—'}
                       </td>
                       <td className="py-2 px-3 text-right tabular-nums text-muted-foreground">
-                        {op.ticket_medio > 0 ? `R$ ${op.ticket_medio.toFixed(2)}` : '—'}
+                        {op.ticket_medio > 0 ? formatarMoeda(op.ticket_medio) : '—'}
                       </td>
                     </tr>
                   ))}
@@ -778,37 +780,53 @@ export default function Dashboard() {
 
           {stats?.clientes_ausentes && stats.clientes_ausentes.length > 0 ? (
             <div className="divide-y divide-border">
-              {stats.clientes_ausentes.map((cliente) => (
-                <div key={cliente.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">{cliente.nome}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-2">
-                      <span>{cliente.telefone || 'Sem telefone'}</span>
-                      <span>•</span>
-                      <span>{cliente.historico_lavagens} lavagens já feitas</span>
-                    </p>
-                  </div>
+              {stats.clientes_ausentes.map((cliente) => {
+                const linkWhatsapp = gerarLinkWhatsapp(cliente.telefone, cliente.nome);
 
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs px-2 py-0.5 rounded font-medium bg-secondary text-muted-foreground">
-                      Há {cliente.dias_ausente} dias
-                    </span>
+                return (
+                  <div key={cliente.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{cliente.nome}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-2">
+                        <span>{cliente.telefone || 'Sem telefone'}</span>
+                        <span>•</span>
+                        <span>{cliente.historico_lavagens} lavagens já feitas</span>
+                      </p>
+                    </div>
 
-                    {cliente.telefone && (
-                      <a
-                        href={gerarLinkWhatsapp(cliente.telefone, cliente.nome)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 shadow-sm"
-                        title="Enviar mensagem amigável no WhatsApp"
-                      >
-                        <MessageCircle size={13} />
-                        <span className="hidden sm:inline">WhatsApp</span>
-                      </a>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs px-2 py-0.5 rounded font-medium bg-secondary text-muted-foreground">
+                        Há {cliente.dias_ausente} dias
+                      </span>
+
+                      {/* Telefone ausente ou incompleto: o botão fica desabilitado e
+                          explica o motivo, em vez de abrir um wa.me sem número. */}
+                      {linkWhatsapp ? (
+                        <a
+                          href={linkWhatsapp}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg transition-colors inline-flex items-center gap-1 shadow-sm"
+                          title="Enviar mensagem amigável no WhatsApp"
+                        >
+                          <MessageCircle size={13} />
+                          <span className="hidden sm:inline">WhatsApp</span>
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled
+                          className="bg-secondary text-muted-foreground text-xs font-semibold px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1 cursor-not-allowed"
+                          title={`Cadastre um telefone válido de ${cliente.nome} para enviar a mensagem pelo WhatsApp`}
+                        >
+                          <MessageCircle size={13} />
+                          <span className="hidden sm:inline">Sem telefone</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="py-8 text-center text-muted-foreground">
@@ -877,7 +895,7 @@ export default function Dashboard() {
                         </span>
                       </td>
                       <td className="py-2 px-3 text-right text-primary font-bold">
-                        R$ {l.valor.toFixed(2)}
+                        {formatarMoeda(l.valor)}
                       </td>
                       <td className="py-2 px-3 text-right">
                         <div className="inline-flex items-center gap-1.5">
