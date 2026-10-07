@@ -50,6 +50,8 @@ async function prepararBanco() {
     const schema = fs.readFileSync(schemaPath, 'utf8');
     await exec(schema);
 
+    await migrarAuditoriaSemCascade();
+
     console.log(dbExists
       ? 'Schema verificado (banco existente, estruturas novas aplicadas).'
       : 'Schema inicializado com sucesso.');
@@ -58,6 +60,48 @@ async function prepararBanco() {
   } catch (err) {
     console.error('Erro ao preparar o banco de dados:', err.message);
     aoFalhar(err);
+  }
+}
+
+// CREATE TABLE IF NOT EXISTS não altera uma tabela que já existe, então bancos
+// criados antes desta correção continuariam com o ON DELETE CASCADE em
+// auditoria_lavagens — e perderiam a trilha justamente ao excluir uma lavagem.
+// Esta migração recria a tabela sem a FK, preservando as linhas existentes.
+// É idempotente: só roda quando o DDL atual ainda tem o cascade.
+async function migrarAuditoriaSemCascade() {
+  const tabela = await get(
+    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'auditoria_lavagens'"
+  );
+  if (!tabela?.sql || !/REFERENCES\s+lavagens/i.test(tabela.sql)) return;
+
+  // O PRAGMA só tem efeito fora de transação, por isso vem antes do BEGIN.
+  await exec('PRAGMA foreign_keys = OFF;');
+  try {
+    await exec(`
+      BEGIN TRANSACTION;
+      CREATE TABLE auditoria_lavagens_nova (
+        id TEXT PRIMARY KEY,
+        lavagem_id TEXT NOT NULL,
+        user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+        campo TEXT NOT NULL,
+        valor_anterior TEXT,
+        valor_novo TEXT,
+        data TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+      );
+      INSERT INTO auditoria_lavagens_nova (id, lavagem_id, user_id, campo, valor_anterior, valor_novo, data)
+        SELECT id, lavagem_id, user_id, campo, valor_anterior, valor_novo, data FROM auditoria_lavagens;
+      DROP TABLE auditoria_lavagens;
+      ALTER TABLE auditoria_lavagens_nova RENAME TO auditoria_lavagens;
+      CREATE INDEX IF NOT EXISTS idx_auditoria_lavagens_lavagem_id ON auditoria_lavagens(lavagem_id);
+      CREATE INDEX IF NOT EXISTS idx_auditoria_lavagens_user_id ON auditoria_lavagens(user_id);
+      COMMIT;
+    `);
+    console.log('Migração aplicada: auditoria_lavagens agora preserva o histórico de exclusões.');
+  } catch (err) {
+    await exec('ROLLBACK;').catch(() => {});
+    throw err;
+  } finally {
+    await exec('PRAGMA foreign_keys = ON;').catch(() => {});
   }
 }
 
