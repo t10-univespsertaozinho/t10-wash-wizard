@@ -6,7 +6,11 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const dbPath = path.resolve(__dirname, '../wash_wizard.db');
+// DB_PATH permite apontar para um arquivo descartável — é o que a suíte de
+// testes de integração usa para não encostar no banco de desenvolvimento.
+const dbPath = process.env.DB_PATH
+  ? path.resolve(process.env.DB_PATH)
+  : path.resolve(__dirname, '../wash_wizard.db');
 const schemaPath = path.resolve(__dirname, 'schema.sql');
 
 const dbExists = fs.existsSync(dbPath);
