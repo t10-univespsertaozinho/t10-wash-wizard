@@ -39,8 +39,11 @@ O sistema provê o controle ponta-a-ponta do fluxo operacional e estratégico:
 
 - **Gestão de Clientes e Veículos:** Cadastro unificado de proprietários e múltiplos veículos com integridade relacional estrita (deleção em cascata e histórico unificado).
 - **Controle de Lavagens (Workflow de Pátio):** Acompanhamento de status em tempo real (`pendente`, `em_progresso`, `concluida`, `cancelada`) com fila operacional rápida.
+- **Cadastros Ágeis em Modais Acessíveis:** *Nova Lavagem* e *Novo Cliente* abrem em *overlays* reutilizáveis via o botão de ação de cada tela — com foco automático, fechamento por `Esc`/clique fora e suporte a leitor de tela (WCAG 2.4.3, 1.3.1). Os demais cadastros (produtos, edição de cliente) seguem em páginas dedicadas.
 - **Gestão de Estoque e Suprimentos:** Controle de saldo, ponto de pedido (`estoque_minimo`) e histórico de movimentações (entradas e saídas com transações atômicas).
-- **Módulo de Business Intelligence (BI):** Painel executivo consolidado com KPIs em linguagem natural, séries temporais e painel de ações gerenciais.
+- **Business Intelligence (BI):** **Dashboard** operacional dia a dia (admin e operador) + área exclusiva **Análise & Relatórios** (`/analise`, perfil admin) com os 4 pilares de decisão em KPIs legíveis e séries temporais.
+- **Acessibilidade (WCAG 2.1 AA):** contraste de cores validado em temas claro e escuro, paleta Okabe-Ito inclusiva para daltônicos, *skip-link*, navegação completa por teclado e gráficos espelhados em tabelas semânticas para leitores de tela.
+- **Qualidade Automatizada & CI:** suíte de testes frontend (**91 casos**, Vitest + Testing Library) com **gate de cobertura** em dois níveis (catraca global + limiares altos por camada) e pipeline de **GitHub Actions** para frontend e backend.
 - **Sistema de Backup Resiliente:** Importação e exportação de todas as entidades relacionais via CSV com allowlist de colunas e integridade referencial.
 - **RBAC (Role-Based Access Control):** Controle estrito de acesso entre perfis Operador e Administrador, validado no backend via JSON Web Token (JWT).
 
@@ -48,7 +51,7 @@ O sistema provê o controle ponta-a-ponta do fluxo operacional e estratégico:
 
 ## 📊 Módulo de Data Analytics & BI Prático
 
-Diferente de dashboards genéricos com métricas estáticas ou jargões complexos de ciência de dados, o Wash Wizard organiza o painel gerencial em **4 pilares práticos de decisão**:
+Diferente de dashboards genéricos com métricas estáticas ou jargões complexos de ciência de dados, o Wash Wizard separa a **visão operacional** do dia (Dashboard em `/`, perfis admin e operador) da **inteligência do negócio** (página **Análise & Relatórios** em `/analise`, restrita ao admin). O BI organiza o painel gerencial em **4 pilares práticos de decisão**:
 
 1. **Saúde Financeira da Operação:**
    - Faturamento semanal líquido de atendimentos finalizados.
@@ -121,7 +124,10 @@ Nas iterações iniciais, o cálculo de métricas era realizado no navegador do 
 
 ### Decisões Arquiteturais Complementares:
 - **Code-Splitting & Lazy Loading:** Roteamento com `React.lazy()` e `Suspense`, garantindo que o bundle inicial do frontend carregue em frações de segundo.
-- **Acessibilidade Gráfica (A11y):** Gráficos Recharts renderizados com a paleta de cores Okabe-Ito (inclusiva para daltônicos) e espelhamento em tabelas semânticas ocultas (`ChartDataTable`) para leitores de tela.
+- **Cadastros via Modais (Contexto Global):** os fluxos de *Nova Lavagem* e *Novo Cliente* abrem em `Dialog` acessíveis gerenciados pelo `ModalProvider`, reutilizados de qualquer tela sem duplicação de UI.
+- **Acessibilidade Completa (WCAG 2.1 AA):** tema claro/escuro com contraste verificado, paleta Okabe-Ito (daltônicos), *skip-link* para o conteúdo, gaveta de navegação operável apenas por teclado (foco, `Esc` e retorno de foco) e gráficos Recharts espelhados em tabelas semânticas (`ChartDataTable`) para leitores de tela.
+- **Testes Automatizados com Gate de Cobertura:** suíte Vitest + React Testing Library com relatório `v8` e limiares em dois níveis — uma **catraca global** que reconhece a média das páginas (ainda baixa) e **limiares altos (≥90%)** por camada crítica (`src/utils`, `src/services`, `AuthContext`, `ErrorBoundary`). Queda de cobertura falha o pipeline.
+- **Pipeline CI (GitHub Actions):** o job de frontend roda *lint*, suíte com cobertura e build de produção; o job de backend roda testes de integração (Vitest + Supertest sobre o Express real com SQLite descartável), `npm audit` e *healthcheck* de boot.
 - **Roteamento Protegido:** Validação de sessão ativa via JWT tanto no cliente quanto em cada camada de middleware do servidor.
 
 ---
@@ -132,14 +138,20 @@ Nas iterações iniciais, o cálculo de métricas era realizado no navegador do 
 - **React 18** (TypeScript, Componentização e Hooks Avançados)
 - **Vite** (Build Tool de alta performance e HMR ultrarrápido)
 - **Tailwind CSS** & **shadcn/ui** (Design System modular e estilização utility-first)
+- **Radix UI** (primitivos acessíveis de `Dialog`/overlay usados nos modais de cadastro)
 - **Recharts** (Visualização Gráfica de Dados com paleta Okabe-Ito e A11y)
 - **Lucide React** (Iconografia semântica e consistente)
+- **Vitest + React Testing Library** (suíte de testes com 91 casos e gate de cobertura `v8`)
 
 ### Backend
 - **Node.js, Express** (Servidor HTTP RESTful, Middlewares de Autenticação e Roteamento)
 - **SQLite3 (Queries Analíticas com CTEs)** (Motor de Banco de Dados Relacional Embutido com alta performance local)
 - **JSON Web Token (JWT) & bcryptjs** (Autenticação Stateless, RBAC e Criptografia segura)
 - **Multer & CSV-Parse** (Processamento e ETL de arquivos de backup com validação de cabeçalhos)
+
+### Qualidade e CI
+- **Frontend (job `frontend` do `ci.yml`):** `lint` (ESLint), `test:coverage` (suíte + gate) e `build` — o merge falha se a cobertura cair abaixo dos limiares de `frontend/vitest.config.ts`.
+- **Backend (job `backend`):** testes de integração do app Express real com SQLite descartável, auditoria de dependências (`npm audit --audit-level=high`) e validação de boot com credenciais inválidas (*healthcheck*).
 
 ---
 
@@ -149,10 +161,14 @@ Nas iterações iniciais, o cálculo de métricas era realizado no navegador do 
 wash-wizard/
 ├── frontend/               # Single Page Application (Client-Side)
 │   ├── src/
-│   │   ├── components/     # UI components (shadcn) e visuais
+│   │   ├── components/     # UI components (shadcn/ui), modais acessíveis e visuais
+│   │   ├── contexts/       # Contextos globais (Auth, App/dados, Modais de cadastro)
+│   │   ├── hooks/          # Hooks reutilizáveis (máscaras, tema, estatísticas)
 │   │   ├── pages/          # Rotas principais (Lazy loaded)
-│   │   └── services/       # Módulos de conexão com a API
+│   │   ├── services/       # Módulos de conexão com a API
+│   │   └── test/           # Suíte automatizada (Vitest + Testing Library)
 │   ├── vite.config.ts      # Configurações do empacotador
+│   ├── vitest.config.ts    # Configuração de testes e gate de cobertura (catraca + por camada)
 │   └── package.json        
 ├── backend/                # RESTful API (Server-Side)
 │   ├── server.js           # Ponto de entrada, Middlewares e Rotas
@@ -160,10 +176,13 @@ wash-wizard/
 │   ├── config.js           # Segredo JWT e configurações de auth
 │   ├── middleware/auth.js  # requireAuth / requireAdmin
 │   ├── schema.sql          # DDL e Constraints (versionado no repo — ver nota abaixo)
+│   ├── test/               # Testes de integração (Vitest + Supertest)
 │   └── package.json        
 ├── backups/                # Diretório automatizado para exports CSV
 ├── docs.html               # Documentação interativa
 ├── ROADMAP.md              # Planejamento da próxima fase (Data Science / Analytics)
+├── SECURITY.md             # Matriz de RBAC, autenticação e proteções da API
+├── .github/workflows/ci.yml # CI: lint + cobertura + build (frontend); testes + boot (backend)
 ├── package.json            # Orquestrador Root (Scripts concurrently)
 └── wash_wizard.db          # Arquivo do Banco de Dados Relacional (gerado localmente, não versionado)
 ```
@@ -213,6 +232,14 @@ npm run dev
 - **Web App:** `http://localhost:8080`
 - **Backend API:** `http://localhost:3001/api`
 
+### Testes Automatizados (Frontend)
+
+```bash
+cd frontend
+npm test                # executa a suíte de testes (91 casos)
+npm run test:coverage   # suíte + relatório de cobertura e gate (limiares no vitest.config.ts)
+```
+
 ---
 
 ## 🗄️ Gerenciamento de Banco de Dados e Backups
@@ -234,7 +261,7 @@ A autenticação e a autorização são reforçadas pelo **backend**, não apena
 - **RBAC (Role-Based Access Control):** aplicado tanto no roteamento do frontend quanto em cada endpoint do backend (`requireAdmin`), então um usuário `operador` não contorna a restrição chamando a API diretamente.
   - **Público:** `/login`
   - **Operador:** Acesso à gestão de Clientes, Veículos, Lavagens e Dashboard `(/)`
-  - **Admin:** Acesso adicional a Tipos de Lavagem, Estoque, Movimentações, Usuários e Configurações (Sistema de Backup)
+  - **Admin:** Acesso adicional a Tipos de Lavagem, Estoque, Novo Produto, Movimentações, **Análise & Relatórios**, Usuários e Configurações (Sistema de Backup)
 - **CORS restrito:** o backend só aceita requisições da origem definida em `FRONTEND_URL`.
 - **Outras proteções:** allowlist de colunas no import de CSV (previne SQL Injection via cabeçalho malicioso), transações atômicas nas movimentações de estoque, e mensagens de erro genéricas ao cliente (o detalhe real do SQLite fica só no log do servidor).
 
@@ -246,9 +273,16 @@ Detalhes completos, incluindo a matriz de permissões por rota, estão em [`SECU
 
 ---
 
-## 🧭 Próximos Passos
+## 🧭 Situação Atual e Próximos Passos
 
-A próxima fase do projeto foca em **Data Science e Analytics Avançado** sobre o histórico já registrado (lavagens, clientes, estoque): pipelines de ETL para um datamart analítico (Parquet/DuckDB), métricas como churn, LTV e tempo médio de atendimento, e modelos preditivos de demanda, gestão de estoque e segmentação de clientes (RFM).
+**Fase recente entregue (UX, Acessibilidade e Qualidade):**
+- Interface reformulada com contraste WCAG AA e suporte completo a temas claro e escuro.
+- Cadastros de lavagem e cliente em **modais acessíveis** e página própria de **Análise & Relatórios** (`/analise`), separada do Dashboard.
+- Suíte automatizada de **91 testes** com **gate de cobertura** em dois níveis e pipeline de CI em GitHub Actions (as capturas de tela das novas telas serão adicionadas em breve).
+
+**Próximos passos:**
+1. **Cobertura de testes das páginas:** elevar a catraca global de cobertura rumo a **60–70%**, com testes de componente para Dashboard, Análise & Relatórios e fluxos de lavagem.
+2. **Data Science e Analytics Avançado** sobre o histórico já registrado (lavagens, clientes, estoque): pipelines de ETL para um datamart analítico (Parquet/DuckDB), métricas como churn, LTV e tempo médio de atendimento, e modelos preditivos de demanda, gestão de estoque e segmentação de clientes (RFM).
 
 Plano detalhado, com sequenciamento e dependências técnicas sugeridas, em [`ROADMAP.md`](./ROADMAP.md).
 
