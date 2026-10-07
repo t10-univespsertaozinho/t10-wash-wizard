@@ -3,44 +3,39 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { NavLink } from '@/components/NavLink';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ModalProvider, useModal } from '@/contexts/ModalContext';
 import { useEffect, useRef, useState } from 'react';
 import {
-  LayoutDashboard, Droplets, List, Tags, Users, UserPlus,
+  LayoutDashboard, Droplets, Tags, Users,
   Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings, Car,
   AlertTriangle, RefreshCw, BarChart3
 } from 'lucide-react';
 
 const navItemsAdmin = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/analise', label: 'Análise & Relatórios', icon: BarChart3 },
-  { to: '/nova-lavagem', label: 'Nova Lavagem', icon: Plus },
   { to: '/lavagens', label: 'Lavagens', icon: Droplets },
-  { to: '/tipos-lavagem', label: 'Tipos de Lavagem', icon: Tags },
   { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
   { to: '/veiculos', label: 'Veículos', icon: Car },
+  { to: '/tipos-lavagem', label: 'Tipos de Lavagem', icon: Tags },
   { to: '/estoque', label: 'Estoque', icon: Package },
   { to: '/movimentacao', label: 'Movimentação', icon: ArrowLeftRight },
+  { to: '/analise', label: 'Análise & Relatórios', icon: BarChart3 },
   { to: '/configuracoes', label: 'Configurações', icon: Settings },
 ];
 
 const navItemsUser = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/nova-lavagem', label: 'Nova Lavagem', icon: Plus },
   { to: '/lavagens', label: 'Lavagens', icon: Droplets },
   { to: '/clientes', label: 'Clientes', icon: Users },
-  { to: '/novo-cliente', label: 'Novo Cliente', icon: UserPlus },
   { to: '/veiculos', label: 'Veículos', icon: Car },
 ];
 
 const pageTitle: Record<string, string> = {
   '/': 'Dashboard',
   '/analise': 'Análise & Relatórios',
-  '/nova-lavagem': 'Nova Lavagem',
   '/lavagens': 'Lavagens',
   '/tipos-lavagem': 'Tipos de Lavagem',
   '/clientes': 'Clientes',
-  '/novo-cliente': 'Novo Cliente',
   '/veiculos': 'Veículos',
   '/estoque': 'Estoque',
   '/movimentacao': 'Movimentação',
@@ -51,6 +46,7 @@ const pageTitle: Record<string, string> = {
 export default function AppLayout() {
   const { isAuthenticated, user, logout } = useAuth();
   const { erroCarregamento, refreshData } = useApp();
+  const { openNovaLavagem } = useModal();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -94,6 +90,7 @@ export default function AppLayout() {
   const title = pageTitle[location.pathname] || 'T10 Gestão';
 
   return (
+    <ModalProvider>
     <div className="min-h-screen flex bg-background">
       {/* WCAG 2.4.1 - Skip Link: visível apenas ao receber foco via Tab */}
       <a
@@ -199,15 +196,15 @@ export default function AppLayout() {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <ThemeToggle />
-            <NavLink
-              to="/nova-lavagem"
-              end
+            <button
+              type="button"
+              onClick={openNovaLavagem}
               aria-label="Nova Lavagem"
               className="bg-primary text-primary-foreground text-base font-semibold h-11 px-4 sm:px-5 rounded-lg hover:brightness-110 transition-all flex items-center gap-1.5"
             >
               <Plus size={18} aria-hidden="true" />
               <span className="hidden sm:inline">Nova Lavagem</span>
-            </NavLink>
+            </button>
           </div>
         </header>
         <main id="main-content" tabIndex={-1} className="flex-1 p-6 lg:p-8 overflow-y-auto focus:outline-none">
@@ -239,5 +236,6 @@ export default function AppLayout() {
         </main>
       </div>
     </div>
+    </ModalProvider>
   );
 }

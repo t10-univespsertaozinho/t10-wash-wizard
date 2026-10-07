@@ -16,12 +16,10 @@ const Login = lazy(() => import("@/pages/Login"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const Analise = lazy(() => import("@/pages/Analise"));
 const Clientes = lazy(() => import("@/pages/Clientes"));
-const NovoCliente = lazy(() => import("@/pages/NovoCliente"));
 const ClienteDetalhe = lazy(() => import("@/pages/ClienteDetalhe"));
 const EditarCliente = lazy(() => import("@/pages/EditarCliente"));
 const Veiculos = lazy(() => import("@/pages/Veiculos"));
 const Lavagens = lazy(() => import("@/pages/Lavagens"));
-const NovaLavagem = lazy(() => import("@/pages/NovaLavagem"));
 const TiposLavagem = lazy(() => import("@/pages/TiposLavagem"));
 const Estoque = lazy(() => import("@/pages/Estoque"));
 const NovoProduto = lazy(() => import("@/pages/NovoProduto"));
@@ -95,12 +93,10 @@ const App = () => (
                       <Route element={<AppLayout />}>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/clientes" element={<Clientes />} />
-                        <Route path="/novo-cliente" element={<NovoCliente />} />
                         <Route path="/clientes/:id" element={<ClienteDetalhe />} />
                         <Route path="/clientes/:id/editar" element={<EditarCliente />} />
                         <Route path="/veiculos" element={<Veiculos />} />
                         <Route path="/lavagens" element={<Lavagens />} />
-                        <Route path="/nova-lavagem" element={<NovaLavagem />} />
                       </Route>
                     </Route>
 

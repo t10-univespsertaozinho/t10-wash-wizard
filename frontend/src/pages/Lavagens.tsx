@@ -1,9 +1,11 @@
 import { useApp } from '@/contexts/AppContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useState } from 'react';
-import { Check, X, Pencil, PlayCircle } from 'lucide-react';
+import { Check, X, Pencil, PlayCircle, Plus } from 'lucide-react';
 
 export default function Lavagens() {
   const { lavagens, getCliente, getTipoLavagem, veiculos, updateLavagemStatus } = useApp();
+  const { openNovaLavagem } = useModal();
   const [filtro, setFiltro] = useState('todos');
 
   const filtered = filtro === 'todos' ? lavagens : lavagens.filter(l => l.status === filtro);
@@ -25,17 +27,26 @@ export default function Lavagens() {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap" role="group" aria-label="Filtrar lavagens por status">
-        {filters.map(f => (
-          <button
-            key={f.key}
-            type="button"
-            onClick={() => setFiltro(f.key)}
-            aria-pressed={filtro === f.key}
-            className={`text-sm px-4 py-2 rounded-full font-semibold transition-colors ${filtro === f.key ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
-            {f.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2 flex-wrap" role="group" aria-label="Filtrar lavagens por status">
+          {filters.map(f => (
+            <button
+              key={f.key}
+              type="button"
+              onClick={() => setFiltro(f.key)}
+              aria-pressed={filtro === f.key}
+              className={`text-sm px-4 py-2 rounded-full font-semibold transition-colors ${filtro === f.key ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={openNovaLavagem}
+          className="bg-primary text-primary-foreground font-bold h-12 px-5 rounded-lg hover:brightness-110 transition-all flex items-center gap-2 text-base"
+        >
+          <Plus size={18} /> Nova Lavagem
+        </button>
       </div>
       <div
         className="bg-card rounded-xl border border-border overflow-x-auto"

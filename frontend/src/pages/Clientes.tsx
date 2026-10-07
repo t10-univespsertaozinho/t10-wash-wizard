@@ -1,14 +1,16 @@
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { toast } from 'sonner';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Eye, Pencil, Trash2 } from 'lucide-react';
+import { Search, Eye, Pencil, Trash2, Plus } from 'lucide-react';
 import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 
 export default function Clientes() {
   const { clientes, veiculos, lavagens, deleteCliente } = useApp();
   const { user } = useAuth();
+  const { openNovoCliente } = useModal();
   const podeExcluir = user?.role === 'admin';
 
   // Sem o try/catch a recusa do backend virava rejeição não tratada e o cliente
@@ -30,10 +32,19 @@ export default function Clientes() {
 
   return (
     <div className="space-y-4">
-      <div className="relative max-w-md">
-        <label htmlFor="clientes-busca" className="sr-only">Buscar clientes por nome ou telefone</label>
-        <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-foreground" />
-        <input id="clientes-busca" type="search" className="input-t10 pl-9" placeholder="Buscar por nome ou telefone..." value={busca} onChange={e => setBusca(e.target.value)} />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="relative max-w-md w-full">
+          <label htmlFor="clientes-busca" className="sr-only">Buscar clientes por nome ou telefone</label>
+          <Search size={16} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary-foreground" />
+          <input id="clientes-busca" type="search" className="input-t10 pl-9" placeholder="Buscar por nome ou telefone..." value={busca} onChange={e => setBusca(e.target.value)} />
+        </div>
+        <button
+          type="button"
+          onClick={openNovoCliente}
+          className="bg-primary text-primary-foreground font-bold h-12 text-base px-5 rounded-lg hover:brightness-110 transition-all flex items-center gap-2"
+        >
+          <Plus size={18} /> Novo Cliente
+        </button>
       </div>
       <div
         className="bg-card rounded-xl border border-border overflow-x-auto"
