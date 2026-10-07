@@ -15,7 +15,15 @@ export default function Movimentacao() {
     if (!produtoId || !quantidade) return;
 
     const produto = produtos.find(p => p.id === produtoId);
-    const qtd = parseInt(quantidade);
+
+    // `parseInt` truncava silenciosamente: "1.5" virava 1, "0.8" virava 0 (saída
+    // fantasma) e "abc" virava NaN, que seguia até o backend. O estoque é REAL no
+    // schema, então a quantidade decimal é válida — o que falta é validá-la (FA-13).
+    const qtd = Number(quantidade.replace(',', '.'));
+    if (!Number.isFinite(qtd) || qtd <= 0) {
+      toast.error('Informe uma quantidade numérica maior que zero (use ponto ou vírgula para decimais).');
+      return;
+    }
 
     if (tipo === 'saida' && produto && qtd > produto.quantidade) {
       toast.error(`Estoque insuficiente. Disponível: ${produto.quantidade} ${produto.unidade}`);
@@ -114,7 +122,7 @@ export default function Movimentacao() {
 
         <div>
           <label htmlFor="movimentacao-quantidade" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Quantidade</label>
-          <input id="movimentacao-quantidade" className="input-t10" type="number" min="1" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />
+          <input id="movimentacao-quantidade" className="input-t10" type="number" min="0" step="any" inputMode="decimal" value={quantidade} onChange={e => setQuantidade(e.target.value)} required />
         </div>
 
         <button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm disabled:opacity-50 disabled:cursor-not-allowed">
