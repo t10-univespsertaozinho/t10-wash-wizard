@@ -30,8 +30,19 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Testes (vitest)
-        run: npm run test
+      - name: Testes com cobertura (vitest)
+        # O job falha se a cobertura cair abaixo dos limiares de
+        # frontend/vitest.config.ts — global e por diretório (FA-19).
+        run: npm run test:coverage
+
+      - name: Publicar relatório de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-frontend
+          path: frontend/coverage
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Build de produção
         run: npm run build
@@ -58,6 +69,12 @@ jobs:
 
       - name: Audit de dependências
         run: npm audit --audit-level=high
+
+      - name: Testes de integração (vitest + supertest)
+        # Sobe o app Express real contra um SQLite descartável e cobre as
+        # regressões de segurança da auditoria: RBAC das rotas destrutivas,
+        # posse de data_conclusao, trilha de auditoria e validação do CSV.
+        run: npm test
 
       - name: Subir o servidor e validar boot
         run: |
