@@ -31,7 +31,7 @@ export default function TiposLavagem() {
           <label htmlFor="tipo-preco" className="block text-base font-semibold text-foreground mb-1.5">Preço (R$)</label>
           <input id="tipo-preco" className="input-t10" type="number" step="0.01" value={preco} onChange={e => setPreco(e.target.value)} placeholder="0.00" required />
         </div>
-        <button type="submit" className="w-full bg-primary text-primary-foreground font-bold h-12 rounded-lg hover:brightness-110 transition-all text-base">Cadastrar</button>
+        <button type="submit" className="w-full bg-amber-400 hover:bg-amber-500 text-slate-950 h-12 px-5 text-base font-bold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">Cadastrar</button>
       </form>
 
       <div

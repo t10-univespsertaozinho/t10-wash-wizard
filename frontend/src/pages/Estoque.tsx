@@ -18,7 +18,7 @@ export default function Estoque() {
         <Link to="/movimentacao" className="flex items-center gap-1.5 text-base font-bold h-12 px-6 rounded-lg bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
           <ArrowLeftRight size={18} /> Movimentação
         </Link>
-        <Link to="/novo-produto" className="flex items-center gap-1.5 text-base font-bold h-12 px-6 rounded-lg bg-primary text-primary-foreground hover:brightness-110 transition-all">
+        <Link to="/novo-produto" className="flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-slate-950 h-12 px-5 text-base font-bold rounded-xl shadow-sm transition-all">
           <Plus size={18} /> Novo Produto
         </Link>
       </div>

@@ -3,11 +3,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { NavLink } from '@/components/NavLink';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useModal } from '@/contexts/ModalContext';
 import { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, Droplets, Tags, Users,
-  Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings, Car,
+  Package, ArrowLeftRight, LogOut, Menu, X, Settings, Car,
   AlertTriangle, RefreshCw, BarChart3
 } from 'lucide-react';
 
@@ -46,7 +45,6 @@ const pageTitle: Record<string, string> = {
 export default function AppLayout() {
   const { isAuthenticated, user, logout } = useAuth();
   const { erroCarregamento, refreshData } = useApp();
-  const { openNovaLavagem } = useModal();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -88,8 +86,6 @@ export default function AppLayout() {
 
   const navItems = user?.role === 'admin' ? navItemsAdmin : navItemsUser;
   const title = pageTitle[location.pathname] || 'T10 Gestão';
-  const esconderNovaLavagem =
-    location.pathname === '/analise' || location.pathname === '/configuracoes';
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -197,17 +193,6 @@ export default function AppLayout() {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <ThemeToggle />
-            {!esconderNovaLavagem && (
-              <button
-                type="button"
-                onClick={openNovaLavagem}
-                aria-label="Nova Lavagem"
-                className="bg-primary text-primary-foreground text-base font-semibold h-11 px-4 sm:px-5 rounded-lg hover:brightness-110 transition-all flex items-center gap-1.5"
-              >
-                <Plus size={18} aria-hidden="true" />
-                <span className="hidden sm:inline">Nova Lavagem</span>
-              </button>
-            )}
           </div>
         </header>
         <main id="main-content" tabIndex={-1} className="flex-1 p-6 lg:p-8 overflow-y-auto focus:outline-none">

@@ -19,9 +19,11 @@ import {
   RefreshCw,
   Car,
   ChevronRight,
+  Plus,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useModal } from '@/contexts/ModalContext';
 import { ResponsiveContainer, Bar, Line, ComposedChart, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import {
   ChartDataTable,
@@ -39,6 +41,7 @@ const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { openNovaLavagem } = useModal();
   const {
     lavagens,
     getCliente,
@@ -110,6 +113,13 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={openNovaLavagem}
+            className="bg-amber-400 hover:bg-amber-500 text-slate-950 h-12 px-5 text-base font-bold rounded-xl shadow-sm transition-all flex items-center gap-2"
+          >
+            <Plus size={18} /> Nova Lavagem
+          </button>
           <button
             onClick={() => carregarDadosAnaliticos(true)}
             disabled={refreshing}

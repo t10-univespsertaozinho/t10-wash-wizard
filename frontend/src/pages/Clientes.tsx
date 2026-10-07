@@ -41,7 +41,7 @@ export default function Clientes() {
         <button
           type="button"
           onClick={openNovoCliente}
-          className="bg-primary text-primary-foreground font-bold h-12 text-base px-5 rounded-lg hover:brightness-110 transition-all flex items-center gap-2"
+          className="bg-amber-400 hover:bg-amber-500 text-slate-950 h-12 px-5 text-base font-bold rounded-xl shadow-sm transition-all flex items-center gap-2"
         >
           <Plus size={18} /> Novo Cliente
         </button>
