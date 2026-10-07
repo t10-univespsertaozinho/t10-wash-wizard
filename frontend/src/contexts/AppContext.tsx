@@ -14,6 +14,8 @@ interface AppState {
 
 interface AppContextType extends AppState {
   loading: boolean;
+  /** Mensagem da última falha de carregamento, ou null quando a carga foi completa. */
+  erroCarregamento: string | null;
   produtosBaixoEstoque: Produto[];
   getCliente: (id: string) => Cliente | undefined;
   getVeiculosCliente: (clienteId: string) => Veiculo[];
@@ -46,6 +48,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [erroCarregamento, setErroCarregamento] = useState<string | null>(null);
   
   const [state, setState] = useState<AppState>({
     clientes: [],
@@ -66,6 +69,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
 
     setLoading(true);
+    setErroCarregamento(null);
     try {
       const db = getDatabase();
       const [
@@ -93,7 +97,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         movimentacoes
       });
     } catch (e) {
+      // O Promise.all falha inteiro se um dos endpoints cair, então nenhuma
+      // lista é atualizada. Antes isso só ia para o console e a UI exibia os
+      // dados antigos (ou listas vazias) como se fossem atuais; agora a falha
+      // fica registrada no estado para a UI poder avisar (FA-12).
       console.error('Erro ao carregar do backend:', e);
+      setErroCarregamento(
+        e instanceof Error
+          ? `Não foi possível carregar os dados do servidor: ${e.message}`
+          : 'Não foi possível carregar os dados do servidor.'
+      );
     } finally {
       setLoading(false);
     }
@@ -247,6 +260,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider value={{
       ...state,
       loading,
+      erroCarregamento,
       produtosBaixoEstoque,
       getCliente,
       getVeiculosCliente,

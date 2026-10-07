@@ -90,9 +90,13 @@ CREATE INDEX IF NOT EXISTS idx_movimentacoes_produto_id ON movimentacoes(produto
 -- Trilha de auditoria append-only para alterações financeiras em lavagens.
 -- Registra quem mudou valor/pagamento/status, quando, e qual era o valor
 -- anterior — sem isso uma alteração retroativa de valor é invisível no BI.
+-- Trilha de auditoria. `lavagem_id` deliberadamente NÃO tem FK para lavagens:
+-- com ON DELETE CASCADE a prova da exclusão era apagada junto com a lavagem
+-- excluída, que é exatamente o evento mais importante de registrar (FA-03/FA-04).
+-- A linha de auditoria sobrevive como registro histórico órfão por desenho.
 CREATE TABLE IF NOT EXISTS auditoria_lavagens (
   id TEXT PRIMARY KEY,
-  lavagem_id TEXT NOT NULL REFERENCES lavagens(id) ON DELETE CASCADE,
+  lavagem_id TEXT NOT NULL,
   user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   campo TEXT NOT NULL,
   valor_anterior TEXT,

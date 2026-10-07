@@ -1,11 +1,24 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { Car, Plus, Trash2, Search } from 'lucide-react';
 import { usePlacaMask } from '@/hooks/usePlacaMask';
 import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 
 export default function Veiculos() {
   const { veiculos, clientes, addVeiculo, deleteVeiculo } = useApp();
+  const { user } = useAuth();
+  const podeExcluir = user?.role === 'admin';
+
+  const handleDeleteVeiculo = async (id: string, placaVeiculo: string) => {
+    try {
+      await deleteVeiculo(id);
+      toast.success(`Veículo ${placaVeiculo} excluído.`);
+    } catch (err) {
+      toast.error(`Não foi possível excluir o veículo: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
+    }
+  };
   const [showForm, setShowForm] = useState(false);
   const [clienteId, setClienteId] = useState('');
   const [modelo, setModelo] = useState('');
@@ -112,14 +125,16 @@ export default function Veiculos() {
                     <td className="py-2 px-3 font-mono text-primary text-xs">{v.placa}</td>
                     <td className="py-2 px-3 text-muted-foreground">{v.cor}</td>
                     <td className="py-2 px-3 text-right">
-                      <ConfirmDialogButton
-                        title="Excluir Veículo"
-                        ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
-                        description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
-                        onConfirm={() => deleteVeiculo(v.id)}
-                        icon={<Trash2 size={14} />}
-                        variant="ghost"
-                      />
+                      {podeExcluir && (
+                        <ConfirmDialogButton
+                          title="Excluir Veículo"
+                          ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
+                          description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
+                          onConfirm={() => handleDeleteVeiculo(v.id, v.placa)}
+                          icon={<Trash2 size={14} />}
+                          variant="ghost"
+                        />
+                      )}
                     </td>
                   </tr>
                 );

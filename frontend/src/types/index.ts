@@ -129,4 +129,21 @@ export interface DashboardStats {
     dias_restantes: number | null;
     status_previsao: 'zerado' | 'urgente' | 'atencao' | 'moderado' | 'repor';
   }>;
+  pagamentos: Array<{
+    forma_pagamento: string;
+    lavagens: number;
+    receita: number;
+    pct_receita: number;
+  }>;
+  desempenho_operadores: Array<{
+    id: string;
+    nome: string;
+    total_lavagens: number;
+    receita: number;
+    ticket_medio: number;
+  }>;
+  tempo_atendimento: {
+    total_finalizadas: number;
+    tempo_medio_min: number;
+  };
 }

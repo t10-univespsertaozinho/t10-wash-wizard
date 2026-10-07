@@ -50,3 +50,52 @@ export const JWT_SECRET = (() => {
 
 export const JWT_EXPIRES_IN = '8h';
 export const JWT_ALGORITHM = 'HS256';
+
+// ==========================================
+// SENHAS DE BOOTSTRAP (FA-17)
+// ==========================================
+// As senhas padrão estão no README e no .env.example, ou seja, são públicas.
+// Uma instalação que nunca configurou o .env fica com credenciais de admin
+// conhecidas por qualquer pessoa — e nada no boot avisava sobre isso.
+const SENHAS_SEED_PADRAO = {
+  SEED_ADMIN_PASSWORD: 'admin123',
+  SEED_OPERADOR_PASSWORD: 'operador123',
+};
+
+function resolverSenhaSeed(variavel) {
+  const padrao = SENHAS_SEED_PADRAO[variavel];
+  const doAmbiente = process.env[variavel];
+
+  if (doAmbiente && doAmbiente !== padrao) return doAmbiente;
+
+  // Em produção é fatal pelo mesmo critério do JWT_SECRET: é melhor não subir
+  // do que subir com uma senha de administrador publicada na documentação.
+  if (isProd) {
+    throw new Error(
+      `${variavel} ${doAmbiente ? 'ainda é a senha padrão da documentação' : 'não está definida'}. ` +
+      `Defina uma senha própria em backend/.env antes de iniciar em produção.`
+    );
+  }
+
+  return padrao;
+}
+
+export const SEED_ADMIN_PASSWORD = resolverSenhaSeed('SEED_ADMIN_PASSWORD');
+export const SEED_OPERADOR_PASSWORD = resolverSenhaSeed('SEED_OPERADOR_PASSWORD');
+
+// O aviso sai no boot do servidor e no seed, uma vez por processo, listando
+// exatamente quais credenciais continuam públicas.
+export function avisarSenhasSeedPadrao() {
+  const padrao = Object.entries(SENHAS_SEED_PADRAO)
+    .filter(([variavel, valor]) => (process.env[variavel] || valor) === valor)
+    .map(([variavel]) => variavel);
+
+  if (padrao.length === 0 || isProd) return;
+
+  console.warn(
+    `AVISO (desenvolvimento): ${padrao.join(' e ')} ainda usa(m) a senha padrão da ` +
+    'documentação (admin123/operador123). Qualquer pessoa com acesso à rede pode ' +
+    'entrar como administrador. Defina senhas próprias em backend/.env e rode ' +
+    '`npm run seed` novamente antes de usar o sistema em campo.'
+  );
+}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { useApp } from '@/contexts/AppContext';
 
 export default function NovaLavagem() {
@@ -13,6 +14,7 @@ export default function NovaLavagem() {
   const [pagamento, setPagamento] = useState('Dinheiro');
   const [obs, setObs] = useState('');
   const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
 
   const veiculosCliente = clienteId ? getVeiculosCliente(clienteId) : [];
 
@@ -22,7 +24,7 @@ export default function NovaLavagem() {
     if (t) setValor(t.preco.toFixed(2));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
     if (!clienteId || !veiculoId || !tipoId) return;
@@ -33,16 +35,30 @@ export default function NovaLavagem() {
       return;
     }
 
-    addLavagem({
-      cliente_id: clienteId,
-      veiculo_id: veiculoId,
-      tipo_lavagem_id: tipoId,
-      status: 'pendente',
-      pagamento,
-      valor: valorNum,
-      observacao: obs,
-    });
-    navigate('/lavagens');
+    // O `navigate` só acontece depois de o backend confirmar a gravação. Antes
+    // ele era disparado junto com a chamada: se a API falhasse, o usuário era
+    // levado para a listagem acreditando ter registrado a lavagem, e o erro
+    // ficava só no console como rejeição não tratada (FA-07).
+    setSalvando(true);
+    try {
+      await addLavagem({
+        cliente_id: clienteId,
+        veiculo_id: veiculoId,
+        tipo_lavagem_id: tipoId,
+        status: 'pendente',
+        pagamento,
+        valor: valorNum,
+        observacao: obs,
+      });
+      toast.success('Lavagem registrada com sucesso.');
+      navigate('/lavagens');
+    } catch (err) {
+      const mensagem = err instanceof Error ? err.message : 'Erro desconhecido ao salvar a lavagem.';
+      setErro(`Não foi possível registrar a lavagem: ${mensagem}`);
+      toast.error(`Não foi possível registrar a lavagem: ${mensagem}`);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   return (
@@ -91,8 +107,8 @@ export default function NovaLavagem() {
           <label htmlFor="lavagem-obs" className="block text-xs uppercase tracking-widest text-muted-foreground mb-1.5 font-semibold">Observações</label>
           <textarea id="lavagem-obs" className="input-t10 min-h-[80px] resize-y" value={obs} onChange={e => setObs(e.target.value)} placeholder="Opcional..." />
         </div>
-        <button type="submit" className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm">
-          Registrar Lavagem
+        <button type="submit" disabled={salvando} className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:brightness-110 transition-all text-sm disabled:opacity-50">
+          {salvando ? 'Registrando...' : 'Registrar Lavagem'}
         </button>
       </form>
     </div>

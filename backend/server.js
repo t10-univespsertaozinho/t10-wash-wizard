@@ -10,9 +10,9 @@ import { stringify } from 'csv-stringify/sync';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db, { get, all, run, exec } from './db.js';
-import { JWT_SECRET, JWT_EXPIRES_IN, JWT_ALGORITHM } from './config.js';
-import { requireAuth, requireAdmin } from './middleware/auth.js';
+import db, { dbReady, get, all, run, exec } from './db.js';
+import { JWT_SECRET, JWT_EXPIRES_IN, JWT_ALGORITHM, avisarSenhasSeedPadrao } from './config.js';
+import { requireAuth, requireAdmin, ehAdmin } from './middleware/auth.js';
 
 dotenv.config();
 
@@ -24,7 +24,11 @@ const localOriginRegex = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
 
 // Tabelas e colunas usadas pelas rotas de backup. Declaradas aqui no topo
 // porque o fileFilter do multer precisa da allowlist de tabelas.
-const tables = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'lavagens', 'produtos', 'movimentacoes'];
+// auditoria_lavagens entra na lista de propósito: ela é uma tabela de dados
+// como as demais, e ficar fora quebrava dois controles ao mesmo tempo — o
+// reset a deixava viva com registros de lavagens apagadas, e o export a
+// deixava de fora, perdendo a trilha de auditoria a cada restore.
+const tables = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'lavagens', 'produtos', 'movimentacoes', 'auditoria_lavagens'];
 
 // Erro de origem bloqueada, com status próprio para o error handler devolver
 // 403 limpo em vez de cair no handler default do Express (que responderia 500
@@ -385,8 +389,14 @@ app.put('/api/clientes/:id', async (req, res) => {
   } catch (err) { responderErro(res, err); }
 });
 
-app.delete('/api/clientes/:id', async (req, res) => {
+app.delete('/api/clientes/:id', requireAdmin, async (req, res) => {
   try {
+    const existente = await get('SELECT id FROM clientes WHERE id = ?', [req.params.id]);
+    if (!existente) return res.status(404).json({ error: 'Cliente não encontrado' });
+
+    // O cascade do cliente derruba veículos, lavagens e histórico: audita tudo
+    // o que vai embora antes de executar o DELETE.
+    await auditarExclusaoLavagens(req.user.id, await lavagensEmCascata('cliente_id', req.params.id), 'exclusao_cliente');
     await run('DELETE FROM clientes WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) { handleServerError(res, err); }
@@ -427,8 +437,12 @@ app.post('/api/veiculos', async (req, res) => {
   } catch (err) { responderErro(res, err); }
 });
 
-app.delete('/api/veiculos/:id', async (req, res) => {
+app.delete('/api/veiculos/:id', requireAdmin, async (req, res) => {
   try {
+    const existente = await get('SELECT id FROM veiculos WHERE id = ?', [req.params.id]);
+    if (!existente) return res.status(404).json({ error: 'Veículo não encontrado' });
+
+    await auditarExclusaoLavagens(req.user.id, await lavagensEmCascata('veiculo_id', req.params.id), 'exclusao_veiculo');
     await run('DELETE FROM veiculos WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) { handleServerError(res, err); }
@@ -505,6 +519,28 @@ app.delete('/api/tipos-lavagem/:id', requireAdmin, async (req, res) => {
 // ==========================================
 const STATUS_LAVAGEM = ['pendente', 'em_progresso', 'concluida', 'cancelada'];
 
+// Exclusão é a única alteração que apaga a métrica do BI sem deixar rastro no
+// próprio registro — então a trilha precisa ser gravada ANTES do DELETE, com um
+// retrato completo da linha em `valor_anterior`. A FK de auditoria_lavagens não
+// tem mais ON DELETE CASCADE (ver migração em db.js), portanto estas linhas
+// sobrevivem à remoção da lavagem e das entidades que a originaram (FA-03/FA-04).
+async function auditarExclusaoLavagens(userId, lavagemIds, origem) {
+  for (const lavagemId of lavagemIds) {
+    const lavagem = await get('SELECT * FROM lavagens WHERE id = ?', [lavagemId]);
+    if (!lavagem) continue;
+    await run(`INSERT INTO auditoria_lavagens (id, lavagem_id, user_id, campo, valor_anterior, valor_novo, data)
+               VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [genId(), lavagemId, userId, origem, JSON.stringify(lavagem), null, now()]);
+  }
+}
+
+// Lavagens atingidas em cascata (FK ON DELETE CASCADE) ao remover um cliente
+// ou um veículo. Precisam ser auditadas pelo mesmo motivo da exclusão direta.
+async function lavagensEmCascata(coluna, id) {
+  const rows = await all(`SELECT id FROM lavagens WHERE ${coluna} = ?`, [id]);
+  return rows.map(r => r.id);
+}
+
 app.get('/api/lavagens', async (req, res) => {
   try {
     const { cliente_id } = req.query;
@@ -527,6 +563,14 @@ app.post('/api/lavagens', async (req, res) => {
     if (!STATUS_LAVAGEM.includes(statusFinal)) {
       return res.status(400).json({ error: `Status inválido. Use um dos: ${STATUS_LAVAGEM.join(', ')}` });
     }
+    // Uma lavagem não pode nascer concluída: isso pularia o fluxo de pátio e
+    // injetaria receita no BI sem nenhuma transição auditável. Só o admin pode
+    // fazer esse lançamento retroativo (FA-02).
+    if (statusFinal === 'concluida' && !(await ehAdmin(req))) {
+      return res.status(403).json({
+        error: 'Apenas administradores podem registrar uma lavagem já concluída. Crie a lavagem como pendente e conclua pelo fluxo do pátio.',
+      });
+    }
     const valorNum = Number(valor);
     if (!Number.isFinite(valorNum) || valorNum < 0) {
       return res.status(400).json({ error: 'O valor da lavagem deve ser um número maior ou igual a zero.' });
@@ -546,7 +590,7 @@ app.post('/api/lavagens', async (req, res) => {
 
 app.put('/api/lavagens/:id', async (req, res) => {
   try {
-    const { status, valor, pagamento, observacao, data_conclusao } = req.body;
+    const { status, valor, pagamento, observacao } = req.body;
     if (status !== undefined && !STATUS_LAVAGEM.includes(status)) {
       return res.status(400).json({ error: `Status inválido. Use um dos: ${STATUS_LAVAGEM.join(', ')}` });
     }
@@ -561,6 +605,16 @@ app.put('/api/lavagens/:id', async (req, res) => {
     const anterior = await get('SELECT valor, pagamento, status FROM lavagens WHERE id = ?', [req.params.id]);
     if (!anterior) return res.status(404).json({ error: 'Lavagem não encontrada' });
 
+    // Campos financeiros mexem direto na receita e no ticket médio do BI. A
+    // auditoria registra a mudança, mas o registro não basta: a alteração em si
+    // passa a exigir perfil de admin (FA-05). Operador segue podendo avançar o
+    // status e anotar observações.
+    const mudaValor = valor !== undefined && Number(valor) !== Number(anterior.valor);
+    const mudaPagamento = pagamento !== undefined && limparTexto(pagamento, 40) !== anterior.pagamento;
+    if ((mudaValor || mudaPagamento) && !(await ehAdmin(req))) {
+      return res.status(403).json({ error: 'Apenas administradores podem alterar valor ou forma de pagamento da lavagem.' });
+    }
+
     const pagamentoLimpo = pagamento !== undefined ? limparTexto(pagamento, 40) : undefined;
     const observacaoLimpa = observacao !== undefined ? limparTexto(observacao, 500) : undefined;
 
@@ -571,11 +625,12 @@ app.put('/api/lavagens/:id', async (req, res) => {
     if (pagamento !== undefined) { updates.push('pagamento = ?'); params.push(pagamentoLimpo); }
     if (observacao !== undefined) { updates.push('observacao = ?'); params.push(observacaoLimpa); }
 
-    // data_conclusao é preenchida automaticamente ao concluir a lavagem, nunca recebida do cliente
-    if (status === 'concluida') {
+    // data_conclusao é propriedade exclusiva do servidor: só é gravada na
+    // transição para 'concluida'. Qualquer `data_conclusao` vinda do corpo da
+    // requisição é ignorada — aceitá-la permitia forjar a data e distorcer as
+    // métricas de fidelização e fluxo diário do BI (FA-01).
+    if (status === 'concluida' && anterior.status !== 'concluida') {
       updates.push('data_conclusao = ?'); params.push(now());
-    } else if (data_conclusao !== undefined) {
-      updates.push('data_conclusao = ?'); params.push(data_conclusao);
     }
 
     if (updates.length > 0) {
@@ -603,8 +658,12 @@ app.put('/api/lavagens/:id', async (req, res) => {
   } catch (err) { responderErro(res, err); }
 });
 
-app.delete('/api/lavagens/:id', async (req, res) => {
+app.delete('/api/lavagens/:id', requireAdmin, async (req, res) => {
   try {
+    const existente = await get('SELECT id FROM lavagens WHERE id = ?', [req.params.id]);
+    if (!existente) return res.status(404).json({ error: 'Lavagem não encontrada' });
+
+    await auditarExclusaoLavagens(req.user.id, [req.params.id], 'exclusao_lavagem');
     await run('DELETE FROM lavagens WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) { handleServerError(res, err); }
@@ -890,7 +949,66 @@ app.get('/api/dashboard/stats', async (req, res) => {
       };
     });
 
-    // 5. Insumos em Estado Crítico com Cálculo do Runway
+    // 5. [B1] Faturamento por Forma de Pagamento (últimos 30 dias)
+    // Os dados já eram coletados em cada lavagem (pagamento), mas nunca
+    // agregados — este bloco fecha a lacuna: PIX/Dinheiro/Cartão/outros no
+    // mesmo período do mix de serviços.
+    const pagamentosRows = await all(`
+      SELECT 
+        COALESCE(NULLIF(TRIM(pagamento), ''), 'Pendente') as forma_pagamento,
+        COUNT(*) as lavagens,
+        COALESCE(SUM(valor), 0) as receita
+      FROM lavagens
+      WHERE status = 'concluida' AND data >= datetime('now', '-30 days')
+      GROUP BY COALESCE(NULLIF(TRIM(pagamento), ''), 'Pendente')
+      ORDER BY receita DESC
+    `);
+
+    const totalReceitaPagtos = pagamentosRows.reduce((s, p) => s + Number(p.receita), 0);
+    const pagamentos = pagamentosRows.map(p => {
+      const receita = Number(p.receita);
+      return {
+        forma_pagamento: String(p.forma_pagamento),
+        lavagens: Number(p.lavagens),
+        receita,
+        // pct da receita no período — usado no gráfico de distribuição
+        pct_receita: totalReceitaPagtos > 0 ? Number(((receita / totalReceitaPagtos) * 100).toFixed(1)) : 0,
+      };
+    });
+
+    // 6. [B2] Desempenho por Operador (30 dias) — lavagens, receita e ticket
+    // médio por quem executou. lavagens.user_id sempre foi gravado; este é o
+    // primeiro consumo real desse dado para gestão de equipe.
+    const desempenhoOperadores = await all(`
+      SELECT 
+        u.id,
+        u.nome,
+        COUNT(l.id) as total_lavagens,
+        COALESCE(SUM(l.valor), 0) as receita,
+        ROUND(COALESCE(SUM(l.valor), 0) / NULLIF(COUNT(l.id), 0), 2) as ticket_medio
+      FROM users u
+      LEFT JOIN lavagens l 
+        ON l.user_id = u.id 
+        AND l.status = 'concluida' 
+        AND l.data >= datetime('now', '-30 days')
+      WHERE u.role = 'operador'
+      GROUP BY u.id, u.nome
+      ORDER BY receita DESC
+    `);
+
+    // 7. [B3] Tempo Médio de Atendimento — data_conclusao nunca era lido por
+    // nenhuma consulta; agora vira o indicador "min / lavagem" do dashboard.
+    const tempoAtendimentoRow = await get(`
+      SELECT 
+        COUNT(*) as total_finalizadas,
+        COALESCE(ROUND(AVG((julianday(data_conclusao) - julianday(data)) * 24 * 60), 1), 0) as tempo_medio_min
+      FROM lavagens
+      WHERE status = 'concluida' 
+        AND data_conclusao IS NOT NULL 
+        AND data IS NOT NULL
+    `);
+
+    // 8. Insumos em Estado Crítico com Cálculo do Runway
     const produtosCriticos = await all(`
       WITH consumo_recente AS (
         SELECT 
@@ -966,7 +1084,19 @@ app.get('/api/dashboard/stats', async (req, res) => {
       },
       clientes_ausentes: clientesAusentes,
       mix_servicos: mixServicos,
-      estoque_critico: estoqueCritico
+      estoque_critico: estoqueCritico,
+      pagamentos,
+      desempenho_operadores: desempenhoOperadores.map(op => ({
+        id: op.id,
+        nome: op.nome,
+        total_lavagens: Number(op.total_lavagens),
+        receita: Number(op.receita),
+        ticket_medio: Number(op.ticket_medio),
+      })),
+      tempo_atendimento: {
+        total_finalizadas: Number(tempoAtendimentoRow?.total_finalizadas || 0),
+        tempo_medio_min: Number(tempoAtendimentoRow?.tempo_medio_min || 0),
+      }
     });
   } catch (err) {
     handleServerError(res, err);
@@ -986,6 +1116,7 @@ const TABLE_COLUMNS = {
   lavagens: ['id', 'cliente_id', 'veiculo_id', 'tipo_lavagem_id', 'status', 'valor', 'data', 'user_id', 'pagamento', 'observacao', 'data_conclusao'],
   produtos: ['id', 'nome', 'quantidade', 'estoque_minimo', 'categoria', 'unidade', 'preco_unitario', 'user_id', 'created_at'],
   movimentacoes: ['id', 'produto_id', 'tipo', 'quantidade', 'observacao', 'user_id', 'data'],
+  auditoria_lavagens: ['id', 'lavagem_id', 'user_id', 'campo', 'valor_anterior', 'valor_novo', 'data'],
 };
 
 // Colunas que podem SAIR do servidor. password_hash é deliberadamente omitido:
@@ -1003,6 +1134,96 @@ const IMPORT_COLUMNS = {
   ...TABLE_COLUMNS,
   users: ['id', 'email', 'nome', 'role', 'created_at'],
 };
+
+// Validação de domínio do CSV (FA-18). Antes, a única barreira era o CHECK do
+// SQLite: um `role` ou `status` inválido estourava como exceção do driver e
+// chegava ao admin como "Erro interno do servidor" 500, sem dizer qual linha do
+// arquivo estava errada. Validar aqui devolve 400 apontando linha e coluna, com
+// o mesmo rollback transacional de antes.
+const naoNegativo = (valor) => {
+  const n = Number(valor);
+  return Number.isFinite(n) && n >= 0;
+};
+
+const naoVazio = (valor) => valor !== null && valor !== undefined && String(valor).trim() !== '';
+
+// Por tabela: { coluna: [predicado, mensagem de erro] }. Colunas ausentes no
+// CSV são ignoradas (o import aceita subconjuntos de colunas); colunas
+// obrigatórias estão em COLUNAS_OBRIGATORIAS_IMPORT.
+const REGRAS_IMPORT = {
+  users: {
+    email: [(v) => RE_EMAIL.test(String(v || '')), 'e-mail inválido'],
+    role: [(v) => ROLES_VALIDOS.includes(v), `deve ser um de: ${ROLES_VALIDOS.join(', ')}`],
+  },
+  tipos_lavagem: {
+    preco: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+  },
+  lavagens: {
+    status: [(v) => STATUS_LAVAGEM.includes(v), `deve ser um de: ${STATUS_LAVAGEM.join(', ')}`],
+    valor: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+    data: [naoVazio, 'é obrigatória'],
+  },
+  produtos: {
+    quantidade: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+    estoque_minimo: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+    preco_unitario: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+  },
+  movimentacoes: {
+    tipo: [(v) => TIPOS_MOVIMENTACAO.includes(v), `deve ser um de: ${TIPOS_MOVIMENTACAO.join(', ')}`],
+    quantidade: [naoNegativo, 'deve ser um número maior ou igual a zero'],
+  },
+  auditoria_lavagens: {
+    campo: [naoVazio, 'é obrigatório'],
+  },
+};
+
+// `id` é chave primária em todas as tabelas: vazio viraria NULL e o INSERT
+// falharia com a mensagem crua do SQLite.
+const COLUNAS_OBRIGATORIAS_IMPORT = {
+  users: ['id', 'email', 'nome', 'role'],
+  clientes: ['id', 'nome'],
+  veiculos: ['id', 'cliente_id', 'modelo', 'placa'],
+  tipos_lavagem: ['id', 'nome', 'preco'],
+  lavagens: ['id', 'cliente_id', 'veiculo_id', 'tipo_lavagem_id', 'status', 'valor', 'data'],
+  produtos: ['id', 'nome'],
+  movimentacoes: ['id', 'produto_id', 'tipo', 'quantidade'],
+  auditoria_lavagens: ['id', 'lavagem_id', 'campo'],
+};
+
+/**
+ * Valida um CSV já parseado. Lança ValidacaoError (400) na primeira linha
+ * problemática, citando tabela, linha e coluna. A linha informada é a do
+ * arquivo: índice 0 do array = linha 2, porque a linha 1 é o cabeçalho.
+ */
+function validarDominioImport(table, records, colunas) {
+  const obrigatorias = (COLUNAS_OBRIGATORIAS_IMPORT[table] || []).filter(c => colunas.includes(c));
+  const regras = REGRAS_IMPORT[table] || {};
+
+  records.forEach((record, i) => {
+    const linha = i + 2;
+
+    for (const coluna of obrigatorias) {
+      if (!naoVazio(record[coluna])) {
+        throw new ValidacaoError(
+          `${table}.csv, linha ${linha}, coluna "${coluna}": valor obrigatório está vazio. Nenhum dado foi importado.`
+        );
+      }
+    }
+
+    for (const [coluna, [valida, mensagem]] of Object.entries(regras)) {
+      if (!colunas.includes(coluna)) continue;
+      const valor = record[coluna];
+      // Coluna opcional em branco continua sendo aceita como NULL; só o que foi
+      // preenchido precisa respeitar o domínio.
+      if (!naoVazio(valor) && !obrigatorias.includes(coluna)) continue;
+      if (!valida(valor)) {
+        throw new ValidacaoError(
+          `${table}.csv, linha ${linha}, coluna "${coluna}": ${mensagem} (recebido: "${valor}"). Nenhum dado foi importado.`
+        );
+      }
+    }
+  });
+}
 
 app.get('/api/backup/export', requireAdmin, async (req, res) => {
   try {
@@ -1050,8 +1271,10 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
     await exec('BEGIN TRANSACTION;');
 
     try {
-      // Odem de dependência
-      const order = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'produtos', 'lavagens', 'movimentacoes'];
+      // Ordem de dependência. auditoria_lavagens vem logo após lavagens:
+      // suas linhas referenciam lavagens(id), e a ordem decide se o
+      // foreign_key_check do fim do fluxo passa ou derruba o import inteiro.
+      const order = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'produtos', 'lavagens', 'auditoria_lavagens', 'movimentacoes'];
       
       // Limpar tabelas que estão sendo importadas
       for (const table of order) {
@@ -1072,6 +1295,8 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
             `Permitidas: ${IMPORT_COLUMNS[table].join(', ')}`
           );
         }
+
+        validarDominioImport(table, records, columns);
 
         // Usuários restaurados nunca trazem hash do arquivo: cada um recebe uma
         // senha temporária aleatória, devolvida ao admin na resposta para que
@@ -1137,6 +1362,10 @@ app.post('/api/backup/reset', requireAdmin, async (req, res) => {
       try {
         await exec('BEGIN TRANSACTION;');
         try {
+          // auditoria_lavagens não tem mais FK para lavagens (a trilha de
+          // exclusão precisa sobreviver ao DELETE), então ela nunca é limpa
+          // por cascade: precisa ser apagada explicitamente junto com as
+          // demais, senão o reset deixaria linhas órfãs para trás.
           for (const table of tables) {
             await exec(`DELETE FROM ${table};`);
           }
@@ -1194,15 +1423,35 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3001;
 
 // Inicia o servidor se não estiver sendo executado como Serverless Function (ex: Vercel)
+//
+// O listen espera o dbReady: as rotas fazem INSERT em tabelas que só existem
+// depois que o schema roda (ex: auditoria_lavagens). Sem esta espera, subir a
+// porta em paralelo com a aplicação do schema abria uma janela em que o
+// primeiro PUT de lavagem respondia 500 com "no such table".
 if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`Backend SQLite rodando na porta ${PORT}`);
+  dbReady.then(() => {
+    // Credenciais de bootstrap publicadas na documentação são avisadas no boot,
+    // não só no seed: quem sobe o servidor é quem precisa ver o alerta (FA-17).
+    avisarSenhasSeedPadrao();
+    app.listen(PORT, () => {
+      console.log(`Backend SQLite rodando na porta ${PORT}`);
+    });
+  }).catch((err) => {
+    console.error('Servidor não iniciado: banco de dados indisponível.', err);
+    process.exit(1);
   });
 }
 
-// Compatibilidade CommonJS e ES Modules para Vercel Serverless Function
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = app;
+// Compatibilidade CommonJS e ES Modules para Vercel Serverless Function.
+// O try/catch é necessário porque ferramentas que transformam ESM (o Vitest,
+// por exemplo) também definem `module`, mas com `default` somente-leitura —
+// atribuir ali lançava TypeError e impedia importar o app nos testes.
+try {
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = app;
+  }
+} catch {
+  // Ambiente ESM puro: `export default` abaixo já cobre o caso.
 }
 
 export { app };

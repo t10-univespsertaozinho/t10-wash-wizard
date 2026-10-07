@@ -1,11 +1,13 @@
 import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useApp } from '@/contexts/AppContext';
 import { NavLink } from '@/components/NavLink';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, Droplets, List, Tags, Users, UserPlus,
-  Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings, Car
+  Package, ArrowLeftRight, LogOut, Menu, X, Plus, Settings, Car,
+  AlertTriangle, RefreshCw
 } from 'lucide-react';
 
 const navItemsAdmin = [
@@ -46,6 +48,7 @@ const pageTitle: Record<string, string> = {
 
 export default function AppLayout() {
   const { isAuthenticated, user, logout } = useAuth();
+  const { erroCarregamento, refreshData } = useApp();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -206,6 +209,28 @@ export default function AppLayout() {
           </div>
         </header>
         <main id="main-content" tabIndex={-1} className="flex-1 p-4 lg:p-6 overflow-y-auto focus:outline-none">
+          {/* Carga parcial nunca é apresentada como sucesso: se o Promise.all do
+              AppContext falhar, as listas estão desatualizadas e o usuário
+              precisa saber disso antes de tomar decisões (FA-12). */}
+          {erroCarregamento && (
+            <div
+              role="alert"
+              aria-live="polite"
+              className="badge-cancelada text-sm rounded-lg px-4 py-3 mb-4 flex items-center gap-3 flex-wrap"
+            >
+              <AlertTriangle size={16} aria-hidden="true" className="shrink-0" />
+              <span className="flex-1 min-w-0">
+                {erroCarregamento} Os dados exibidos podem estar desatualizados.
+              </span>
+              <button
+                type="button"
+                onClick={() => { void refreshData(); }}
+                className="inline-flex items-center gap-1.5 font-semibold underline underline-offset-2 shrink-0"
+              >
+                <RefreshCw size={13} aria-hidden="true" /> Tentar novamente
+              </button>
+            </div>
+          )}
           <Outlet />
         </main>
       </div>

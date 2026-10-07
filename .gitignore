@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Relatórios de cobertura gerados pelo vitest
+coverage
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -31,6 +34,9 @@ dist-ssr
 *.sqlite
 *.sql
 !backend/schema.sql
+# Arquivos auxiliares do SQLite WAL (backup quente em journal_mode=wal)
+*.db-wal
+*.db-shm
 
 # Backups SQLite e Arquivos CSV
 *.csv
@@ -38,3 +44,7 @@ dist-ssr
 # Dados sensíveis (produção)
 data/
 storage/
+
+# Documentação interna de segurança (Sensível - NÃO commitar)
+docs/security_audit/
+relatorio_auditoria_*.md
