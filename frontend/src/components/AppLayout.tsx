@@ -3,7 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useApp } from '@/contexts/AppContext';
 import { NavLink } from '@/components/NavLink';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { ModalProvider, useModal } from '@/contexts/ModalContext';
+import { useModal } from '@/contexts/ModalContext';
 import { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, Droplets, Tags, Users,
@@ -90,7 +90,6 @@ export default function AppLayout() {
   const title = pageTitle[location.pathname] || 'T10 Gestão';
 
   return (
-    <ModalProvider>
     <div className="min-h-screen flex bg-background">
       {/* WCAG 2.4.1 - Skip Link: visível apenas ao receber foco via Tab */}
       <a
@@ -236,6 +235,5 @@ export default function AppLayout() {
         </main>
       </div>
     </div>
-    </ModalProvider>
   );
 }

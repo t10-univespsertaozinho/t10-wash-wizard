@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
+import { ModalProvider } from "@/contexts/ModalContext";
 import AppLayout from "@/components/AppLayout";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
@@ -80,7 +81,8 @@ const App = () => (
         <Sonner />
         <AuthProvider>
           <AppProvider>
-            <BrowserRouter>
+            <ModalProvider>
+              <BrowserRouter>
               {/* Acima do <Routes>: uma exceção de render em qualquer página cai
                   na tela de recuperação em vez de deixar a tela branca (FA-10). */}
               <ErrorBoundary>
@@ -117,6 +119,7 @@ const App = () => (
                 </Suspense>
               </ErrorBoundary>
             </BrowserRouter>
+            </ModalProvider>
           </AppProvider>
         </AuthProvider>
       </ThemeProvider>
