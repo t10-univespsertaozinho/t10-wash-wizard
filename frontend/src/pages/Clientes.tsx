@@ -92,10 +92,10 @@ export default function Clientes() {
               <th scope="col" className="text-left py-4 px-4">
                 Cadastro
               </th>
-              <th scope="col" className="text-right py-4 px-4">
+              <th scope="col" className="text-center py-4 px-4">
                 Data de Nascimento
               </th>
-              <th scope="col" className="text-right py-4 px-4">
+              <th scope="col" className="text-center py-4 px-4">
                 Ações
               </th>
             </tr>
@@ -118,11 +118,11 @@ export default function Clientes() {
                 <td className="py-4 px-4 text-sm font-medium text-muted-foreground">
                   {new Date(c.created_at).toLocaleDateString("pt-BR")}
                 </td>
-                <td className="py-4 px-4 text-base font-medium text-foreground">
+                <td className="py-4 px-4 text-center text-sm font-medium text-muted-foreground">
                   {c.data_nascimento}
                 </td>
-                <td className="py-4 px-4 text-right">
-                  <div className="flex items-center justify-end gap-1">
+                <td className="py-4 px-4 text-center">
+                  <div className="flex items-center justify-center gap-1">
                     <Link
                       to={`/clientes/${c.id}`}
                       aria-label={`Ver detalhes do cliente ${c.nome}`}

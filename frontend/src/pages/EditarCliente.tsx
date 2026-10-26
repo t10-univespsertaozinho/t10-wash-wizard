@@ -33,6 +33,7 @@ export default function EditarCliente() {
                 : `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7, 11)}`
           : "";
       setTelefone(formatted);
+      setData(cliente.data_nascimento);
     }
     setLoading(false);
   }, [cliente, setTelefone]);
@@ -40,7 +41,11 @@ export default function EditarCliente() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim() || !id) return;
-    updateCliente(id, { nome: nome.trim(), telefone: telefone.trim() });
+    updateCliente(id, {
+      nome: nome.trim(),
+      telefone: telefone.trim(),
+      data_nascimento: data_nascimento.trim(),
+    });
     navigate(`/clientes/${id}`);
   };
 
@@ -67,6 +72,7 @@ export default function EditarCliente() {
           <input
             id="editar-cliente-nome"
             className="input-t10"
+            maxLength={60}
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             placeholder="Nome do cliente"
