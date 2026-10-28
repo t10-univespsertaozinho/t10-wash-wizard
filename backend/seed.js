@@ -2,6 +2,7 @@ import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
 import { dbReady, withTransaction, pool } from "./db.js";
+import { resolverSenhaSeed } from "./seed-credentials.js";
 
 dotenv.config();
 
@@ -16,6 +17,12 @@ dotenv.config();
  */
 async function seed() {
   await dbReady;
+
+  // A validação das senhas roda apenas aqui: o boot da API não depende delas.
+  // Em produção, senha ausente ou igual ao padrão publicado aborta o seed
+  // antes de qualquer DELETE (o banco fica intacto).
+  const senhaAdmin = resolverSenhaSeed("SEED_ADMIN_PASSWORD");
+  const senhaOperador = resolverSenhaSeed("SEED_OPERADOR_PASSWORD");
 
   console.log("Iniciando seed de dados...\n");
 
@@ -40,14 +47,8 @@ async function seed() {
     }
 
     console.log("Criando usuários iniciais (se não existirem)...");
-    const adminPasswordHash = await bcrypt.hash(
-      process.env.SEED_ADMIN_PASSWORD || "admin123",
-      10,
-    );
-    const operadorPasswordHash = await bcrypt.hash(
-      process.env.SEED_OPERADOR_PASSWORD || "operador123",
-      10,
-    );
+    const adminPasswordHash = await bcrypt.hash(senhaAdmin, 10);
+    const operadorPasswordHash = await bcrypt.hash(senhaOperador, 10);
 
     // ON CONFLICT preserva usuários já existentes (o id antigo continua
     // valendo) e evita duplicar o e-mail único.
