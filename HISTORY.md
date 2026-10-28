@@ -8,6 +8,69 @@
 
 ---
 
+## 2026-10-28 — opencode/big-pickle — Corrige boot em produção no Render (variáveis de seed)
+
+### Resumo
+
+O deploy do backend no Render falhava em `npm start` com
+`SEED_ADMIN_PASSWORD não está definida`, mesmo sem o seed ser executado. A causa
+era a resolução das senhas de bootstrap no topo de `backend/config.js`, importado
+pelo `server.js` no boot. As senhas de seed passaram a ser validadas sob demanda
+— apenas quando `npm run seed` roda — e deixaram de bloquear a API.
+
+### Mudanças
+
+1. **Novo `backend/seed-credentials.js`**
+   - `SENHAS_SEED_PADRAO`, `resolverSenhaSeed()` e `avisarSenhasSeedPadrao()`.
+   - Importar o módulo nunca lança; a checagem de produção ocorre só na chamada
+     de `resolverSenhaSeed()`, com mensagem apontando `Environment → VAR` no Render.
+2. **`backend/config.js`**
+   - Removidas as exportações `SEED_ADMIN_PASSWORD`/`SEED_OPERADOR_PASSWORD` e a
+     validação fatal no carregamento do módulo.
+   - `JWT_SECRET` continua obrigatório em produção, mas resolvido por
+     `obterJwtSecret()` (memoizado) chamado no boot por `server.js` e
+     `middleware/auth.js`. Importar `config.js` não lança; o fail-fast continua
+     no boot da API, com mensagem citando as variáveis de ambiente da plataforma.
+3. **`backend/seed.js`**
+   - Resolve as duas senhas no início de `seed()`, depois do `dbReady` e **antes**
+     de qualquer `DELETE`: em produção, senha ausente/padrão aborta o seed sem
+     apagar dados. Seed não importa `config.js` (não exige `JWT_SECRET`).
+4. **`backend/server.js`**
+   - Importa `avisarSenhasSeedPadrao` do novo módulo.
+   - Mensagem de `FRONTEND_URL` (obrigatória em produção) orienta configurar a
+     variável no painel do Render.
+5. **`backend/db.js`**
+   - Erro de `DATABASE_URL` ausente/inválida com instrução de plataforma e formato.
+   - SSL passa a respeitar `?sslmode=` da connection string (além de `PGSSLMODE`),
+     com `disable` desligando e `require`/`verify-*` forçando TLS.
+6. **Testes e documentação**
+   - `backend/test/config-producao.test.js`: 6 testes em processo filho com
+     `NODE_ENV=production` provam que config/seed-credentials importam sem
+     `JWT_SECRET` nem `SEED_*`, que `obterJwtSecret()` falha sob demanda com
+     mensagem clara e que o seed continua barrando senhas padrão.
+   - `backend/.env.example`, `README.md` (seção "Deploy no Render"), `AGENTS.md`
+     e `HISTORY.md` atualizados. Suíte: 49 testes / 5 arquivos.
+
+### Validação
+
+- `npm test`: 49 testes passando.
+- Comando da missão (`NODE_ENV=production DATABASE_URL=... node -e
+  "import('./config.js')"`, sem `JWT_SECRET`/`SEED_*`): `CONFIG_OK`.
+- Boot real em produção sem `SEED_*`: login inválido `401` e
+  `Backend PostgreSQL rodando` no log.
+- Boot real em produção sem `JWT_SECRET`: aborta com mensagem clara apontando a
+  variável (fail-fast preservado).
+- `npm run seed` em produção sem `SEED_ADMIN_PASSWORD`: aborta com exit 1 antes
+  de qualquer escrita.
+
+### Arquivos modificados
+
+`backend/config.js`, `backend/seed.js`, `backend/seed-credentials.js`,
+`backend/db.js`, `backend/server.js`, `backend/test/config-producao.test.js`,
+`backend/.env.example`, `README.md`, `AGENTS.md`, `HISTORY.md`.
+
+---
+
 ## 2026-10-28 — opencode/big-pickle — Migração do backend de SQLite para PostgreSQL (Supabase)
 
 ### Resumo

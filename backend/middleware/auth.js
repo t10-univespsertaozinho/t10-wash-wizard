@@ -1,6 +1,10 @@
 import jwt from 'jsonwebtoken';
-import { JWT_SECRET, JWT_ALGORITHM } from '../config.js';
+import { obterJwtSecret, JWT_ALGORITHM } from '../config.js';
 import { get } from '../db.js';
+
+// Resolvido no carregamento do middleware (memoizado no config): em produção,
+// JWT_SECRET ausente/curto falha aqui, no boot, com mensagem clara.
+const JWT_SECRET = obterJwtSecret();
 
 // O token carrega `role` e vale até 8h. Revalidar o usuário no banco a cada
 // requisição faz com que remoção de cadastro ou rebaixamento de perfil tenham

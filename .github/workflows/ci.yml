@@ -113,7 +113,22 @@ jobs:
         # posse de data_conclusao, trilha de auditoria e validação do CSV.
         run: npm test
 
-      - name: Subir o servidor e validar boot
+      - name: Config de produção sem variáveis de seed
+        # Regressão do deploy no Render: importar a configuração da API não pode
+        # exigir SEED_ADMIN_PASSWORD/SEED_OPERADOR_PASSWORD, que só o seed usa.
+        env:
+          NODE_ENV: production
+        run: |
+          SEED_ADMIN_PASSWORD= SEED_OPERADOR_PASSWORD= node -e "import('./config.js').then(() => console.log('CONFIG_OK')).catch(e => { console.error(e); process.exit(1); })"
+
+      - name: Subir o servidor em produção e validar boot (sem seed)
+        # Reproduz o ambiente do Render: NODE_ENV=production e nenhuma variável
+        # de seed definida. Um 401 no login prova que a API subiu.
+        env:
+          NODE_ENV: production
+          FRONTEND_URL: https://frontend.example.com
+          SEED_ADMIN_PASSWORD: ''
+          SEED_OPERADOR_PASSWORD: ''
         run: |
           node server.js > /tmp/boot.log 2>&1 &
           SERVER_PID=$!

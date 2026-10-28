@@ -11,12 +11,18 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db, { dbReady, get, all, run, exec, withTransaction } from './db.js';
-import { JWT_SECRET, JWT_EXPIRES_IN, JWT_ALGORITHM, avisarSenhasSeedPadrao } from './config.js';
+import { obterJwtSecret, JWT_EXPIRES_IN, JWT_ALGORITHM } from './config.js';
+import { avisarSenhasSeedPadrao } from './seed-credentials.js';
 import { requireAuth, requireAdmin, ehAdmin } from './middleware/auth.js';
 
 dotenv.config();
 
 const app = express();
+
+// Valida a configuração crítica da API no boot. `obterJwtSecret()` é memoizado,
+// então o middleware de auth e a emissão de token no login compartilham o mesmo
+// segredo. Em produção, ausência de JWT_SECRET aborta aqui (fail-fast).
+const JWT_SECRET = obterJwtSecret();
 
 const isDev = process.env.NODE_ENV !== 'production';
 const isProd = process.env.NODE_ENV === 'production';
@@ -55,7 +61,11 @@ class UploadRejeitado extends Error {
 // silenciosamente para localhost e o deploy pareceria uma falha de rede.
 const FRONTEND_ORIGIN = process.env.FRONTEND_URL || (isProd ? null : 'http://localhost:8080');
 if (isProd && !FRONTEND_ORIGIN) {
-  throw new Error('FRONTEND_URL é obrigatório em produção para definir a política de CORS.');
+  throw new Error(
+    'FRONTEND_URL é obrigatório em produção para definir a política de CORS. ' +
+    'Defina a origem pública do frontend (ex.: https://app.seu-dominio.com, sem ' +
+    'barra final) nas variáveis de ambiente do serviço (no Render: Environment → FRONTEND_URL).'
+  );
 }
 
 // Confia no primeiro proxy (nginx, Vercel) para que o rate limit enxergue o IP

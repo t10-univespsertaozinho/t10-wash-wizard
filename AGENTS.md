@@ -41,12 +41,13 @@ The system uses the PostgreSQL schema `backend/schema.postgres.sql`.
 | Variável | Obrigatória | Descrição |
 |---|:---:|---|
 | `PORT` | Não (padrão `3001`) | Porta do servidor Express |
-| `FRONTEND_URL` | Recomendada | Origem liberada no CORS (padrão `http://localhost:8080`) |
-| `JWT_SECRET` | Recomendada | Segredo usado para assinar os tokens JWT. Se ausente, um segredo aleatório é gerado a cada boot do servidor (sessões não sobrevivem a um restart) |
+| `FRONTEND_URL` | Recomendada (obrigatória em produção) | Origem liberada no CORS (padrão `http://localhost:8080`). O boot falha em produção se estiver ausente |
+| `JWT_SECRET` | Recomendada (obrigatória em produção) | Segredo usado para assinar os tokens JWT. Se ausente em desenvolvimento, um segredo aleatório é gerado a cada boot do servidor (sessões não sobrevivem a um restart) |
 | `DATABASE_URL` | **Sim** | String de conexão do PostgreSQL (Supabase em produção). O servidor não sobe sem ela |
 | `TEST_DATABASE_URL` | Sim para `npm test` | Banco PostgreSQL descartável usado pela suíte de testes. Nunca aponte para o Supabase — o helper recusa hosts Supabase e exige um banco diferente de `DATABASE_URL` |
-| `PGSSLMODE` | Não | `disable` desliga o TLS. Sem ele, hosts remotos usam SSL (`rejectUnauthorized: false`) e `localhost`/`127.0.0.1` não |
-| `SEED_ADMIN_PASSWORD` / `SEED_OPERADOR_PASSWORD` | Não (padrões `admin123`/`operador123`) | Senhas usadas por `backend/seed.js` ao criar os usuários iniciais |
+| `PGSSLMODE` | Não | `disable` desliga o TLS, `require` força. Sem ele, hosts remotos usam SSL (`rejectUnauthorized: false`) e `localhost`/`127.0.0.1` não. O `?sslmode=` da `DATABASE_URL` também é respeitado |
+| `PG_POOL_MAX` | Não (padrão `5`) | Tamanho máximo do pool de conexões do `pg` |
+| `SEED_ADMIN_PASSWORD` / `SEED_OPERADOR_PASSWORD` | Não (padrões `admin123`/`operador123`) | Usadas **apenas** por `backend/seed.js`; não bloqueiam o boot da API. Em produção, o seed recusa as senhas padrão e aborta antes de apagar dados |
 
 `frontend/.env` (copy from `frontend/.env.example`):
 

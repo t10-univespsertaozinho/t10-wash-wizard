@@ -220,7 +220,7 @@ Nas iterações iniciais, o cálculo de métricas era realizado no navegador do 
 - **Cadastros via Modais (Contexto Global):** Os fluxos de *Nova Lavagem*, *Novo Cliente*, *Novo Veículo*, *Novo Serviço* e *Movimentação de Estoque* abrem em `Dialog` acessíveis gerenciados pelo `ModalProvider`, reutilizados de qualquer tela sem duplicação de UI.
 - **Acessibilidade Completa (WCAG 2.1 AA / W3C):** Tema claro/escuro com contraste verificado, paleta Okabe-Ito (daltônicos), *skip-link* para o conteúdo, gaveta de navegação operável apenas por teclado (foco, `Esc` e retorno de foco), formulários com associação explícita de `<label htmlFor>` para `<input id>` e gráficos Recharts espelhados em tabelas semânticas (`ChartDataTable`) para leitores de tela.
 - **Testes Automatizados com Gate de Cobertura:** Suíte Vitest + React Testing Library com relatório `v8` e limiares calibrados em dois níveis — uma **catraca global** balanceada e **limiares altos (≥90%)** por camada crítica (`src/utils`, `src/services`, `AuthContext`, `ErrorBoundary`). Queda de cobertura falha o pipeline.
-- **Pipeline CI & Segurança:** O job de frontend roda *lint* (ESLint sem erros a11y), suíte com cobertura e build de produção; o job de backend sobe um PostgreSQL 16 descartável, aplica schema/migrations, roda os testes de integração (43 testes Vitest + Supertest sobre o Express real) e um *healthcheck* de boot, além da auditoria de dependências (`npm audit --audit-level=high`).
+- **Pipeline CI & Segurança:** O job de frontend roda *lint* (ESLint sem erros a11y), suíte com cobertura e build de produção; o job de backend sobe um PostgreSQL 16 descartável, aplica schema/migrations, roda os testes de integração (49 testes Vitest + Supertest sobre o Express real) e um *healthcheck* de boot, além da auditoria de dependências (`npm audit --audit-level=high`).
 - **Roteamento Protegido:** Validação de sessão ativa via JWT tanto no cliente quanto em cada camada de middleware do servidor.
 
 ---
@@ -244,7 +244,7 @@ Nas iterações iniciais, o cálculo de métricas era realizado no navegador do 
 
 ### Qualidade e CI
 - **Frontend (job `frontend` do `ci.yml`):** `lint` (ESLint com regras a11y W3C estritas), `test:coverage` (91 testes + gate de cobertura calibrado) e `build` de produção — o merge falha se a cobertura cair abaixo dos limiares de `frontend/vitest.config.ts`.
-- **Backend (job `backend`):** serviço `postgres:16`, aplicação do schema/migrations, 43 testes de integração do app Express real em banco descartável, auditoria estrita de dependências e validação de boot com credenciais inválidas (*healthcheck*).
+- **Backend (job `backend`):** serviço `postgres:16`, aplicação do schema/migrations, 49 testes de integração do app Express real em banco descartável, auditoria estrita de dependências e validação de boot com credenciais inválidas (*healthcheck*).
 
 ---
 
@@ -310,6 +310,7 @@ cp backend/.env.example backend/.env
 #   - DATABASE_URL: string de conexão do PostgreSQL/Supabase
 #   - JWT_SECRET: segredo próprio (obrigatório fora de um ambiente descartável —
 #     sem ele, o servidor gera um segredo aleatório a cada boot e invalida sessões)
+#   - FRONTEND_URL: origem do frontend (obrigatória quando NODE_ENV=production)
 #   - TEST_DATABASE_URL: banco descartável usado por `npm test` (nunca o de produção)
 
 # 4. Provisione o schema e popule os dados de exemplo (usuários inclusos)
@@ -347,9 +348,33 @@ Os testes de integração exigem um PostgreSQL descartável em `TEST_DATABASE_UR
 
 ```bash
 cd backend
-npm test                # 43 testes de integração (Vitest + Supertest)
+npm test                # 49 testes de integração (Vitest + Supertest)
 npm run test:watch      # modo watch
 ```
+
+### Deploy no Render (backend)
+
+1. Crie um **Web Service** apontando para o repositório, com:
+   - **Root Directory:** `backend`
+   - **Build Command:** `npm ci`
+   - **Start Command:** `npm start` (`node server.js`)
+2. Em **Environment**, defina as variáveis obrigatórias:
+
+   | Variável | Obrigatória | Observação |
+   |---|:---:|---|
+   | `NODE_ENV` | Sim | `production` |
+   | `DATABASE_URL` | Sim | Connection string do Supabase (de preferência o *Connection Pooler*, porta 6543) |
+   | `JWT_SECRET` | Sim | Mínimo de 32 caracteres, diferente do valor de exemplo |
+   | `FRONTEND_URL` | Sim | URL pública do frontend, sem barra final (política de CORS) |
+   | `PGSSLMODE` | Não | Vazio já habilita TLS para hosts remotos; `disable` força sem TLS |
+   | `SEED_ADMIN_PASSWORD` / `SEED_OPERADOR_PASSWORD` | Não | Usadas **apenas** por `npm run seed`; não bloqueiam o boot da API |
+
+3. `PORT` é injetada pelo Render — não precisa ser definida.
+4. O schema **não** é aplicado no boot. Rode uma única vez, em um *Shell* do serviço:
+   `npm run db:schema && npm run db:migrate`
+5. **Não** rode `npm run seed` em produção: ele apaga os dados. Se for provisionar um banco novo, defina antes senhas próprias para as variáveis `SEED_*` — o seed recusa as senhas padrão em produção.
+
+> Se o boot falhar, a mensagem indica exatamente qual variável falta (`DATABASE_URL`, `JWT_SECRET` ou `FRONTEND_URL`). Senhas de seed **não** interrompem a API.
 
 ---
 
@@ -391,7 +416,7 @@ Detalhes completos, incluindo a matriz de permissões por rota, estão em [`SECU
 - **Novas Modais de Gestão:** Inclusão e centralização das telas de *Movimentação de Estoque*, *Novo Serviço* e *Novo Veículo* integradas ao `ModalProvider`.
 - **Acessibilidade (a11y):** Adequação rigorosa dos formulários aos padrões W3C / WCAG com associação explícita de `<label htmlFor="...">` para `<input id="...">`, além de contraste verificado e compatibilidade com leitores de tela.
 - **Segurança e Auditoria de Dependências:** Atualização de pacotes do backend (`body-parser`, `undici`) para versões seguras, com aprovação em `npm audit --audit-level=high`.
-- **Qualidade Automatizada & Cobertura:** Suíte completa com **91 testes no frontend** e **43 testes no backend**, com **gate de cobertura calibrado** no Vitest do CI.
+- **Qualidade Automatizada & Cobertura:** Suíte completa com **91 testes no frontend** e **49 testes no backend**, com **gate de cobertura calibrado** no Vitest do CI.
 
 **Próximos passos:**
 1. **Cobertura de testes das páginas:** elevar a catraca global de cobertura rumo a **60–70%**, com testes de componente para Dashboard, Análise & Relatórios e fluxos de lavagem.
