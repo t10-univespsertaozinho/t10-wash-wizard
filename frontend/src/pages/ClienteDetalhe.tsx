@@ -1,9 +1,8 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useState } from 'react';
-import { Trash2, Plus, Car, Pencil, X, Check } from 'lucide-react';
-import { usePlacaMask } from '@/hooks/usePlacaMask';
+import { useModal } from '@/contexts/ModalContext';
+import { Trash2, Plus, Car, Pencil } from 'lucide-react';
 import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 import { toast } from 'sonner';
 import { formatarData, formatarMoeda } from '@/utils/format';
@@ -13,84 +12,18 @@ const mensagemErro = (err: unknown) =>
 
 export default function ClienteDetalhe() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const { getCliente, getVeiculosCliente, getLavagensCliente, getTipoLavagem, addVeiculo, updateVeiculo, deleteVeiculo, veiculos } = useApp();
+  const { getCliente, getVeiculosCliente, getLavagensCliente, getTipoLavagem, deleteVeiculo, veiculos } = useApp();
+  const { openNovoVeiculo } = useModal();
   // Exclusão passou a exigir admin no backend (FA-03): mostrar o botão para
   // operador só renderia um 403 garantido.
   const { user } = useAuth();
   const podeExcluir = user?.role === 'admin';
-
-  const [showForm, setShowForm] = useState(false);
-  const [modelo, setModelo] = useState('');
-  const { value: placa, handleChange: handlePlacaChange, setValue: setPlaca } = usePlacaMask();
-  const [cor, setCor] = useState('');
-  
-  const [editandoVeiculoId, setEditandoVeiculoId] = useState<string | null>(null);
-  const [editandoModelo, setEditandoModelo] = useState('');
-  const [editandoPlaca, setEditandoPlaca] = useState('');
-  const [editandoCor, setEditandoCor] = useState('');
-  const [salvando, setSalvando] = useState(false);
-  const { value: editPlacaValue, handleChange: handleEditPlacaChange, setValue: setEditPlacaValue } = usePlacaMask();
 
   const cliente = getCliente(id!);
   if (!cliente) return <p className="text-secondary-foreground">Cliente não encontrado.</p>;
 
   const veiculosCliente = getVeiculosCliente(id!);
   const lavagensCliente = getLavagensCliente(id!).sort((a, b) => b.data.localeCompare(a.data)).slice(0, 10);
-
-  // O formulário só é limpo e fechado depois de o backend confirmar. Antes,
-  // limpar na hora fazia a tela declarar sucesso mesmo quando a API recusava o
-  // veículo (placa duplicada, token expirado, rede fora) — e a exceção morria
-  // como rejeição não tratada no console (FA-09).
-  const handleAddVeiculo = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!modelo.trim() || !placa.trim()) return;
-    setSalvando(true);
-    try {
-      await addVeiculo({ cliente_id: id!, modelo: modelo.trim(), placa: placa.trim(), cor: cor.trim() });
-      toast.success('Veículo adicionado.');
-      setModelo(''); setPlaca(''); setCor(''); setShowForm(false);
-    } catch (err) {
-      toast.error(`Não foi possível adicionar o veículo: ${mensagemErro(err)}`);
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  const iniciarEdicaoVeiculo = (v: { id: string; modelo: string; placa: string; cor: string }) => {
-    setEditandoVeiculoId(v.id);
-    setEditandoModelo(v.modelo);
-    setEditandoPlaca(v.placa);
-    setEditandoCor(v.cor);
-    setEditPlacaValue(v.placa);
-  };
-
-  const cancelarEdicaoVeiculo = () => {
-    setEditandoVeiculoId(null);
-    setEditandoModelo('');
-    setEditandoPlaca('');
-    setEditandoCor('');
-  };
-
-  const salvarEdicaoVeiculo = async () => {
-    if (!editandoVeiculoId || !editandoModelo.trim() || !editandoPlaca.trim()) return;
-    setSalvando(true);
-    try {
-      await updateVeiculo(editandoVeiculoId, {
-        modelo: editandoModelo.trim(),
-        placa: editandoPlaca.trim(),
-        cor: editandoCor.trim()
-      });
-      toast.success('Veículo atualizado.');
-      // A linha sai do modo de edição somente após a confirmação do servidor,
-      // para não exibir o valor antigo como se tivesse sido salvo.
-      cancelarEdicaoVeiculo();
-    } catch (err) {
-      toast.error(`Não foi possível salvar o veículo: ${mensagemErro(err)}`);
-    } finally {
-      setSalvando(false);
-    }
-  };
 
   const handleDeleteVeiculo = async (veiculoId: string, descricao: string) => {
     try {
@@ -138,24 +71,14 @@ export default function ClienteDetalhe() {
       <div className="bg-card rounded-xl border border-border p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-barlow-condensed font-bold text-foreground flex items-center gap-2"><Car size={18} /> Veículos</h3>
-          <button onClick={() => setShowForm(!showForm)} className="text-base font-bold bg-primary/10 text-primary h-12 px-6 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => openNovoVeiculo(cliente.id)}
+            className="text-base font-bold bg-primary/10 text-primary h-12 px-6 rounded-lg hover:bg-primary/20 transition-colors flex items-center gap-1"
+          >
             <Plus size={18} /> Adicionar
           </button>
         </div>
-
-        {showForm && (
-          <form onSubmit={handleAddVeiculo} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-            <label htmlFor="detalhe-veiculo-modelo" className="sr-only">Modelo</label>
-            <input id="detalhe-veiculo-modelo" className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
-            <label htmlFor="detalhe-veiculo-placa" className="sr-only">Placa</label>
-            <input id="detalhe-veiculo-placa" className="input-t10 uppercase font-mono" placeholder="Placa do veículo" value={placa} onChange={handlePlacaChange} maxLength={8} required />
-            <div className="flex gap-2">
-              <label htmlFor="detalhe-veiculo-cor" className="sr-only">Cor</label>
-              <input id="detalhe-veiculo-cor" className="input-t10" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
-              <button type="submit" disabled={salvando} className="bg-primary text-primary-foreground px-6 h-12 rounded-lg font-bold text-base hover:brightness-110 transition-all whitespace-nowrap disabled:opacity-50">{salvando ? 'Salvando...' : 'Salvar'}</button>
-            </div>
-          </form>
-        )}
 
         {/* WCAG 2.1.1 / 1.4.10 - regiao rolavel por teclado, com rotulo para leitores de tela */}
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de veículos do cliente">
@@ -165,54 +88,32 @@ export default function ClienteDetalhe() {
             <tbody>
               {veiculosCliente.map(v => (
                 <tr key={v.id} className="table-row-hover border-t border-border">
-                  {editandoVeiculoId === v.id ? (
-                    <>
-                      <td className="py-4 px-4">
-                        <input className="input-t10" aria-label={`Modelo do veículo ${v.placa}`} value={editandoModelo} onChange={e => setEditandoModelo(e.target.value)} />
-                      </td>
-                      <td className="py-4 px-4">
-                        <input className="input-t10 uppercase font-mono" aria-label={`Placa do veículo ${v.modelo}`} value={editPlacaValue} onChange={handleEditPlacaChange} maxLength={8} />
-                      </td>
-                      <td className="py-4 px-4">
-                        <input className="input-t10" aria-label={`Cor do veículo ${v.modelo}`} value={editandoCor} onChange={e => setEditandoCor(e.target.value)} />
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button type="button" onClick={salvarEdicaoVeiculo} disabled={salvando} aria-label={`Salvar alterações do veículo ${v.placa}`} title="Salvar" className="text-success hover:bg-success/10 p-1 rounded"><Check size={14} aria-hidden="true" /></button>
-                          <button type="button" onClick={cancelarEdicaoVeiculo} aria-label={`Cancelar edição do veículo ${v.placa}`} title="Cancelar" className="text-secondary-foreground hover:bg-secondary/60 p-1 rounded"><X size={14} aria-hidden="true" /></button>
-                        </div>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="py-4 px-4 text-base font-medium text-foreground">{v.modelo}</td>
-                      <td className="py-4 px-4 font-mono text-sm font-medium text-muted-foreground">{v.placa}</td>
-                      <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{v.cor}</td>
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => iniciarEdicaoVeiculo(v)}
-                            aria-label={`Editar veículo ${v.modelo}, placa ${v.placa}`}
-                            title="Editar"
-                            className="text-secondary-foreground hover:text-primary transition-colors p-1"
-                          >
-                            <Pencil size={14} aria-hidden="true" />
-                          </button>
-                          {podeExcluir && (
-                            <ConfirmDialogButton
-                              title="Excluir Veículo"
-                              ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
-                              description={`Tem certeza que deseja excluir o veículo "${v.modelo}"? Esta ação não pode ser desfeita.`}
-                              onConfirm={() => handleDeleteVeiculo(v.id, v.placa)}
-                              icon={<Trash2 size={14} />}
-                              variant="ghost"
-                            />
-                          )}
-                        </div>
-                      </td>
-                    </>
-                  )}
+                  <td className="py-4 px-4 text-base font-medium text-foreground">{v.modelo}</td>
+                  <td className="py-4 px-4 font-mono text-sm font-medium text-muted-foreground">{v.placa}</td>
+                  <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{v.cor}</td>
+                  <td className="py-4 px-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => openNovoVeiculo(cliente.id, v.id)}
+                        aria-label={`Editar veículo ${v.modelo}, placa ${v.placa}`}
+                        title="Editar"
+                        className="text-secondary-foreground hover:text-primary transition-colors p-1"
+                      >
+                        <Pencil size={14} aria-hidden="true" />
+                      </button>
+                      {podeExcluir && (
+                        <ConfirmDialogButton
+                          title="Excluir Veículo"
+                          ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
+                          description={`Tem certeza que deseja excluir o veículo "${v.modelo}"? Esta ação não pode ser desfeita.`}
+                          onConfirm={() => handleDeleteVeiculo(v.id, v.placa)}
+                          icon={<Trash2 size={14} />}
+                          variant="ghost"
+                        />
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
               {veiculosCliente.length === 0 && <tr><td colSpan={4} className="py-4 text-center text-muted-foreground text-sm">Nenhum veículo cadastrado.</td></tr>}

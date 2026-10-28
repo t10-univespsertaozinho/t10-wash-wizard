@@ -1,14 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useApp } from '@/contexts/AppContext';
 import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Movimentacao() {
   const { produtos, movimentacoes, getProduto, addMovimentacao } = useApp();
+  const [searchParams] = useSearchParams();
   const [produtoId, setProdutoId] = useState('');
   const [tipo, setTipo] = useState<'entrada' | 'saida'>('entrada');
   const [quantidade, setQuantidade] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Atalho vindo da linha do estoque (`/movimentacao?produto=<id>`): pré-seleciona
+  // o produto uma única vez. O ref evita que a seleção volte ao produto da URL
+  // depois que o operador escolhe outro item ou envia o formulário.
+  const produtoDaUrl = searchParams.get('produto');
+  const produtoAplicado = useRef(false);
+
+  useEffect(() => {
+    if (produtoAplicado.current || !produtoDaUrl) return;
+    if (!produtos.some((p) => p.id === produtoDaUrl)) return;
+    setProdutoId(produtoDaUrl);
+    produtoAplicado.current = true;
+  }, [produtoDaUrl, produtos]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
