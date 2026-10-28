@@ -10,7 +10,7 @@ import { stringify } from 'csv-stringify/sync';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import db, { dbReady, get, all, run, exec } from './db.js';
+import db, { dbReady, get, all, run, exec, withTransaction } from './db.js';
 import { JWT_SECRET, JWT_EXPIRES_IN, JWT_ALGORITHM, avisarSenhasSeedPadrao } from './config.js';
 import { requireAuth, requireAdmin, ehAdmin } from './middleware/auth.js';
 
@@ -170,15 +170,35 @@ const now = () => new Date().toISOString();
 const publicUserFields = 'id, email, nome, role, created_at';
 const ROLES_VALIDOS = ['admin', 'operador'];
 
-// Loga o erro real no servidor, mas nunca expõe detalhes internos (ex: mensagens do SQLite) ao cliente.
+// Loga o erro real no servidor, mas nunca expõe detalhes internos (ex: mensagens
+// do PostgreSQL) ao cliente.
 function handleServerError(res, err) {
   console.error(err);
   res.status(500).json({ error: 'Erro interno do servidor' });
 }
 
+// Erros de integridade do PostgreSQL chegam com `code` SQLSTATE. Sem este
+// mapeamento, uma FK violada (ex: excluir um tipo de lavagem em uso) viraria um
+// 500 opaco; com ele o cliente recebe 400/409 com uma mensagem acionável.
+const SQLSTATE_PARA_RESPOSTA = {
+  '23503': [400, 'Operação bloqueada: o registro está em uso ou referencia um registro inexistente.'],
+  '23505': [409, 'Já existe um registro com este valor único.'],
+  '23514': [400, 'Valor inválido para uma restrição do banco de dados.'],
+  '22P02': [400, 'Formato de dado inválido na requisição.'],
+};
+
+function responderErroBanco(res, err) {
+  const mapeado = SQLSTATE_PARA_RESPOSTA[err?.code];
+  if (mapeado) {
+    console.warn(`Erro de integridade (${err.code}):`, err.detail || err.message);
+    return res.status(mapeado[0]).json({ error: mapeado[1] });
+  }
+  return handleServerError(res, err);
+}
+
 // ==========================================
 // VALIDAÇÃO DE ENTRADA
-// O schema SQLite tem CHECK constraints que garantem a integridade, mas uma
+// O schema PostgreSQL tem CHECK constraints que garantem a integridade, mas uma
 // violação lá estoura como exceção e viraria um 500 genérico. Validar aqui
 // devolve 400 com mensagem útil e mantém os logs limpos para detectar ataque real.
 // ==========================================
@@ -255,11 +275,13 @@ const emailValido = (valor) => {
   return email;
 };
 
-// Converte ValidacaoError em 400; qualquer outra exceção segue para o 500 genérico.
+// Converte ValidacaoError em 400 e erros de integridade do PostgreSQL em
+// 400/409; qualquer outra exceção segue para o 500 genérico.
 function responderErro(res, err) {
   if (err instanceof ValidacaoError) {
     return res.status(err.status).json({ error: err.clientMessage });
   }
+  if (err?.code) return responderErroBanco(res, err);
   return handleServerError(res, err);
 }
 
@@ -401,9 +423,8 @@ app.delete('/api/clientes/:id', requireAdmin, async (req, res) => {
     if (!existente) return res.status(404).json({ error: 'Cliente não encontrado' });
 
     // O cascade do cliente derruba veículos, lavagens e histórico: audita tudo
-    // o que vai embora antes de executar o DELETE.
-    await auditarExclusaoLavagens(req.user.id, await lavagensEmCascata('cliente_id', req.params.id), 'exclusao_cliente');
-    await run('DELETE FROM clientes WHERE id = ?', [req.params.id]);
+    // o que vai embora antes de executar o DELETE, na mesma transação.
+    await excluirComAuditoria('clientes', 'cliente_id', req.params.id, 'exclusao_cliente', req.user.id);
     res.json({ success: true });
   } catch (err) { handleServerError(res, err); }
 });
@@ -448,8 +469,7 @@ app.delete('/api/veiculos/:id', requireAdmin, async (req, res) => {
     const existente = await get('SELECT id FROM veiculos WHERE id = ?', [req.params.id]);
     if (!existente) return res.status(404).json({ error: 'Veículo não encontrado' });
 
-    await auditarExclusaoLavagens(req.user.id, await lavagensEmCascata('veiculo_id', req.params.id), 'exclusao_veiculo');
-    await run('DELETE FROM veiculos WHERE id = ?', [req.params.id]);
+    await excluirComAuditoria('veiculos', 'veiculo_id', req.params.id, 'exclusao_veiculo', req.user.id);
     res.json({ success: true });
   } catch (err) { handleServerError(res, err); }
 });
@@ -528,23 +548,37 @@ const STATUS_LAVAGEM = ['pendente', 'em_progresso', 'concluida', 'cancelada'];
 // Exclusão é a única alteração que apaga a métrica do BI sem deixar rastro no
 // próprio registro — então a trilha precisa ser gravada ANTES do DELETE, com um
 // retrato completo da linha em `valor_anterior`. A FK de auditoria_lavagens não
-// tem mais ON DELETE CASCADE (ver migração em db.js), portanto estas linhas
-// sobrevivem à remoção da lavagem e das entidades que a originaram (FA-03/FA-04).
-async function auditarExclusaoLavagens(userId, lavagemIds, origem) {
+// tem mais ON DELETE CASCADE (ver migração em migrations/), portanto estas
+// linhas sobrevivem à remoção da lavagem e das entidades que a originaram
+// (FA-03/FA-04).
+//
+// O `executor` é o client da transação: a auditoria e o DELETE precisam ser
+// atômicos — uma trilha órfã (ou um DELETE sem trilha) é pior que o erro.
+async function auditarExclusaoLavagens(executor, userId, lavagemIds, origem) {
   for (const lavagemId of lavagemIds) {
-    const lavagem = await get('SELECT * FROM lavagens WHERE id = ?', [lavagemId]);
+    const lavagem = await executor.get('SELECT * FROM lavagens WHERE id = ?', [lavagemId]);
     if (!lavagem) continue;
-    await run(`INSERT INTO auditoria_lavagens (id, lavagem_id, user_id, campo, valor_anterior, valor_novo, data)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [genId(), lavagemId, userId, origem, JSON.stringify(lavagem), null, now()]);
+    const snapshot = JSON.stringify(lavagem);
+    // Grava os dois formatos: `acao`/`dados_*` (schema provisionado no
+    // Supabase) e `campo`/`valor_*` (contrato do app e do backup CSV).
+    await executor.run(
+      `INSERT INTO auditoria_lavagens
+         (id, lavagem_id, user_id, acao, dados_anteriores, dados_novos, campo, valor_anterior, valor_novo, data)
+       VALUES (?, ?, ?, ?, ?::jsonb, NULL, ?, ?, NULL, ?)`,
+      [genId(), lavagemId, userId, origem, snapshot, origem, snapshot, now()]
+    );
   }
 }
 
-// Lavagens atingidas em cascata (FK ON DELETE CASCADE) ao remover um cliente
-// ou um veículo. Precisam ser auditadas pelo mesmo motivo da exclusão direta.
-async function lavagensEmCascata(coluna, id) {
-  const rows = await all(`SELECT id FROM lavagens WHERE ${coluna} = ?`, [id]);
-  return rows.map(r => r.id);
+// Audita as lavagens atingidas em cascata e só então remove a entidade, na
+// mesma transação. `coluna` identifica como as lavagens apontam para a tabela
+// removida (cliente_id / veiculo_id / id).
+async function excluirComAuditoria(tabela, coluna, id, origem, userId) {
+  await withTransaction(async (tx) => {
+    const rows = await tx.all(`SELECT id FROM lavagens WHERE ${coluna} = ?`, [id]);
+    await auditarExclusaoLavagens(tx, userId, rows.map(r => r.id), origem);
+    await tx.run(`DELETE FROM ${tabela} WHERE id = ?`, [id]);
+  });
 }
 
 app.get('/api/lavagens', async (req, res) => {
@@ -641,23 +675,36 @@ app.put('/api/lavagens/:id', async (req, res) => {
 
     if (updates.length > 0) {
       params.push(req.params.id);
-      await run(`UPDATE lavagens SET ${updates.join(', ')} WHERE id = ?`, params);
 
-      // Trilha de auditoria: registra quem alterou campos financeiros e qual era
-      // o valor anterior. Sem isso, reduzir o valor de uma lavagem antiga é
-      // indistinguível de um lançamento legítimo no dashboard de BI.
-      const novosValores = { status, valor: valorNum, pagamento: pagamentoLimpo };
-      for (const campo of ['valor', 'pagamento', 'status']) {
-        const novo = novosValores[campo];
-        if (novo === undefined) continue;
-        if (String(novo) === String(anterior[campo])) continue;
+      // UPDATE + trilha na mesma transação: uma falha ao auditar não pode
+      // deixar a alteração financeira aplicada sem registro.
+      await withTransaction(async (tx) => {
+        await tx.run(`UPDATE lavagens SET ${updates.join(', ')} WHERE id = ?`, params);
 
-        await run(`INSERT INTO auditoria_lavagens (id, lavagem_id, user_id, campo, valor_anterior, valor_novo, data)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [genId(), req.params.id, req.user.id, campo,
-           anterior[campo] === null ? null : String(anterior[campo]),
-           novo === null ? null : String(novo), now()]);
-      }
+        // Trilha de auditoria: registra quem alterou campos financeiros e qual era
+        // o valor anterior. Sem isso, reduzir o valor de uma lavagem antiga é
+        // indistinguível de um lançamento legítimo no dashboard de BI.
+        const novosValores = { status, valor: valorNum, pagamento: pagamentoLimpo };
+        for (const campo of ['valor', 'pagamento', 'status']) {
+          const novo = novosValores[campo];
+          if (novo === undefined) continue;
+          if (String(novo) === String(anterior[campo])) continue;
+
+          const anteriorTexto = anterior[campo] === null ? null : String(anterior[campo]);
+          const novoTexto = novo === null ? null : String(novo);
+
+          // Formato duplo (ver auditarExclusaoLavagens).
+          await tx.run(
+            `INSERT INTO auditoria_lavagens
+               (id, lavagem_id, user_id, acao, dados_anteriores, dados_novos, campo, valor_anterior, valor_novo, data)
+             VALUES (?, ?, ?, 'atualizacao', ?::jsonb, ?::jsonb, ?, ?, ?, ?)`,
+            [genId(), req.params.id, req.user.id,
+             JSON.stringify({ [campo]: anterior[campo] ?? null }),
+             JSON.stringify({ [campo]: novo ?? null }),
+             campo, anteriorTexto, novoTexto, now()]
+          );
+        }
+      });
     }
     const row = await get('SELECT * FROM lavagens WHERE id = ?', [req.params.id]);
     res.json(row);
@@ -669,8 +716,7 @@ app.delete('/api/lavagens/:id', requireAdmin, async (req, res) => {
     const existente = await get('SELECT id FROM lavagens WHERE id = ?', [req.params.id]);
     if (!existente) return res.status(404).json({ error: 'Lavagem não encontrada' });
 
-    await auditarExclusaoLavagens(req.user.id, [req.params.id], 'exclusao_lavagem');
-    await run('DELETE FROM lavagens WHERE id = ?', [req.params.id]);
+    await excluirComAuditoria('lavagens', 'id', req.params.id, 'exclusao_lavagem', req.user.id);
     res.json({ success: true });
   } catch (err) { handleServerError(res, err); }
 });
@@ -744,12 +790,11 @@ app.get('/api/movimentacoes', async (req, res) => {
 
 const TIPOS_MOVIMENTACAO = ['entrada', 'saida'];
 
-// Todas as requisições compartilham uma única conexão SQLite, e o sqlite3 não
-// aceita BEGIN aninhado nela: duas movimentações simultâneas faziam a segunda
-// falhar com "cannot start a transaction within a transaction" (HTTP 500).
-// Esta fila serializa as seções críticas — as requisições concorrentes esperam
-// sua vez em vez de falhar, e o BEGIN IMMEDIATE continua garantindo que leitura
-// e escrita do saldo sejam atômicas.
+// Fila em processo usada apenas pelas operações administrativas destrutivas
+// (import/reset). Com o Pool do PostgreSQL cada requisição ganha a sua conexão
+// e as movimentações concorrem livremente (ver SELECT ... FOR UPDATE abaixo);
+// dois imports simultâneos, porém, apagariam e reinseririam a base ao mesmo
+// tempo, então estas duas rotas continuam serializadas entre si.
 let filaTransacoes = Promise.resolve();
 
 function emTransacaoSerializada(tarefa) {
@@ -772,45 +817,34 @@ app.post('/api/movimentacoes', requireAdmin, async (req, res) => {
   }
 
   try {
-    // A seção crítica roda serializada (ver emTransacaoSerializada) e devolve o
-    // que a rota deve responder, em vez de escrever na resposta lá dentro.
-    const resultado = await emTransacaoSerializada(async () => {
-      // BEGIN IMMEDIATE trava a escrita já no início da transação, evitando que duas
-      // movimentações concorrentes leiam o mesmo estoque antigo e gerem um "lost update".
-      await exec('BEGIN IMMEDIATE TRANSACTION;');
-      try {
-        const produto = await get('SELECT quantidade FROM produtos WHERE id = ?', [produto_id]);
-        if (!produto) {
-          await exec('ROLLBACK;');
-          return { status: 404, body: { error: 'Produto não encontrado' } };
-        }
-
-        if (tipo === 'saida' && produto.quantidade < quantidade) {
-          await exec('ROLLBACK;');
-          return { status: 400, body: { error: `Estoque insuficiente. Disponível: ${produto.quantidade}` } };
-        }
-
-        const novaQuantidade = tipo === 'entrada'
-          ? produto.quantidade + quantidade
-          : produto.quantidade - quantidade;
-
-        await run('UPDATE produtos SET quantidade = ? WHERE id = ?', [novaQuantidade, produto_id]);
-
-        const id = genId();
-        await run(`INSERT INTO movimentacoes (id, produto_id, tipo, quantidade, observacao, user_id, data)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [id, produto_id, tipo, quantidade, limparTexto(observacao, 500), req.user.id, now()]);
-
-        await exec('COMMIT;');
-
-        const produtoAtualizado = await get('SELECT * FROM produtos WHERE id = ?', [produto_id]);
-        const row = await get('SELECT * FROM movimentacoes WHERE id = ?', [id]);
-        return { status: 200, body: { movimentacao: row, produto: produtoAtualizado } };
-      } catch (e) {
-        // ROLLBACK best-effort: se ele próprio falhar, o erro original é o que importa.
-        await exec('ROLLBACK;').catch(() => {});
-        throw e;
+    // A seção crítica roda em uma transação com a linha do produto travada
+    // (FOR UPDATE): duas saídas concorrentes não leem o mesmo estoque antigo e
+    // geram um "lost update". Devolve o que a rota deve responder, em vez de
+    // escrever na resposta lá dentro.
+    const resultado = await withTransaction(async (tx) => {
+      const produto = await tx.get('SELECT quantidade FROM produtos WHERE id = ? FOR UPDATE', [produto_id]);
+      if (!produto) {
+        return { status: 404, body: { error: 'Produto não encontrado' } };
       }
+
+      if (tipo === 'saida' && produto.quantidade < quantidade) {
+        return { status: 400, body: { error: `Estoque insuficiente. Disponível: ${produto.quantidade}` } };
+      }
+
+      const novaQuantidade = tipo === 'entrada'
+        ? produto.quantidade + quantidade
+        : produto.quantidade - quantidade;
+
+      await tx.run('UPDATE produtos SET quantidade = ? WHERE id = ?', [novaQuantidade, produto_id]);
+
+      const id = genId();
+      await tx.run(`INSERT INTO movimentacoes (id, produto_id, tipo, quantidade, observacao, user_id, data)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [id, produto_id, tipo, quantidade, limparTexto(observacao, 500), req.user.id, now()]);
+
+      const produtoAtualizado = await tx.get('SELECT * FROM produtos WHERE id = ?', [produto_id]);
+      const row = await tx.get('SELECT * FROM movimentacoes WHERE id = ?', [id]);
+      return { status: 200, body: { movimentacao: row, produto: produtoAtualizado } };
     });
 
     res.status(resultado.status).json(resultado.body);
@@ -828,7 +862,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
         COUNT(*) as lavagens, 
         COALESCE(SUM(valor), 0) as receita
       FROM lavagens
-      WHERE status = 'concluida' AND data >= datetime('now', '-7 days')
+      WHERE status = 'concluida' AND data >= NOW() - INTERVAL '7 days'
     `);
 
     const semanaAnterior = await get(`
@@ -837,8 +871,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
         COALESCE(SUM(valor), 0) as receita
       FROM lavagens
       WHERE status = 'concluida' 
-        AND data >= datetime('now', '-14 days') 
-        AND data < datetime('now', '-7 days')
+        AND data >= NOW() - INTERVAL '14 days'
+        AND data < NOW() - INTERVAL '7 days'
     `);
 
     const receitaSemana = Number(semanaAtual?.receita || 0);
@@ -866,12 +900,12 @@ app.get('/api/dashboard/stats', async (req, res) => {
     // Fluxo Diário dos Últimos 7 dias (Série temporal contínua para o gráfico)
     const ultimos7DiasRows = await all(`
       SELECT 
-        substr(data, 1, 10) as dia_data,
+        to_char(data, 'YYYY-MM-DD') as dia_data,
         COUNT(*) as lavagens,
         COALESCE(SUM(valor), 0) as receita
       FROM lavagens
-      WHERE status = 'concluida' AND data >= date('now', '-6 days')
-      GROUP BY substr(data, 1, 10)
+      WHERE status = 'concluida' AND data >= CURRENT_DATE - INTERVAL '6 days'
+      GROUP BY to_char(data, 'YYYY-MM-DD')
     `);
 
     const mapaDias = new Map();
@@ -909,19 +943,21 @@ app.get('/api/dashboard/stats', async (req, res) => {
       : 0;
 
     // 3. Radar de Clientes Ausentes (> 30 dias)
+    // EXTRACT(EPOCH FROM ...) dá o total de segundos; EXTRACT(DAY FROM ...)
+    // devolveria apenas o componente "dias" do intervalo (45 dias -> 15).
     const clientesAusentes = await all(`
       SELECT 
         c.id, 
         c.nome, 
         c.telefone,
         MAX(l.data) as ultima_visita,
-        CAST(julianday('now') - julianday(MAX(l.data)) AS INTEGER) as dias_ausente,
+        FLOOR(EXTRACT(EPOCH FROM (NOW() - MAX(l.data))) / 86400)::int as dias_ausente,
         COUNT(l.id) as historico_lavagens
       FROM clientes c
       JOIN lavagens l ON l.cliente_id = c.id
       WHERE l.status = 'concluida'
       GROUP BY c.id, c.nome, c.telefone
-      HAVING dias_ausente >= 30
+      HAVING NOW() - MAX(l.data) >= INTERVAL '30 days'
       ORDER BY historico_lavagens DESC, dias_ausente ASC
       LIMIT 5
     `);
@@ -934,7 +970,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
         COUNT(l.id) as total_atendimentos,
         COALESCE(SUM(l.valor), 0) as faturamento_total
       FROM tipos_lavagem t
-      LEFT JOIN lavagens l ON l.tipo_lavagem_id = t.id AND l.status = 'concluida' AND l.data >= datetime('now', '-30 days')
+      LEFT JOIN lavagens l ON l.tipo_lavagem_id = t.id AND l.status = 'concluida' AND l.data >= NOW() - INTERVAL '30 days'
       GROUP BY t.id, t.nome
       ORDER BY faturamento_total DESC
     `);
@@ -965,7 +1001,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
         COUNT(*) as lavagens,
         COALESCE(SUM(valor), 0) as receita
       FROM lavagens
-      WHERE status = 'concluida' AND data >= datetime('now', '-30 days')
+      WHERE status = 'concluida' AND data >= NOW() - INTERVAL '30 days'
       GROUP BY COALESCE(NULLIF(TRIM(pagamento), ''), 'Pendente')
       ORDER BY receita DESC
     `);
@@ -996,7 +1032,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
       LEFT JOIN lavagens l 
         ON l.user_id = u.id 
         AND l.status = 'concluida' 
-        AND l.data >= datetime('now', '-30 days')
+        AND l.data >= NOW() - INTERVAL '30 days'
       WHERE u.role = 'operador'
       GROUP BY u.id, u.nome
       ORDER BY receita DESC
@@ -1007,7 +1043,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
     const tempoAtendimentoRow = await get(`
       SELECT 
         COUNT(*) as total_finalizadas,
-        COALESCE(ROUND(AVG((julianday(data_conclusao) - julianday(data)) * 24 * 60), 1), 0) as tempo_medio_min
+        COALESCE(ROUND(AVG(EXTRACT(EPOCH FROM (data_conclusao - data)) / 60), 1), 0) as tempo_medio_min
       FROM lavagens
       WHERE status = 'concluida' 
         AND data_conclusao IS NOT NULL 
@@ -1020,9 +1056,9 @@ app.get('/api/dashboard/stats', async (req, res) => {
         SELECT 
           produto_id,
           COALESCE(SUM(quantidade), 0) as total_saida,
-          COUNT(DISTINCT substr(data, 1, 10)) as dias_registrados
+          COUNT(DISTINCT to_char(data, 'YYYY-MM-DD')) as dias_registrados
         FROM movimentacoes
-        WHERE tipo = 'saida' AND data >= datetime('now', '-30 days')
+        WHERE tipo = 'saida' AND data >= NOW() - INTERVAL '30 days'
         GROUP BY produto_id
       )
       SELECT 
@@ -1142,7 +1178,7 @@ const IMPORT_COLUMNS = {
 };
 
 // Validação de domínio do CSV (FA-18). Antes, a única barreira era o CHECK do
-// SQLite: um `role` ou `status` inválido estourava como exceção do driver e
+// banco: um `role` ou `status` inválido estourava como exceção do driver e
 // chegava ao admin como "Erro interno do servidor" 500, sem dizer qual linha do
 // arquivo estava errada. Validar aqui devolve 400 apontando linha e coluna, com
 // o mesmo rollback transacional de antes.
@@ -1183,8 +1219,8 @@ const REGRAS_IMPORT = {
   },
 };
 
-// `id` é chave primária em todas as tabelas: vazio viraria NULL e o INSERT
-// falharia com a mensagem crua do SQLite.
+// `id` é chave primária em todas as tabelas: vazio viraria string vazia e o
+// INSERT falharia com a mensagem crua do driver.
 const COLUNAS_OBRIGATORIAS_IMPORT = {
   users: ['id', 'email', 'nome', 'role'],
   clientes: ['id', 'nome'],
@@ -1270,26 +1306,24 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
     let importedCount = 0;
     const senhasTemporarias = [];
 
-    // Serializado junto das movimentações e do reset: todos abrem transação na
-    // mesma conexão SQLite e não podem se sobrepor.
-    await emTransacaoSerializada(async () => {
-    await exec('PRAGMA foreign_keys = OFF;');
-    await exec('BEGIN TRANSACTION;');
+    // Ordem de dependência para INSERT (pais antes dos filhos) e a inversa para
+    // DELETE. O PostgreSQL valida as FKs linha a linha — não existe o
+    // `PRAGMA foreign_keys = OFF` do SQLite —, então apagar na ordem errada
+    // (tipos_lavagem antes de lavagens, por exemplo) derrubaria o import.
+    const ordemInsercao = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'produtos', 'lavagens', 'auditoria_lavagens', 'movimentacoes'];
+    const ordemRemocao = [...ordemInsercao].reverse();
 
-    try {
-      // Ordem de dependência. auditoria_lavagens vem logo após lavagens:
-      // suas linhas referenciam lavagens(id), e a ordem decide se o
-      // foreign_key_check do fim do fluxo passa ou derruba o import inteiro.
-      const order = ['users', 'clientes', 'veiculos', 'tipos_lavagem', 'produtos', 'lavagens', 'auditoria_lavagens', 'movimentacoes'];
-      
+    // Serializado com o reset: dois imports simultâneos apagariam e
+    // reinseririam a base ao mesmo tempo.
+    await emTransacaoSerializada(() => withTransaction(async (tx) => {
       // Limpar tabelas que estão sendo importadas
-      for (const table of order) {
+      for (const table of ordemRemocao) {
         if (dataToImport[table]) {
-          await exec(`DELETE FROM ${table};`);
+          await tx.exec(`DELETE FROM ${table};`);
         }
       }
 
-      for (const table of order) {
+      for (const table of ordemInsercao) {
         const records = dataToImport[table];
         if (!records || records.length === 0) continue;
 
@@ -1320,33 +1354,14 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
             values.push(await bcrypt.hash(senhaTemporaria, 10));
           }
 
-          await run(sql, values);
+          await tx.run(sql, values);
           importedCount++;
         }
       }
-
-      // Com as FKs desligadas o SQLite aceitaria referências órfãs (ex: uma
-      // lavagem apontando para um cliente que não veio no backup). Esta
-      // verificação acontece com a transação ainda aberta, então um backup
-      // inconsistente é rejeitado por inteiro em vez de corromper o banco.
-      const problemasFk = await all('PRAGMA foreign_key_check;');
-      if (problemasFk.length > 0) {
-        const tabelasAfetadas = [...new Set(problemasFk.map(p => p.table))].join(', ');
-        throw new ValidacaoError(
-          `Backup inconsistente: ${problemasFk.length} referência(s) órfã(s) em ${tabelasAfetadas}. ` +
-          'Nenhum dado foi importado.'
-        );
-      }
-
-      await exec('COMMIT;');
-    } catch (e) {
-      await exec('ROLLBACK;').catch(() => {});
-      throw e;
-    } finally {
-      // Reativa as FKs sempre fora da transação, senão o PRAGMA é no-op.
-      await exec('PRAGMA foreign_keys = ON;').catch(() => {});
-    }
-    });
+      // Sem `PRAGMA foreign_key_check`: no PostgreSQL a própria FK rejeita a
+      // referência órfã no INSERT. O catch abaixo converte o SQLSTATE 23503 em
+      // 400 "Backup inconsistente" e a transação inteira é desfeita.
+    }));
 
     res.json({
       success: true,
@@ -1355,36 +1370,29 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
       senhas_temporarias: senhasTemporarias,
     });
   } catch (err) {
+    // FK violada durante a importação = backup com referência órfã (ex: uma
+    // lavagem apontando para um cliente que não veio no arquivo). A transação
+    // já foi desfeita; o cliente precisa receber 400, não 500.
+    if (err?.code === '23503') {
+      return res.status(400).json({
+        error: 'Backup inconsistente: há referências órfãs entre os arquivos enviados. Nenhum dado foi importado.',
+      });
+    }
     responderErro(res, err);
   }
 });
 
 app.post('/api/backup/reset', requireAdmin, async (req, res) => {
   try {
-    // Serializado junto das movimentações: as duas abrem transação na mesma
-    // conexão SQLite e não podem se sobrepor.
-    await emTransacaoSerializada(async () => {
-      await exec('PRAGMA foreign_keys = OFF;');
-      try {
-        await exec('BEGIN TRANSACTION;');
-        try {
-          // auditoria_lavagens não tem mais FK para lavagens (a trilha de
-          // exclusão precisa sobreviver ao DELETE), então ela nunca é limpa
-          // por cascade: precisa ser apagada explicitamente junto com as
-          // demais, senão o reset deixaria linhas órfãs para trás.
-          for (const table of tables) {
-            await exec(`DELETE FROM ${table};`);
-          }
-          await exec('COMMIT;');
-        } catch (e) {
-          await exec('ROLLBACK;').catch(() => {});
-          throw e;
-        }
-      } finally {
-        // Reativa as FKs sempre fora da transação, senão o PRAGMA é no-op.
-        await exec('PRAGMA foreign_keys = ON;').catch(() => {});
+    // Serializado com o import: as duas operações apagam dados da base inteira
+    // e não podem se sobrepor.
+    await emTransacaoSerializada(() => withTransaction(async (tx) => {
+      // DELETE em ordem reversa de dependência em vez de TRUNCATE ... CASCADE:
+      // o CASCADE do TRUNCATE apagaria tabelas que não estão na lista.
+      for (const table of [...tables].reverse()) {
+        await tx.exec(`DELETE FROM ${table};`);
       }
-    });
+    }));
     res.json({ success: true });
   } catch (err) {
     responderErro(res, err);
@@ -1440,7 +1448,7 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
     // não só no seed: quem sobe o servidor é quem precisa ver o alerta (FA-17).
     avisarSenhasSeedPadrao();
     app.listen(PORT, () => {
-      console.log(`Backend SQLite rodando na porta ${PORT}`);
+      console.log(`Backend PostgreSQL rodando na porta ${PORT}`);
     });
   }).catch((err) => {
     console.error('Servidor não iniciado: banco de dados indisponível.', err);

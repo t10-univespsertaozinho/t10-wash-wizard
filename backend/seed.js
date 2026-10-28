@@ -1,63 +1,68 @@
-import sqlite3 from "sqlite3";
-import path from "path";
+import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import dotenv from "dotenv";
-import { fileURLToPath } from "url";
+import { dbReady, withTransaction, pool } from "./db.js";
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Usar o banco na raiz do projeto para que o servidor use
-const DB_PATH = path.resolve(__dirname, "../wash_wizard.db");
-
-const db = new sqlite3.Database(DB_PATH);
-
-db.serialize(() => {
-  db.exec("PRAGMA foreign_keys = ON;");
+/**
+ * Popula o PostgreSQL (Supabase) com dados de demonstração.
+ *
+ * Destrutivo por definição: apaga os dados existentes e recria o cenário. Roda
+ * inteiro em uma transação — se qualquer INSERT falhar, a base fica como estava
+ * em vez de sobrar pela metade.
+ *
+ * Uso: `npm run seed` (no diretório backend).
+ */
+async function seed() {
+  await dbReady;
 
   console.log("Iniciando seed de dados...\n");
 
   const getNow = () => new Date().toISOString();
   const now = getNow();
+  const adminId = "admin-local";
 
-  // Limpar dados existentes
-  console.log("Limpando dados existentes...");
-  db.exec("DELETE FROM movimentacoes");
-  db.exec("DELETE FROM lavagens");
-  db.exec("DELETE FROM veiculos");
-  db.exec("DELETE FROM clientes");
-  db.exec("DELETE FROM produtos");
-  db.exec("DELETE FROM tipos_lavagem");
-  let adminId = "admin-local";
-  console.log("Criando usuários iniciais (se não existirem)...");
-  const adminPasswordHash = bcrypt.hashSync(
-    process.env.SEED_ADMIN_PASSWORD || "admin123",
-    10,
-  );
-  const operadorPasswordHash = bcrypt.hashSync(
-    process.env.SEED_OPERADOR_PASSWORD || "operador123",
-    10,
-  );
-  db.run(
-    "INSERT OR IGNORE INTO users (id, email, nome, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    adminId,
-    "admin@washwizard.com",
-    "Administrador",
-    "admin",
-    adminPasswordHash,
-    now,
-  );
-  db.run(
-    "INSERT OR IGNORE INTO users (id, email, nome, role, password_hash, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-    "operador-local",
-    "operador@washwizard.com",
-    "Operador",
-    "operador",
-    operadorPasswordHash,
-    now,
-  );
+  await withTransaction(async (tx) => {
+    // Limpar dados existentes (filhos antes dos pais: as FKs são validadas
+    // linha a linha pelo PostgreSQL).
+    console.log("Limpando dados existentes...");
+    for (const table of [
+      "movimentacoes",
+      "auditoria_lavagens",
+      "lavagens",
+      "veiculos",
+      "clientes",
+      "produtos",
+      "tipos_lavagem",
+    ]) {
+      await tx.exec(`DELETE FROM ${table};`);
+    }
+
+    console.log("Criando usuários iniciais (se não existirem)...");
+    const adminPasswordHash = await bcrypt.hash(
+      process.env.SEED_ADMIN_PASSWORD || "admin123",
+      10,
+    );
+    const operadorPasswordHash = await bcrypt.hash(
+      process.env.SEED_OPERADOR_PASSWORD || "operador123",
+      10,
+    );
+
+    // ON CONFLICT preserva usuários já existentes (o id antigo continua
+    // valendo) e evita duplicar o e-mail único.
+    const insertUser = `INSERT INTO users (id, email, nome, role, password_hash, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        ON CONFLICT (email) DO NOTHING`;
+
+    // Os ids fixos acima só valem se o usuário ainda não existia. Quando o
+    // e-mail já está cadastrado com outro id, reutilizamos o id real para não
+    // violar as FKs de clientes/veiculos/produtos/lavagens.
+    await tx.run(insertUser, [adminId, "admin@washwizard.com", "Administrador", "admin", adminPasswordHash, now]);
+    await tx.run(insertUser, ["operador-local", "operador@washwizard.com", "Operador", "operador", operadorPasswordHash, now]);
+
+    const adminRow = await tx.get("SELECT id FROM users WHERE email = ?", ["admin@washwizard.com"]);
+    const adminUserId = adminRow ? adminRow.id : adminId;
 
   // Inserir tipos de lavagem
   console.log("Inserindo tipos de lavagens...");
@@ -100,12 +105,11 @@ db.serialize(() => {
     },
   ];
 
-  const insertTipo = db.prepare(
-    "INSERT INTO tipos_lavagem (id, nome, descricao, preco, created_at) VALUES (?, ?, ?, ?, ?)",
-  );
-  tiposLavagem.forEach((t) =>
-    insertTipo.run(t.id, t.nome, t.descricao, t.preco, now),
-  );
+  const insertTipo =
+    "INSERT INTO tipos_lavagem (id, nome, descricao, preco, created_at) VALUES (?, ?, ?, ?, ?)";
+  for (const t of tiposLavagem) {
+    await tx.run(insertTipo, [t.id, t.nome, t.descricao, t.preco, now]);
+  }
 
   // Inserir clientes (25 clientes com data_nascimento)
   console.log("Inserindo clientes...");
@@ -262,19 +266,11 @@ db.serialize(() => {
     },
   ];
 
-  const insertCliente = db.prepare(
-    "INSERT INTO clientes (id, user_id, nome, telefone, data_nascimento, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-  );
-  clientes.forEach((c) =>
-    insertCliente.run(
-      c.id,
-      adminId,
-      c.nome,
-      c.telefone,
-      c.data_nascimento,
-      now,
-    ),
-  );
+  const insertCliente =
+    "INSERT INTO clientes (id, user_id, nome, telefone, data_nascimento, created_at) VALUES (?, ?, ?, ?, ?, ?)";
+  for (const c of clientes) {
+    await tx.run(insertCliente, [c.id, adminUserId, c.nome, c.telefone, c.data_nascimento, now]);
+  }
 
   // Inserir veículos (um para cada cliente + alguns com múltiplos)
   console.log("Inserindo veículos...");
@@ -497,21 +493,11 @@ db.serialize(() => {
     },
   ];
 
-  const insertVeiculo = db.prepare(
-    "INSERT INTO veiculos (id, cliente_id, user_id, modelo, placa, cor, marca, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-  veiculos.forEach((v) =>
-    insertVeiculo.run(
-      v.id,
-      v.cliente_id,
-      adminId,
-      v.modelo,
-      v.placa,
-      v.cor,
-      v.marca,
-      now,
-    ),
-  );
+  const insertVeiculo =
+    "INSERT INTO veiculos (id, cliente_id, user_id, modelo, placa, cor, marca, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+  for (const v of veiculos) {
+    await tx.run(insertVeiculo, [v.id, v.cliente_id, adminUserId, v.modelo, v.placa, v.cor, v.marca, now]);
+  }
 
   // Inserir produtos
   console.log("Inserindo produtos...");
@@ -608,22 +594,14 @@ db.serialize(() => {
     },
   ];
 
-  const insertProduto = db.prepare(
-    "INSERT INTO produtos (id, nome, quantidade, estoque_minimo, categoria, unidade, preco_unitario, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-  produtos.forEach((p) =>
-    insertProduto.run(
-      p.id,
-      p.nome,
-      p.quantidade,
-      p.estoque_minimo,
-      p.categoria,
-      p.unidade,
-      p.preco_unitario,
-      adminId,
-      now,
-    ),
-  );
+  const insertProduto =
+    "INSERT INTO produtos (id, nome, quantidade, estoque_minimo, categoria, unidade, preco_unitario, user_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  for (const p of produtos) {
+    await tx.run(insertProduto, [
+      p.id, p.nome, p.quantidade, p.estoque_minimo, p.categoria,
+      p.unidade, p.preco_unitario, adminUserId, now,
+    ]);
+  }
 
   // Inserir lavagens (dados dos últimos 6 meses)
   console.log("Inserindo lavagens (dados históricos)...");
@@ -668,7 +646,7 @@ db.serialize(() => {
         status,
         valor: tipo.preco,
         data,
-        user_id: adminId,
+        user_id: adminUserId,
         pagamento,
         observacao: "",
         data_conclusao: status === "concluida" ? data : null,
@@ -686,7 +664,7 @@ db.serialize(() => {
       status: "pendente",
       valor: 25.0,
       data: getNow(),
-      user_id: adminId,
+      user_id: adminUserId,
       pagamento: "Pendente",
       observacao: "",
       data_conclusao: null,
@@ -699,7 +677,7 @@ db.serialize(() => {
       status: "pendente",
       valor: 45.0,
       data: getNow(),
-      user_id: adminId,
+      user_id: adminUserId,
       pagamento: "Pendente",
       observacao: "",
       data_conclusao: null,
@@ -712,31 +690,21 @@ db.serialize(() => {
       status: "em_progresso",
       valor: 80.0,
       data: getNow(),
-      user_id: adminId,
+      user_id: adminUserId,
       pagamento: "PIX",
       observacao: "Cliente aguardando",
       data_conclusao: null,
     },
   );
 
-  const insertLavagem = db.prepare(
-    "INSERT INTO lavagens (id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, user_id, pagamento, observacao, data_conclusao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-  );
-  lavagens.forEach((l) =>
-    insertLavagem.run(
-      l.id,
-      l.cliente_id,
-      l.veiculo_id,
-      l.tipo_lavagem_id,
-      l.status,
-      l.valor,
-      l.data,
-      l.user_id,
-      l.pagamento,
-      l.observacao,
-      l.data_conclusao,
-    ),
-  );
+  const insertLavagem =
+    "INSERT INTO lavagens (id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, user_id, pagamento, observacao, data_conclusao) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  for (const l of lavagens) {
+    await tx.run(insertLavagem, [
+      l.id, l.cliente_id, l.veiculo_id, l.tipo_lavagem_id, l.status, l.valor,
+      l.data, l.user_id, l.pagamento, l.observacao, l.data_conclusao,
+    ]);
+  }
 
   // Inserir movimentações
   console.log("Inserindo movimentações...");
@@ -754,7 +722,7 @@ db.serialize(() => {
           tipo: "entrada",
           quantidade: Math.floor(Math.random() * 20) + 5,
           observacao: "Reposição mensal",
-          user_id: adminId,
+          user_id: adminUserId,
           data,
         });
       }
@@ -769,27 +737,20 @@ db.serialize(() => {
           tipo: "saida",
           quantidade: Math.floor(Math.random() * 10) + 1,
           observacao: "Consumo lavagens",
-          user_id: adminId,
+          user_id: adminUserId,
           data,
         });
       }
     });
   }
 
-  const insertMovimentacao = db.prepare(
-    "INSERT INTO movimentacoes (id, produto_id, tipo, quantidade, observacao, user_id, data) VALUES (?, ?, ?, ?, ?, ?, ?)",
-  );
-  movimentacoes.forEach((m) =>
-    insertMovimentacao.run(
-      m.id,
-      m.produto_id,
-      m.tipo,
-      m.quantidade,
-      m.observacao,
-      m.user_id,
-      m.data,
-    ),
-  );
+  const insertMovimentacao =
+    "INSERT INTO movimentacoes (id, produto_id, tipo, quantidade, observacao, user_id, data) VALUES (?, ?, ?, ?, ?, ?, ?)";
+  for (const m of movimentacoes) {
+    await tx.run(insertMovimentacao, [
+      m.id, m.produto_id, m.tipo, m.quantidade, m.observacao, m.user_id, m.data,
+    ]);
+  }
 
   console.log("\n=== Seed concluído com sucesso! ===\n");
   console.log("Resumo dos dados inseridos:");
@@ -802,6 +763,12 @@ db.serialize(() => {
     `- Lavagens: ${lavagens.length} (inclui ${lavagens.filter((l) => l.status === "concluida").length} concluídas)`,
   );
   console.log(`- Movimentações: ${movimentacoes.length}`);
-}); // end db.serialize()
+  }); // end withTransaction
+}
 
-db.close();
+seed()
+  .catch((err) => {
+    console.error("\nFalha no seed:", err.message);
+    process.exitCode = 1;
+  })
+  .finally(() => pool.end());
