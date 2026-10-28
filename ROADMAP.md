@@ -7,20 +7,20 @@
 
 A evolução do Wash Wizard estabeleceu duas camadas sólidas:
 
-1. **Camada Transacional (OLTP - Estável & Concluída):** CRUD robusto de clientes, veículos, lavagens e estoque; autenticação via JWT com RBAC reforçado no backend; sistema de backup e restauração relacional em CSV; e integridade referencial com SQLite (`PRAGMA foreign_keys = ON`).
+1. **Camada Transacional (OLTP - Estável & Concluída):** CRUD robusto de clientes, veículos, lavagens e estoque; autenticação via JWT com RBAC reforçado no backend; sistema de backup e restauração relacional em CSV; e integridade referencial no PostgreSQL (Supabase), com FKs validadas e indexadas.
 2. **Módulo de Business Intelligence Operacional (BI Prático - CONCLUÍDO):**
    - **Backend Analítico (`GET /api/dashboard/stats`):** Agregações SQL avançadas com *Common Table Expressions* (CTEs), cálculo de ticket médio semanal, comparativos temporais percentuais, apuração de clientes recorrentes, identificação de clientes ausentes (> 30 dias), análise de mix de serviços (volume vs. faturamento) e cálculo preditivo de *Runway* de estoque (dias restantes de suprimentos).
    - **Frontend Executivo (`Dashboard.tsx`):** Painel responsivo em React 18 reorganizado em 3 blocos (4 Cards de KPIs de topo, gráficos Recharts com acessibilidade Okabe-Ito no centro e painéis de ação imediata na base, incluindo acionamento direto via API do WhatsApp).
 
-A próxima fase do projeto expande essa inteligência analítica em direção ao **Data Science Avançado e Datamart Columnar**, sem alterar o SQLite como sistema de registro principal.
+A próxima fase do projeto expande essa inteligência analítica em direção ao **Data Science Avançado e Datamart Columnar**, sem alterar o PostgreSQL como sistema de registro principal.
 
 ---
 
 ## Fase 1 — Engenharia de Dados (ETL)
 
-Objetivo: transformar as tabelas relacionais do `wash_wizard.db` (otimizadas para transações unitárias) em um formato adequado para consultas analíticas em lote.
+Objetivo: transformar as tabelas relacionais do PostgreSQL (otimizadas para transações unitárias) em um formato adequado para consultas analíticas em lote.
 
-- **Extração:** job (script Python ou Node) que lê incrementalmente as tabelas `lavagens`, `clientes`, `veiculos`, `produtos`, `movimentacoes`, `tipos_lavagem` via `sqlite3`/`better-sqlite3`, filtrando por `created_at`/`data` desde a última extração.
+- **Extração:** job (script Python ou Node) que lê incrementalmente as tabelas `lavagens`, `clientes`, `veiculos`, `produtos`, `movimentacoes`, `tipos_lavagem` via driver `pg` (`DATABASE_URL`), filtrando por `created_at`/`data` desde a última extração.
 - **Transformação:** normalizar tipos (datas ISO 8601 → `datetime64`), resolver chaves estrangeiras em joins denormalizados (ex: lavagem + cliente + veículo + tipo em uma única linha), calcular colunas derivadas (dia da semana, duração do atendimento).
 - **Destino (datamart analítico):** duas opções não excludentes, escolher pela necessidade:
   - **Arquivos Parquet particionados** (ex: por mês) para portabilidade e consumo por qualquer ferramenta (pandas, Spark, BI).
@@ -64,7 +64,7 @@ Entregável desta fase: notebooks (Jupyter) ou um dashboard exploratório (ex: S
 
 ## Dependências técnicas sugeridas
 
-- **Extração/transformação:** Python 3.11+, `pandas` ou `polars`, `duckdb` (leitura direta de SQLite via extensão `sqlite_scanner`).
+- **Extração/transformação:** Python 3.11+, `pandas` ou `polars`, `duckdb` (leitura direta dos Parquets ou de uma cópia columnar extraída do PostgreSQL).
 - **Modelagem:** `scikit-learn` (RFM/clusterização), `statsmodels` ou `prophet` (séries temporais), `xgboost`/`lightgbm` (se o baseline de séries temporais não bastar).
 - **Ambiente:** isolar em `analytics/requirements.txt` (ou `pyproject.toml`) próprio, separado das dependências Node do `frontend`/`backend`.
 

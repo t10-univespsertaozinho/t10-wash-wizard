@@ -134,7 +134,7 @@
                 <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">Node.js 18+</span>
                 <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">React 18</span>
                 <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">TypeScript</span>
-                <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">SQLite 3</span>
+                <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">PostgreSQL 16</span>
                 <span class="px-4 py-2 bg-white rounded-full text-sm font-semibold text-slate-700 shadow-sm border border-slate-200">Express</span>
             </div>
         </div>
@@ -157,17 +157,17 @@
                 <div class="section-card p-8">
                     <h3 class="text-lg font-semibold mb-3 text-slate-800">1.1 Descrição do Projeto</h3>
                     <p class="text-slate-600 leading-relaxed text-sm">
-                        O Wash Wizard é um sistema ERP (Enterprise Resource Planning) modular desenvolvido para gestão de lava-rápidos. 
-                        O sistema automatiza o workflow operacional incluindo controle de clientes e frotas, gestão de lavagens, 
+                        O Wash Wizard é um sistema ERP (Enterprise Resource Planning) modular desenvolvido para gestão de lava-rápidos.
+                        O sistema automatiza o workflow operacional incluindo controle de clientes e frotas, gestão de lavagens,
                         controle de estoque de produtos e dashboard financeiro com métricas de negócio.
                     </p>
                 </div>
                 <div class="section-card p-8">
                     <h3 class="text-lg font-semibold mb-3 text-slate-800">1.2 Escopo e Aplicação</h3>
                     <p class="text-slate-600 leading-relaxed text-sm">
-                        Desenvolvido como projeto acadêmico para a UNIVESP - Engenharia de Computação, o sistema opera em modo 
-                        local/offline utilizando SQLite como banco de dados relacional, garantindo total independência de conexão 
-                        com internet durante a operação comercial.
+                        Desenvolvido como projeto acadêmico para a UNIVESP - Engenharia de Computação, o sistema utiliza um
+                        banco de dados relacional PostgreSQL gerenciado no Supabase, com acesso via API REST autenticada,
+                        garantindo integridade transacional e backup gerenciado pelo provedor.
                     </p>
                 </div>
                 <div class="section-card p-8">
@@ -218,7 +218,7 @@
                     graph TD
                     User(["Usuário"]) -->|"Interface Gráfica"| Frontend["Frontend<br/>React 18 + Vite<br/>Porta 8080"]
                     Frontend -->|"HTTP/JSON"| Backend["Backend<br/>Node.js + Express<br/>Porta 3001"]
-                    Backend -->|"SQLite Driver"| Database[("SQLite<br/>wash_wizard.db")]
+                    Backend -->|"pg Pool"| Database[("PostgreSQL 16<br/>Supabase")]
                     Frontend -->|"localStorage"| Session["Sessão HMAC<br/>Assinada"]
                     Backend -->|"Multer"| CSV["Backup CSV"]
                 </div>
@@ -242,7 +242,7 @@
                     <ul class="text-sm text-slate-600 space-y-2">
                         <li><strong>Runtime:</strong> Node.js 18+</li>
                         <li><strong>Framework:</strong> Express.js</li>
-                        <li><strong>Database:</strong> SQLite3 (sqlite3)</li>
+                        <li><strong>Database:</strong> PostgreSQL (pg Pool)</li>
                         <li><strong>Parser:</strong> csv-parse / csv-stringify</li>
                         <li><strong>Upload:</strong> Multer</li>
                         <li><strong>CORS:</strong> Enabled</li>
@@ -252,12 +252,12 @@
                 <div class="section-card p-6 border-l-4 border-l-emerald-500">
                     <h4 class="font-bold text-slate-900 mb-3">2.4 Banco de Dados</h4>
                     <ul class="text-sm text-slate-600 space-y-2">
-                        <li><strong>SGDB:</strong> SQLite 3</li>
-                        <li><strong>Arquivo:</strong> wash_wizard.db</li>
-                        <li><strong>Constraints:</strong> Foreign Keys ON</li>
-                        <li><strong>Transações:</strong> Suportadas</li>
+                        <li><strong>SGDB:</strong> PostgreSQL 16 (Supabase)</li>
+                        <li><strong>Conexão:</strong> DATABASE_URL (SSL)</li>
+                        <li><strong>Constraints:</strong> Foreign Keys + CHECK</li>
+                        <li><strong>Transações:</strong> ACID (withTransaction)</li>
                         <li><strong>Backup:</strong> CSV Export/Import</li>
-                        <li><strong>Schema:</strong> schema.sql</li>
+                        <li><strong>Schema:</strong> schema.postgres.sql</li>
                         <li><strong>Seed:</strong> seed.js</li>
                     </ul>
                 </div>
@@ -280,13 +280,13 @@
 │   └── vite.config.ts
 ├── backend/                     # Servidor Node.js
 │   ├── server.js              # API REST
-│   ├── db.js                  # Configuração SQLite
-│   ├── schema.sql             # DDL do banco
+│   ├── db.js                  # Pool PostgreSQL (pg) e transações
+│   ├── schema.postgres.sql    # DDL do banco
+│   ├── migrations/            # Migrações aditivas
 │   ├── seed.js                # Dados de exemplo
 │   └── package.json
 ├── package.json               # Orquestrador (concurrently)
-├── docs.html                  # Esta documentação
-└── wash_wizard.db             # Banco de dados (gerado)</code></pre>
+└── docs.html                  # Esta documentação</code></pre>
             </div>
         </section>
 
@@ -374,7 +374,7 @@
 
             <div class="section-card p-8 overflow-x-auto">
                 <h3 class="text-lg font-semibold mb-4 text-slate-800">3.2 Especificação das Tabelas</h3>
-                
+
                 <h4 class="font-bold text-slate-700 mt-6 mb-3">users</h4>
                 <table class="table-schema mb-6">
                     <thead>
@@ -533,7 +533,7 @@
 
             <div class="section-card p-8 mb-6">
                 <h3 class="text-lg font-semibold mb-4 text-slate-800">4.1 Endpoints Principais</h3>
-                
+
                 <div class="space-y-4">
                     <div class="endpoint-box text-white">
                         <div class="flex items-center mb-2">
@@ -676,7 +676,7 @@
                         <li>• Máscara de placa: Mercosul (ABC1D23) ou Antigo (ABC1234)</li>
                         <li>• Sanitização XSS em inputs de texto</li>
                         <li>• Foreign Keys: Integridade referencial ativada</li>
-                        <li>• Transações: Suportadas pelo SQLite</li>
+                        <li>• Transações: ACID no PostgreSQL</li>
                     </ul>
                 </div>
 
@@ -685,7 +685,7 @@
                     <ul class="text-sm text-slate-600 space-y-2">
                         <li>• Formato CSV com encoding UTF-8</li>
                         <li>• Ordem de dependências preservada</li>
-                        <li>• Foreign keys desabilitados durante import</li>
+                        <li>• FK violada rejeita o backup inteiro (400)</li>
                         <li>• Transação atômica para restore</li>
                         <li>• Validação de estoque em movimentações</li>
                     </ul>

@@ -8,6 +8,52 @@
 
 ---
 
+## 2026-10-28 — opencode/big-pickle — Migração do backend de SQLite para PostgreSQL (Supabase)
+
+### Resumo
+
+O backend deixou de usar `sqlite3` + `wash_wizard.db` e passou a operar sobre um `Pool` do `pg` apontando para o PostgreSQL gerenciado no Supabase. Os contratos da API e a suíte de testes foram preservados: mesmas rotas, mesmos campos JSON, 43 testes de integração passando.
+
+### Decisões e mudanças
+
+1. **Camada de compatibilidade (`backend/db.js`)**
+   - `Pool` com `connectionString: DATABASE_URL`; SSL habilitado para hosts remotos (Supabase) e desligado em localhost/`PGSSLMODE=disable`.
+   - Conversão determinística de placeholders `?` → `$1, $2, ...` (ignora `?` em strings, comentários e dollar-quoted blocks).
+   - Helpers `query/get/all/run/exec` com a mesma semântica Promise-based usada pelas rotas.
+   - `withTransaction(tarefa)` com client dedicado, já que `BEGIN`/`COMMIT` no Pool podem cair em conexões diferentes.
+   - Type parsers: `NUMERIC`→`number`, `BIGINT`→`number`, `TIMESTAMPTZ`→ISO 8601 UTC, `DATE`→`YYYY-MM-DD` (evita deslocamento de um dia em `data_nascimento`).
+
+2. **Rotas (`backend/server.js`)**
+   - Dashboard com `NOW() - INTERVAL`, `to_char`, `EXTRACT(EPOCH ...)` e `HAVING` sem alias.
+   - Movimentações de estoque com `SELECT ... FOR UPDATE` em vez da fila serializada global; import/reset continuam serializados entre si.
+   - Exclusões e edição de lavagem auditam e gravam na mesma transação.
+   - `auditoria_lavagens` grava os dois formatos: `acao`/`dados_anteriores`/`dados_novos` (jsonb) e `campo`/`valor_anterior`/`valor_novo` (contrato antigo e CSV).
+   - Erros SQLSTATE mapeados: `23503`→400, `23505`→409, `23514`/`22P02`→400. FK órfã no import vira 400 "Backup inconsistente".
+   - Import/reset usam `DELETE` em ordem reversa de dependência (TRUNCATE forçava fsync por relação e estourava o `hookTimeout`).
+
+3. **Seed (`backend/seed.js`)**
+   - Sem `sqlite3`/`db.serialize()`; transação única no pool, `bcrypt.hash` e `ON CONFLICT (email) DO NOTHING`.
+   - Reutiliza o id real do admin já cadastrado para não violar FKs.
+
+4. **Schema e migração**
+   - `backend/schema.postgres.sql` (novo, versionado) e `backend/migrations/001_auditoria_lavagens_compat.sql` (aditiva, já aplicada no Supabase: colunas legadas de auditoria + índices de FK).
+   - Scripts `npm run db:schema` e `npm run db:migrate` (`scripts/aplicar-sql.js`).
+
+5. **Testes e CI**
+   - `backend/test/helpers.js` exige `TEST_DATABASE_URL`, recusa hosts Supabase e recusa igualdade com `DATABASE_URL`; reset por `DELETE` (não `TRUNCATE`), pool encerrado no `afterAll`.
+   - `test/runner.js` repassa `SIGINT`/`SIGTERM` ao vitest para não deixar locks pendurados.
+   - `.github/workflows/ci.yml`: serviço `postgres:16`, banco de teste separado, schema/migrations e verificação do log "Backend PostgreSQL rodando".
+
+6. **Documentação e dependências**
+   - `pg@^8.23.1` em dependencies; `sqlite3` movido para devDependencies apenas para `scripts/demo-data.mjs` e `scripts/capture-screenshots.mjs`.
+   - `.env.example`, README, AGENTS.md, SECURITY.md, ROADMAP.md e `documentacao.html` atualizados para refletir PostgreSQL/Supabase.
+
+### Arquivos modificados
+
+`backend/db.js`, `backend/server.js`, `backend/seed.js`, `backend/package.json`, `backend/package-lock.json`, `backend/schema.postgres.sql`, `backend/migrations/001_auditoria_lavagens_compat.sql`, `backend/scripts/aplicar-sql.js`, `backend/test/helpers.js`, `backend/test/runner.js`, `backend/vitest.config.js`, `backend/.env.example`, `.gitignore`, `.github/workflows/ci.yml`, `README.md`, `AGENTS.md`, `SECURITY.md`, `ROADMAP.md`, `documentacao.html`.
+
+---
+
 ## 2026-05-12 — opencode/minimax-m2.5-free — Bug Fixes, Stock Management and Data Security
 
 ### Resumo
