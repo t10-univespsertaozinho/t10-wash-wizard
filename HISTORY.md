@@ -6,6 +6,22 @@
 > **Convenção:** antes de declarar uma tarefa "concluída", qualquer agente AI **deve**
 > adicionar uma entrada aqui.
 
+## 2026-10-28 — Codex — Configura proxy da Vercel para o backend no Render
+
+### Resumo
+
+Adicionada a configuração de deploy do frontend estático na Vercel, com
+encaminhamento de `/api/*` para o backend no Render e fallback SPA para
+`index.html`.
+
+### Mudanças
+
+- `vercel.json`: instalação e build em `frontend/`, publicação de `frontend/dist`,
+  rewrite da API para o Render e fallback das rotas do frontend.
+- `README.md`: instruções para importar o repositório na Vercel usando a raiz
+  como diretório do projeto e mantendo `VITE_API_URL` sem configuração em
+  produção.
+
 ---
 
 ## 2026-10-28 — opencode/big-pickle — Corrige boot em produção no Render (variáveis de seed)

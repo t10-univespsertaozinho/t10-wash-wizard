@@ -352,6 +352,24 @@ npm test                # 49 testes de integração (Vitest + Supertest)
 npm run test:watch      # modo watch
 ```
 
+### Deploy na Vercel (frontend)
+
+O frontend é publicado na Vercel com a raiz do repositório (`.`) como diretório
+do projeto. O arquivo `vercel.json` instala as dependências de `frontend/`,
+executa `npm run build` nesse diretório e publica `frontend/dist`.
+
+As chamadas do React usam caminhos relativos (`/api/...`). O rewrite de `/api/*`
+em `vercel.json` as encaminha para
+`https://t10-wash-wizard.onrender.com/api/*`, mantendo o mesmo domínio no
+navegador e evitando configurar uma URL absoluta da API no build. O rewrite
+restante direciona caminhos do cliente para `/index.html`, habilitando o fallback
+SPA em rotas como `/dashboard`.
+
+Para configurar o projeto na Vercel, importe o repositório e mantenha o
+**Root Directory** como `.` (raiz do repositório). Não defina `VITE_API_URL` no
+ambiente de produção: sem essa variável, o frontend usa `/api`. O deploy do
+backend continua independente no Render, conforme a seção abaixo.
+
 ### Deploy no Render (backend)
 
 1. Crie um **Web Service** apontando para o repositório, com:
