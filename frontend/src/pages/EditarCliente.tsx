@@ -33,7 +33,7 @@ export default function EditarCliente() {
                 : `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7, 11)}`
           : "";
       setTelefone(formatted);
-      setData(cliente.data_nascimento);
+      setData(cliente.data_nascimento ?? "");
     }
     setLoading(false);
   }, [cliente, setTelefone]);
@@ -44,7 +44,7 @@ export default function EditarCliente() {
     updateCliente(id, {
       nome: nome.trim(),
       telefone: telefone.trim(),
-      data_nascimento: data_nascimento.trim(),
+      data_nascimento: data_nascimento.trim() || null,
     });
     navigate(`/clientes/${id}`);
   };

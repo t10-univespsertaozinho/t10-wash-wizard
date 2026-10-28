@@ -62,6 +62,14 @@ export default function Estoque() {
                 <td className="py-4 px-4 text-center">{statusBadge(p)}</td>
                 <td className="py-4 px-4 text-right">
                   <div className="flex items-center justify-end gap-1">
+                    <Link
+                      to={`/movimentacao?produto=${encodeURIComponent(p.id)}`}
+                      aria-label={`Movimentar estoque de ${p.nome}`}
+                      title="Movimentar estoque"
+                      className="text-secondary-foreground hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-primary/10"
+                    >
+                      <ArrowLeftRight size={15} aria-hidden="true" />
+                    </Link>
                     <ConfirmDialogButton
                       title="Excluir Produto"
                       ariaLabel={`Excluir produto ${p.nome}`}

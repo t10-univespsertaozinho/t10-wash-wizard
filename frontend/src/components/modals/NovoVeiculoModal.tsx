@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useApp } from "@/contexts/AppContext";
+import { usePlacaMask } from "@/hooks/usePlacaMask";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +27,11 @@ export function NovoVeiculoModal({
 
   const [selectedClienteId, setSelectedClienteId] = useState("");
   const [modelo, setModelo] = useState("");
-  const [placa, setPlaca] = useState("");
+  const {
+    value: placa,
+    setValue: setPlaca,
+    handleChange: handlePlacaChange,
+  } = usePlacaMask();
   const [marca, setMarca] = useState("");
   const [cor, setCor] = useState("");
   const [loading, setLoading] = useState(false);
@@ -52,7 +57,7 @@ export function NovoVeiculoModal({
       setCor("");
     }
     setErro("");
-  }, [isOpen, veiculoId, clienteId, veiculos]);
+  }, [isOpen, veiculoId, clienteId, veiculos, setPlaca]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,12 +166,17 @@ export function NovoVeiculoModal({
               </label>
               <input
                 id="veiculo-placa"
-                className="input-t10 uppercase"
+                className="input-t10 uppercase font-mono"
                 value={placa}
-                onChange={(e) => setPlaca(e.target.value)}
+                onChange={handlePlacaChange}
                 placeholder="Placa do veículo"
+                maxLength={8}
+                aria-describedby="veiculo-placa-formato"
                 required
               />
+              <p id="veiculo-placa-formato" className="text-xs text-muted-foreground mt-1">
+                Formato antigo ou Mercosul, sem hífen.
+              </p>
             </div>
           </div>
 

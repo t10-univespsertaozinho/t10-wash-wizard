@@ -1,8 +1,8 @@
 /**
  * ModalContext (CRUD de modais globais do app).
  *
- * O provider renderiza os dois modais de cadastro e expõe para a árvore as
- * funções de abrir/fechar. Como os componentes `Modal*` reais dependem do
+ * O provider renderiza os modais de cadastro e expõe para a árvore as funções
+ * de abrir/fechar. Como os componentes `Modal*` reais dependem do
  * `AppContext`, eles são dublados aqui: o objetivo é o contrato do contexto
  * (estado + guarda de uso), não o conteúdo dos formulários.
  */
@@ -26,18 +26,31 @@ vi.mock('@/components/modals/NovoClienteModal', () => ({
 }));
 
 vi.mock('@/components/modals/NovoVeiculoModal', () => ({
-  NovoVeiculoModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="modal-veiculo">Novo Veículo</div> : null,
+  NovoVeiculoModal: ({
+    isOpen,
+    veiculoId,
+    clienteId,
+  }: {
+    isOpen: boolean;
+    veiculoId?: string | null;
+    clienteId?: string | null;
+  }) =>
+    isOpen ? (
+      <div
+        data-testid="modal-veiculo"
+        data-id-edicao={veiculoId ?? ''}
+        data-cliente-id={clienteId ?? ''}
+      >
+        Novo Veículo
+      </div>
+    ) : null,
 }));
 
 vi.mock('@/components/modals/NovoServicoModal', () => ({
-  NovoServicoModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="modal-servico">Novo Serviço</div> : null,
-}));
-
-vi.mock('@/components/modals/MovimentacaoEstoqueModal', () => ({
-  MovimentacaoEstoqueModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="modal-movimentacao">Movimentação</div> : null,
+  NovoServicoModal: ({ isOpen, servicoId }: { isOpen: boolean; servicoId?: string | null }) =>
+    isOpen ? (
+      <div data-testid="modal-servico" data-id-edicao={servicoId ?? ''}>Novo Serviço</div>
+    ) : null,
 }));
 
 vi.mock('@/contexts/AppContext', () => ({
@@ -53,13 +66,28 @@ vi.mock('@/contexts/AppContext', () => ({
 }));
 
 function BotoesDeDisparo() {
-  const { openNovaLavagem, openNovoCliente, closeNovaLavagem, closeNovoCliente } = useModal();
+  const {
+    openNovaLavagem,
+    openNovoCliente,
+    openNovoVeiculo,
+    openNovoServico,
+    closeNovaLavagem,
+    closeNovoCliente,
+    closeNovoVeiculo,
+    closeNovoServico,
+  } = useModal();
   return (
     <>
       <button type="button" onClick={openNovaLavagem}>abrir lavagem</button>
       <button type="button" onClick={openNovoCliente}>abrir cliente</button>
+      <button type="button" onClick={() => openNovoVeiculo()}>abrir veículo</button>
+      <button type="button" onClick={() => openNovoVeiculo('cliente-1', 'veiculo-1')}>editar veículo</button>
+      <button type="button" onClick={() => openNovoServico()}>abrir serviço</button>
+      <button type="button" onClick={() => openNovoServico('servico-1')}>editar serviço</button>
       <button type="button" onClick={closeNovaLavagem}>fechar lavagem</button>
       <button type="button" onClick={closeNovoCliente}>fechar cliente</button>
+      <button type="button" onClick={closeNovoVeiculo}>fechar veículo</button>
+      <button type="button" onClick={closeNovoServico}>fechar serviço</button>
     </>
   );
 }
@@ -104,6 +132,48 @@ describe('ModalContext', () => {
     expect(screen.queryByTestId('modal-cliente')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'abrir cliente' }));
     expect(screen.getByTestId('modal-cliente')).toBeInTheDocument();
+  });
+
+  it('openNovoVeiculo() abre o modal de cadastro e o modo edição com ids', () => {
+    render(
+      <AppProvider>
+        <ModalProvider>
+          <BotoesDeDisparo />
+        </ModalProvider>
+      </AppProvider>
+    );
+
+    expect(screen.queryByTestId('modal-veiculo')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'abrir veículo' }));
+    expect(screen.getByTestId('modal-veiculo')).toHaveAttribute('data-id-edicao', '');
+    expect(screen.getByTestId('modal-veiculo')).toHaveAttribute('data-cliente-id', '');
+
+    fireEvent.click(screen.getByRole('button', { name: 'fechar veículo' }));
+    expect(screen.queryByTestId('modal-veiculo')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'editar veículo' }));
+    expect(screen.getByTestId('modal-veiculo')).toHaveAttribute('data-id-edicao', 'veiculo-1');
+    expect(screen.getByTestId('modal-veiculo')).toHaveAttribute('data-cliente-id', 'cliente-1');
+  });
+
+  it('openNovoServico() abre o modal de cadastro e o modo edição com id', () => {
+    render(
+      <AppProvider>
+        <ModalProvider>
+          <BotoesDeDisparo />
+        </ModalProvider>
+      </AppProvider>
+    );
+
+    expect(screen.queryByTestId('modal-servico')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'abrir serviço' }));
+    expect(screen.getByTestId('modal-servico')).toHaveAttribute('data-id-edicao', '');
+
+    fireEvent.click(screen.getByRole('button', { name: 'fechar serviço' }));
+    expect(screen.queryByTestId('modal-servico')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'editar serviço' }));
+    expect(screen.getByTestId('modal-servico')).toHaveAttribute('data-id-edicao', 'servico-1');
   });
 
   it('fecha o modal ao chamar o close correspondente', () => {

@@ -9,7 +9,6 @@ import { NovaLavagemModal } from "@/components/modals/NovaLavagemModal";
 import { NovoClienteModal } from "@/components/modals/NovoClienteModal";
 import { NovoVeiculoModal } from "@/components/modals/NovoVeiculoModal";
 import { NovoServicoModal } from "@/components/modals/NovoServicoModal";
-import { MovimentacaoEstoqueModal } from "@/components/modals/MovimentacaoEstoqueModal";
 
 interface ModalContextType {
   // Modal de Lavagens (Criar / Editar)
@@ -36,12 +35,6 @@ interface ModalContextType {
   selectedServicoId?: string | null;
   openNovoServico: (id?: string) => void;
   closeNovoServico: () => void;
-
-  // Modal de Estoque / Movimentações (Entrada / Saída)
-  movimentacaoEstoqueOpen: boolean;
-  selectedProdutoId?: string | null;
-  openMovimentacaoEstoque: (produtoId?: string) => void;
-  closeMovimentacaoEstoque: () => void;
 }
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
@@ -65,7 +58,6 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const [novoClienteOpen, setNovoClienteOpen] = useState(false);
   const [novoVeiculoOpen, setNovoVeiculoOpen] = useState(false);
   const [novoServicoOpen, setNovoServicoOpen] = useState(false);
-  const [movimentacaoEstoqueOpen, setMovimentacaoEstoqueOpen] = useState(false);
 
   // Estados de IDs selecionados para edição ou associação
   const [selectedLavagemId, setSelectedLavagemId] = useState<string | null>(
@@ -80,9 +72,6 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   const [selectedClienteForVeiculoId, setSelectedClienteForVeiculoId] =
     useState<string | null>(null);
   const [selectedServicoId, setSelectedServicoId] = useState<string | null>(
-    null,
-  );
-  const [selectedProdutoId, setSelectedProdutoId] = useState<string | null>(
     null,
   );
 
@@ -135,17 +124,6 @@ export function ModalProvider({ children }: { children: ReactNode }) {
     setSelectedServicoId(null);
   }, []);
 
-  // Handlers - Movimentação de Estoque
-  const openMovimentacaoEstoque = useCallback((produtoId?: string) => {
-    setSelectedProdutoId(idValido(produtoId));
-    setMovimentacaoEstoqueOpen(true);
-  }, []);
-
-  const closeMovimentacaoEstoque = useCallback(() => {
-    setMovimentacaoEstoqueOpen(false);
-    setSelectedProdutoId(null);
-  }, []);
-
   return (
     <ModalContext.Provider
       value={{
@@ -169,11 +147,6 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         selectedServicoId,
         openNovoServico,
         closeNovoServico,
-
-        movimentacaoEstoqueOpen,
-        selectedProdutoId,
-        openMovimentacaoEstoque,
-        closeMovimentacaoEstoque,
       }}
     >
       {children}
@@ -201,12 +174,6 @@ export function ModalProvider({ children }: { children: ReactNode }) {
         isOpen={novoServicoOpen}
         onClose={closeNovoServico}
         servicoId={selectedServicoId}
-      />
-
-      <MovimentacaoEstoqueModal
-        isOpen={movimentacaoEstoqueOpen}
-        onClose={closeMovimentacaoEstoque}
-        produtoId={selectedProdutoId}
       />
     </ModalContext.Provider>
   );

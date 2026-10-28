@@ -1,13 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useModal } from '@/contexts/ModalContext';
 import { toast } from 'sonner';
-import { Car, Plus, Trash2, Search } from 'lucide-react';
-import { usePlacaMask } from '@/hooks/usePlacaMask';
+import { Car, Plus, Pencil, Trash2, Search } from 'lucide-react';
 import { ConfirmDialogButton } from '@/components/ConfirmDialog';
 
 export default function Veiculos() {
-  const { veiculos, clientes, addVeiculo, deleteVeiculo } = useApp();
+  const { veiculos, clientes, deleteVeiculo } = useApp();
+  const { openNovoVeiculo } = useModal();
   const { user } = useAuth();
   const podeExcluir = user?.role === 'admin';
 
@@ -19,12 +20,7 @@ export default function Veiculos() {
       toast.error(`Não foi possível excluir o veículo: ${err instanceof Error ? err.message : 'erro desconhecido'}`);
     }
   };
-  const [showForm, setShowForm] = useState(false);
-  const [clienteId, setClienteId] = useState('');
-  const [modelo, setModelo] = useState('');
-  const [cor, setCor] = useState('');
   const [busca, setBusca] = useState('');
-  const { value: placa, handleChange: handlePlacaChange, setValue: setPlaca } = usePlacaMask();
 
   const filtrados = useMemo(() => {
     const q = busca.trim().toLowerCase();
@@ -36,13 +32,6 @@ export default function Veiculos() {
         (c?.nome.toLowerCase().includes(q) ?? false);
     });
   }, [veiculos, clientes, busca]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clienteId || !modelo.trim() || !placa.trim()) return;
-    await addVeiculo({ cliente_id: clienteId, modelo: modelo.trim(), placa: placa.trim(), cor: cor.trim() });
-    setClienteId(''); setModelo(''); setPlaca(''); setCor(''); setShowForm(false);
-  };
 
   return (
     <div className="space-y-6 animate-fade-up">
@@ -65,42 +54,14 @@ export default function Veiculos() {
               />
             </div>
             <button
-              onClick={() => setShowForm(!showForm)}
+              type="button"
+              onClick={() => openNovoVeiculo()}
               className="text-base bg-primary text-primary-foreground h-12 px-6 rounded-lg font-bold hover:brightness-110 transition-all flex items-center gap-1"
             >
               <Plus size={18} /> Novo Veículo
             </button>
           </div>
         </div>
-
-        {showForm && (
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4 p-4 bg-secondary/40 rounded-lg">
-            <label htmlFor="veiculo-cliente" className="sr-only">Cliente</label>
-            <select
-              id="veiculo-cliente"
-              className="input-t10"
-              value={clienteId}
-              onChange={e => setClienteId(e.target.value)}
-              required
-            >
-              <option value="">Selecione o cliente</option>
-              {clientes.map(c => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
-              ))}
-            </select>
-            <label htmlFor="veiculo-modelo" className="sr-only">Modelo</label>
-            <input id="veiculo-modelo" className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
-            <label htmlFor="veiculo-placa" className="sr-only">Placa</label>
-            <input id="veiculo-placa" className="input-t10 uppercase font-mono" placeholder="Placa do veículo" value={placa} onChange={handlePlacaChange} maxLength={8} required />
-            <div className="flex gap-2">
-              <label htmlFor="veiculo-cor" className="sr-only">Cor</label>
-              <input id="veiculo-cor" className="input-t10 flex-1" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />
-              <button type="submit" className="bg-primary text-primary-foreground h-12 px-6 rounded-lg font-bold text-base hover:brightness-110 transition-all whitespace-nowrap">
-                Salvar
-              </button>
-            </div>
-          </form>
-        )}
 
         {/* WCAG 2.1.1 / 1.4.10 - regiao rolavel por teclado, com rotulo para leitores de tela */}
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabela de veículos">
@@ -125,16 +86,27 @@ export default function Veiculos() {
                     <td className="py-4 px-4 font-mono text-sm font-medium text-muted-foreground">{v.placa}</td>
                     <td className="py-4 px-4 text-sm font-medium text-muted-foreground">{v.cor}</td>
                     <td className="py-4 px-4 text-right">
-                      {podeExcluir && (
-                        <ConfirmDialogButton
-                          title="Excluir Veículo"
-                          ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
-                          description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
-                          onConfirm={() => handleDeleteVeiculo(v.id, v.placa)}
-                          icon={<Trash2 size={14} />}
-                          variant="ghost"
-                        />
-                      )}
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          type="button"
+                          onClick={() => openNovoVeiculo(undefined, v.id)}
+                          aria-label={`Editar veículo ${v.modelo}, placa ${v.placa}`}
+                          title="Editar"
+                          className="text-secondary-foreground hover:text-primary transition-colors p-1"
+                        >
+                          <Pencil size={14} aria-hidden="true" />
+                        </button>
+                        {podeExcluir && (
+                          <ConfirmDialogButton
+                            title="Excluir Veículo"
+                            ariaLabel={`Excluir veículo ${v.modelo}, placa ${v.placa}`}
+                            description={`Tem certeza que deseja excluir o veículo "${v.modelo}"?`}
+                            onConfirm={() => handleDeleteVeiculo(v.id, v.placa)}
+                            icon={<Trash2 size={14} />}
+                            variant="ghost"
+                          />
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );
