@@ -46,6 +46,19 @@ interface ModalContextType {
 
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
+/**
+ * Normaliza o "id de edição" recebido pelos abridores de modal.
+ *
+ * `onClick={openNovoCliente}` — sem arrow, como estava em Dashboard, Lavagens e
+ * Clientes — entrega o SyntheticEvent do React como primeiro argumento. Como
+ * qualquer objeto é truthy, o evento era interpretado como id: o modal de
+ * cadastro abria em modo edição, com título "Editar ..." e botão "Atualizar ..."
+ * para um registro que nem existe. Só string não vazia vale como id.
+ */
+function idValido(valor?: string | null): string | null {
+  return typeof valor === "string" && valor.length > 0 ? valor : null;
+}
+
 export function ModalProvider({ children }: { children: ReactNode }) {
   // Estados de visibilidade dos modais
   const [novaLavagemOpen, setNovaLavagemOpen] = useState(false);
@@ -75,7 +88,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
 
   // Handlers - Lavagem
   const openNovaLavagem = useCallback((id?: string) => {
-    setSelectedLavagemId(id || null);
+    setSelectedLavagemId(idValido(id));
     setNovaLavagemOpen(true);
   }, []);
 
@@ -86,7 +99,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
 
   // Handlers - Cliente
   const openNovoCliente = useCallback((id?: string) => {
-    setSelectedClienteId(id || null);
+    setSelectedClienteId(idValido(id));
     setNovoClienteOpen(true);
   }, []);
 
@@ -98,8 +111,8 @@ export function ModalProvider({ children }: { children: ReactNode }) {
   // Handlers - Veículo
   const openNovoVeiculo = useCallback(
     (clienteId?: string, veiculoId?: string) => {
-      setSelectedClienteForVeiculoId(clienteId || null);
-      setSelectedVeiculoId(veiculoId || null);
+      setSelectedClienteForVeiculoId(idValido(clienteId));
+      setSelectedVeiculoId(idValido(veiculoId));
       setNovoVeiculoOpen(true);
     },
     [],
@@ -113,7 +126,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
 
   // Handlers - Serviços / Tipos de Lavagem
   const openNovoServico = useCallback((id?: string) => {
-    setSelectedServicoId(id || null);
+    setSelectedServicoId(idValido(id));
     setNovoServicoOpen(true);
   }, []);
 
@@ -124,7 +137,7 @@ export function ModalProvider({ children }: { children: ReactNode }) {
 
   // Handlers - Movimentação de Estoque
   const openMovimentacaoEstoque = useCallback((produtoId?: string) => {
-    setSelectedProdutoId(produtoId || null);
+    setSelectedProdutoId(idValido(produtoId));
     setMovimentacaoEstoqueOpen(true);
   }, []);
 

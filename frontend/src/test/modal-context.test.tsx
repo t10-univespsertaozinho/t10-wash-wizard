@@ -12,13 +12,17 @@ import { ModalProvider, useModal } from '@/contexts/ModalContext';
 import { AppProvider } from '@/contexts/AppContext';
 
 vi.mock('@/components/modals/NovaLavagemModal', () => ({
-  NovaLavagemModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="modal-lavagem">Nova Lavagem</div> : null,
+  NovaLavagemModal: ({ isOpen, lavagemId }: { isOpen: boolean; lavagemId?: string | null }) =>
+    isOpen ? (
+      <div data-testid="modal-lavagem" data-id-edicao={lavagemId ?? ''}>Nova Lavagem</div>
+    ) : null,
 }));
 
 vi.mock('@/components/modals/NovoClienteModal', () => ({
-  NovoClienteModal: ({ isOpen }: { isOpen: boolean }) =>
-    isOpen ? <div data-testid="modal-cliente">Novo Cliente</div> : null,
+  NovoClienteModal: ({ isOpen, clienteId }: { isOpen: boolean; clienteId?: string | null }) =>
+    isOpen ? (
+      <div data-testid="modal-cliente" data-id-edicao={clienteId ?? ''}>Novo Cliente</div>
+    ) : null,
 }));
 
 vi.mock('@/components/modals/NovoVeiculoModal', () => ({
@@ -116,6 +120,28 @@ describe('ModalContext', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'fechar lavagem' }));
     expect(screen.queryByTestId('modal-lavagem')).not.toBeInTheDocument();
+  });
+
+  /**
+   * Regressão: Dashboard/Lavagens/Clientes usam `onClick={open...}` sem arrow,
+   * então o React entrega o SyntheticEvent como primeiro argumento. Qualquer
+   * objeto é truthy e virava "id de edição" — o modal de cadastro abria com
+   * título "Editar ..." e botão "Atualizar ..." para um registro inexistente.
+   */
+  it('clique sem arrow não é confundido com id de edição', () => {
+    render(
+      <AppProvider>
+        <ModalProvider>
+          <BotoesDeDisparo />
+        </ModalProvider>
+      </AppProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'abrir lavagem' }));
+    fireEvent.click(screen.getByRole('button', { name: 'abrir cliente' }));
+
+    expect(screen.getByTestId('modal-lavagem')).toHaveAttribute('data-id-edicao', '');
+    expect(screen.getByTestId('modal-cliente')).toHaveAttribute('data-id-edicao', '');
   });
 
   it('useModal fora do ModalProvider lança erro de contrato', () => {
