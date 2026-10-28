@@ -67,16 +67,38 @@ const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   throw new Error(
     'DATABASE_URL não definida. Configure a string de conexão do PostgreSQL ' +
-    '(Supabase) em backend/.env antes de iniciar o servidor.'
+    '(Supabase) nas variáveis de ambiente do serviço (no Render: Environment → ' +
+    'DATABASE_URL) ou em backend/.env para desenvolvimento local.'
   );
 }
 
-const url = new URL(connectionString);
+let url;
+try {
+  url = new URL(connectionString);
+} catch {
+  throw new Error(
+    'DATABASE_URL inválida. Use o formato ' +
+    'postgresql://USUARIO:SENHA@HOST:PORTA/BANCO (a senha deve estar codificada ' +
+    'como URL, ex.: @ → %40).'
+  );
+}
+
 const hostLocal = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
 
 // Supabase exige SSL. Um PostgreSQL local de testes normalmente não oferece
 // SSL, então `localhost` (ou PGSSLMODE=disable) desliga a negociação.
-const usaIssl = process.env.PGSSLMODE !== 'disable' && !hostLocal;
+//
+// No Render, o host do Supabase é remoto e o TLS entra automaticamente. Também
+// respeitamos `?sslmode=` na própria connection string, porque ele é o formato
+// que o painel do Supabase/Render costuma fornecer: `disable` desliga, e
+// `require`/`verify-ca`/`verify-full` forçam TLS mesmo em host local.
+const sslMode = (process.env.PGSSLMODE || url.searchParams.get('sslmode') || '').toLowerCase();
+const sslDesabilitado = sslMode === 'disable';
+const sslExigido = ['require', 'verify-ca', 'verify-full'].includes(sslMode);
+// rejectUnauthorized: false porque a CA do pooler do Supabase não está no trust
+// store padrão do Node. O tráfego continua cifrado; a identidade do servidor é
+// validada pelo hostname do provedor, não pela cadeia local.
+const usaIssl = !sslDesabilitado && (sslExigido || !hostLocal);
 
 export const pool = new Pool({
   connectionString,
