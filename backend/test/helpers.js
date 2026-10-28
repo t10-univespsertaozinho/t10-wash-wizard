@@ -6,26 +6,54 @@
  * trilha de auditoria, validação do CSV — vivem justamente na costura entre
  * middleware, handler e banco, que um mock de `db.js` não testaria.
  *
- * Isolamento: `DB_PATH` aponta para um arquivo temporário por execução e
+ * Isolamento: os testes usam obrigatoriamente `TEST_DATABASE_URL`, um banco
+ * PostgreSQL descartável — nunca o `DATABASE_URL` do Supabase. Antes de cada
+ * teste as tabelas são truncadas e o cenário base é recriado.
  * `NODE_ENV=test` impede o `app.listen`.
  */
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+import { afterAll } from 'vitest';
 
-const dbFile = path.join(
-  fs.mkdtempSync(path.join(os.tmpdir(), 'wash-wizard-test-')),
-  'teste.db'
-);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// O TEST_DATABASE_URL costuma morar no backend/.env (que é gitignored).
+dotenv.config({ path: path.resolve(__dirname, '..', '.env') });
 
 process.env.NODE_ENV = 'test';
-process.env.DB_PATH = dbFile;
 // Segredo fixo e longo: sem ele o config.js gera um aleatório por execução e
 // avisa no console, poluindo a saída dos testes.
 process.env.JWT_SECRET = 'segredo_de_teste_com_mais_de_32_caracteres_000';
 process.env.SEED_ADMIN_PASSWORD = 'senha-de-teste-admin';
 process.env.SEED_OPERADOR_PASSWORD = 'senha-de-teste-operador';
+
+const testDatabaseUrl = process.env.TEST_DATABASE_URL;
+if (!testDatabaseUrl) {
+  throw new Error(
+    'TEST_DATABASE_URL não definida. Os testes de integração precisam de um ' +
+    'PostgreSQL descartável. Ex.: postgresql://postgres@127.0.0.1:5432/wash_wizard_test'
+  );
+}
+
+// Guarda-corpo: um TEST_DATABASE_URL apontando para produção transformaria
+// cada `prepararBanco()` em um TRUNCATE da base real.
+const hostTeste = new URL(testDatabaseUrl).hostname;
+if (/supabase\.(co|com|net)$/i.test(hostTeste) || hostTeste.includes('pooler.supabase')) {
+  throw new Error(
+    `Recusando rodar os testes contra "${hostTeste}": TEST_DATABASE_URL aponta ` +
+    'para um host Supabase. Use um PostgreSQL local descartável.'
+  );
+}
+if (process.env.DATABASE_URL === testDatabaseUrl) {
+  throw new Error('TEST_DATABASE_URL é igual ao DATABASE_URL de desenvolvimento. Use um banco separado.');
+}
+
+// db.js lê DATABASE_URL no import: sobrescrever antes do import dinâmico é o
+// que garante que a suíte nunca toque no banco de desenvolvimento.
+process.env.DATABASE_URL = testDatabaseUrl;
 
 const [{ default: request }, { app }, db, { default: bcrypt }] = await Promise.all([
   import('supertest'),
@@ -36,7 +64,19 @@ const [{ default: request }, { app }, db, { default: bcrypt }] = await Promise.a
 
 await db.dbReady;
 
-export { request, app, db, dbFile };
+// Schema idempotente: cria as tabelas que faltam no banco de teste. É o mesmo
+// arquivo usado para provisionar um PostgreSQL local (`npm run db:schema`).
+const schemaSql = fs.readFileSync(path.resolve(__dirname, '..', 'schema.postgres.sql'), 'utf8');
+await db.exec(schemaSql);
+
+export { request, app, db, testDatabaseUrl as dbUrl };
+
+// Encerra o pool ao fim de cada arquivo de teste. Sem isso o processo do fork
+// fica com conexões ociosas abertas e o vitest não finaliza sozinho — e, pior,
+// uma execução interrompida deixa locks pendurados no PostgreSQL de teste.
+afterAll(async () => {
+  await db.pool.end();
+});
 
 export const USUARIOS = {
   admin: { id: 'test-admin', email: 'admin@teste.local', nome: 'Admin', role: 'admin', senha: 'senha-admin-teste' },
@@ -46,13 +86,15 @@ export const USUARIOS = {
 /**
  * Script de reset do cenário, montado uma única vez.
  *
- * É um `exec` só, de propósito: emitir uma dezena de DELETE/INSERT avulsos por
- * teste multiplicava as transações implícitas sobre a mesma conexão sqlite3 e a
- * suíte ficava intermitente — um hook esbarrava no lock do anterior e estourava
- * o timeout. Um batch único é uma transação e um round-trip.
- *
+ * Um único `exec`, de propósito: os DELETEs + INSERTs em um comando são uma
+ * transação implícita e um round-trip, em vez de dezenas de queries por teste.
  * A ordem respeita as FKs (filhos antes dos pais), então não é preciso desligar
- * `foreign_keys` — o que também mantém o teste fiel ao modo como o servidor roda.
+ * constraints — o que também mantém o teste fiel ao modo como o servidor roda.
+ *
+ * DELETE em vez de TRUNCATE: o TRUNCATE trunca os arquivos físicos das relações
+ * e força fsync por tabela; em disco lento/overlay isso levava 10-20s por
+ * beforeEach e estourava o hookTimeout. Nas tabelas pequenas do cenário, DELETE
+ * é instantâneo.
  */
 const SCRIPT_RESET = (() => {
   const agora = new Date().toISOString();
@@ -66,7 +108,6 @@ const SCRIPT_RESET = (() => {
     .join('\n');
 
   return `
-    BEGIN IMMEDIATE TRANSACTION;
     DELETE FROM auditoria_lavagens;
     DELETE FROM movimentacoes;
     DELETE FROM lavagens;
@@ -82,28 +123,20 @@ const SCRIPT_RESET = (() => {
       VALUES ('vei-teste', 'cli-teste', ${sql(USUARIOS.admin.id)}, 'Gol', 'ABC1D23', 'Prata', 'VW', ${sql(agora)});
     INSERT INTO tipos_lavagem (id, nome, descricao, preco, created_at)
       VALUES ('tl-teste', 'Lavagem Simples', 'Externa', 25, ${sql(agora)});
-    COMMIT;
   `;
 })();
 
 /** Zera o banco e recria o cenário base. Chamado no beforeEach de cada suíte. */
 export async function prepararBanco() {
-  try {
-    await db.exec(SCRIPT_RESET);
-  } catch (err) {
-    // Se o COMMIT não aconteceu, a transação fica aberta e contamina o próximo
-    // teste: desfaz antes de propagar o erro real.
-    await db.exec('ROLLBACK;').catch(() => {});
-    throw err;
-  }
+  await db.exec(SCRIPT_RESET);
 }
 
 /**
  * Apaga tabelas específicas do cenário base. O import de backup apaga só as
  * tabelas presentes no envio, então importar `clientes.csv` deixaria o veículo
- * do cenário órfão e o `foreign_key_check` do fim do fluxo rejeitaria o backup
- * inteiro — comportamento correto do servidor, mas que precisa ser preparado
- * nos testes que importam uma tabela isolada.
+ * do cenário órfão e a FK rejeitaria o backup inteiro — comportamento correto
+ * do servidor, mas que precisa ser preparado nos testes que importam uma tabela
+ * isolada.
  */
 export async function limparTabelas(...nomes) {
   for (const nome of nomes) {
