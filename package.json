@@ -4,9 +4,13 @@
   "scripts": {
     "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\"",
     "build": "cd frontend && npm run build",
-    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install"
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "demo:db": "node scripts/demo-data.mjs",
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "screenshots:check": "node --check scripts/demo-data.mjs && node --check scripts/capture-screenshots.mjs"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "puppeteer-core": "^25.16.0"
   }
 }

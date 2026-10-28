@@ -164,7 +164,7 @@ export function NovoVeiculoModal({
                 className="input-t10 uppercase"
                 value={placa}
                 onChange={(e) => setPlaca(e.target.value)}
-                placeholder="ABC1234"
+                placeholder="Placa do veículo"
                 required
               />
             </div>

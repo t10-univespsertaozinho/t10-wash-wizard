@@ -82,27 +82,120 @@ Essa validação em campo constitui o núcleo prático do **Projeto Integrador d
 
 ## 📸 Telas da Aplicação (Demonstração)
 
-Abaixo estão algumas capturas de tela ilustrando a interface da solução, desenvolvida para proporcionar uma ótima experiência e facilidade de gestão:
+Capturas reais da aplicação em execução, organizadas por módulo. O catálogo
+completo (com a rota de cada tela) está em
+[`docs_assets/screenshots/00-indice.md`](./docs_assets/screenshots/00-indice.md).
 
-### Dashboard Principal
-Visão financeira e operacional com métricas e gráficos dinâmicos.
+> **Dados fictícios e pseudonimizados.** As imagens são geradas por
+> `npm run screenshots` contra um banco de demonstração (`scripts/demo-data.mjs`)
+> — 24 clientes, 31 veículos e 81 lavagens inventados, gravados fora do
+> repositório. Nenhum dado de cliente real aparece nas capturas: cliente é
+> `Cliente 001`, telefone usa DDD 00 (não atribuído pela ANATEL), placa é
+> `•••••01` e não há data de nascimento. A marca *Lava Rápido Maquininha* é
+> mantida por ser o cenário de validação em campo do projeto.
+> A avaliação técnica de LGPD das imagens (achados, base legal e risco residual)
+> está em
+> [`docs_assets/screenshots/AVALIACAO-LGPD.md`](./docs_assets/screenshots/AVALIACAO-LGPD.md).
+
+### Autenticação
+Acesso com JWT; o menu e as rotas mudam conforme o papel (`admin` / `operador`).
 <div align="center">
-  <img src="./docs_assets/dashboard_1.png" width="48%" />
-  <img src="./docs_assets/dashboard_2.png" width="48%" />
+  <img src="./docs_assets/screenshots/01-login/login.png" alt="Tela de login do Wash Wizard" width="72%" />
 </div>
 
-### Gestão de Lavagens
-Painel para acompanhamento de status de serviços.
+### Dashboard
+KPIs da semana com comparativo ao período anterior, série de 7 dias e os pilares
+de BI (Runway de estoque e fila do pátio).
 <div align="center">
-  <img src="./docs_assets/tela_gestao_lavagens.png" width="100%" />
+  <img src="./docs_assets/screenshots/02-dashboard/dashboard-visao-geral.png" alt="Dashboard com KPIs financeiros e fluxo diário" width="100%" />
+</div>
+<div align="center">
+  <img src="./docs_assets/screenshots/02-dashboard/dashboard-bi-pilares.png" alt="Alerta de compras e fila de atendimento do pátio" width="49%" />
+  <img src="./docs_assets/screenshots/02-dashboard/dashboard-tema-escuro.png" alt="Dashboard no tema escuro" width="49%" />
 </div>
 
-### Gestão de Clientes
-Listagem completa e painel de edição detalhado do cliente e seus veículos.
+### Lavagens
+Fila operacional com filtro por status e ações de iniciar, concluir e cancelar.
 <div align="center">
-  <img src="./docs_assets/tela_todos_clientes.png" width="48%" />
-  <img src="./docs_assets/tela_edicao_cliente.png" width="48%" />
+  <img src="./docs_assets/screenshots/03-lavagens/lavagens-fila.png" alt="Listagem de lavagens" width="49%" />
+  <img src="./docs_assets/screenshots/03-lavagens/lavagens-concluidas.png" alt="Lavagens concluídas com forma de pagamento" width="49%" />
 </div>
+
+### Clientes
+Listagem com busca, ficha detalhada com veículos e histórico, e edição cadastral.
+<div align="center">
+  <img src="./docs_assets/screenshots/04-clientes/clientes-listagem.png" alt="Listagem de clientes" width="49%" />
+  <img src="./docs_assets/screenshots/04-clientes/clientes-detalhe.png" alt="Ficha do cliente com veículos e histórico" width="49%" />
+</div>
+<div align="center">
+  <img src="./docs_assets/screenshots/04-clientes/clientes-edicao.png" alt="Edição de cliente" width="72%" />
+</div>
+
+### Veículos
+Frota vinculada aos clientes, com busca por modelo, placa ou nome.
+<div align="center">
+  <img src="./docs_assets/screenshots/05-veiculos/veiculos-listagem.png" alt="Listagem de veículos" width="49%" />
+  <img src="./docs_assets/screenshots/05-veiculos/veiculos-formulario.png" alt="Formulário de cadastro de veículo" width="49%" />
+</div>
+
+### Serviços e Estoque
+Catálogo de serviços que alimenta o faturamento e estoque com alerta de itens
+zerados/baixos (a base do cálculo de Runway).
+<div align="center">
+  <img src="./docs_assets/screenshots/06-servicos/tipos-lavagem.png" alt="Cadastro de tipos de lavagem" width="49%" />
+  <img src="./docs_assets/screenshots/07-estoque/estoque-critico.png" alt="Estoque com alerta de itens críticos" width="49%" />
+</div>
+<div align="center">
+  <img src="./docs_assets/screenshots/07-estoque/novo-produto.png" alt="Cadastro de novo insumo" width="49%" />
+  <img src="./docs_assets/screenshots/08-movimentacao/movimentacao-estoque.png" alt="Movimentações de entrada e saída de estoque" width="49%" />
+</div>
+
+### Análise & Relatórios
+Mix de serviços (volume × rentabilidade) e radar de clientes ausentes com
+reengajamento por WhatsApp.
+<div align="center">
+  <img src="./docs_assets/screenshots/09-analise/analise-mix-servicos.png" alt="Mix de serviços dos últimos 30 dias" width="49%" />
+  <img src="./docs_assets/screenshots/09-analise/analise-retencao.png" alt="Radar de clientes ausentes com link para WhatsApp" width="49%" />
+</div>
+
+### Configurações e Modais
+Backup/restauração em CSV e os modais globais de cadastro (mesmo componente
+acessível reutilizado em várias telas).
+<div align="center">
+  <img src="./docs_assets/screenshots/10-configuracoes/configuracoes-backup.png" alt="Configurações de backup do banco" width="100%" />
+</div>
+<div align="center">
+  <img src="./docs_assets/screenshots/11-modais/modal-nova-lavagem.png" alt="Modal de registro de lavagem" width="49%" />
+  <img src="./docs_assets/screenshots/11-modais/modal-novo-cliente.png" alt="Modal de cadastro de cliente" width="49%" />
+</div>
+
+### Visão do operador (RBAC)
+O mesmo sistema com o menu reduzido: as áreas administrativas somem da navegação
+e são barradas também na API.
+<div align="center">
+  <img src="./docs_assets/screenshots/12-operador/visao-operador-rbac.png" alt="Dashboard na visão do operador, sem itens administrativos no menu" width="72%" />
+</div>
+
+### Mobile
+Layout responsivo em viewport de celular (390×844), com gaveta de navegação
+operável por teclado.
+<div align="center">
+  <img src="./docs_assets/screenshots/13-mobile/mobile-dashboard.png" alt="Dashboard em tela de celular" width="32%" />
+  <img src="./docs_assets/screenshots/13-mobile/mobile-menu-gaveta.png" alt="Gaveta de navegação aberta no celular" width="32%" />
+</div>
+
+#### Como regenerar as capturas
+
+```bash
+npm run screenshots              # banco demo + build + capturas + auditoria
+npm run screenshots -- --only 07 # apenas uma pasta (ex.: 07-estoque)
+npm run screenshots -- --no-build --keep-db
+```
+
+O pipeline usa Chromium headless, captura só a *viewport* (sem chrome do
+navegador), injeta o JWT via `localStorage` (sem formulário de senha), remove
+metadados com `convert -strip` e audita o texto de cada tela contra telefone,
+placa, e-mail e caminhos locais.
 
 ---
 

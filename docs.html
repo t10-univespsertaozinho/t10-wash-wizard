@@ -769,28 +769,104 @@ npm run build</code></pre>
                 <h2 class="text-3xl font-bold text-slate-900">7. Telas da Aplicação</h2>
             </div>
 
+            <p class="text-sm text-slate-600 mb-6">
+                Capturas geradas por <code class="bg-slate-100 px-1 rounded">npm run screenshots</code> contra um banco de
+                demonstração com dados 100% fictícios e pseudonimizados (24 clientes, 31 veículos e 81 lavagens
+                inventados, gravados fora do repositório): cliente é <code class="bg-slate-100 px-1 rounded">Cliente 001</code>,
+                telefone usa DDD 00 (não atribuído pela ANATEL), placa é mascarada e não há data de nascimento.
+                O catálogo completo, com a rota de cada tela, está em
+                <code class="bg-slate-100 px-1 rounded">docs_assets/screenshots/00-indice.md</code>, e a avaliação
+                técnica de LGPD das imagens está em
+                <a class="text-pink-600 underline" href="./docs_assets/screenshots/AVALIACAO-LGPD.md">AVALIACAO-LGPD.md</a>.
+            </p>
+
             <div class="space-y-8">
                 <div class="section-card p-6">
-                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.1 Dashboard Principal</h3>
-                    <p class="text-sm text-slate-600 mb-4">Visão geral financeira e operacional, apresentando gráficos interativos e métricas essenciais para a tomada de decisão.</p>
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.1 Autenticação</h3>
+                    <p class="text-sm text-slate-600 mb-4">Login com JWT; o menu e as rotas mudam conforme o papel (admin/operador).</p>
+                    <img src="./docs_assets/screenshots/01-login/login.png" alt="Tela de login" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                </div>
+
+                <div class="section-card p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.2 Dashboard</h3>
+                    <p class="text-sm text-slate-600 mb-4">KPIs financeiros da semana com comparativo ao período anterior, série diária de 7 dias e os pilares de BI (Runway de estoque e fila do pátio).</p>
                     <div class="grid md:grid-cols-2 gap-4">
-                        <img src="./docs_assets/dashboard_1.png" alt="Dashboard Parte 1" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
-                        <img src="./docs_assets/dashboard_2.png" alt="Dashboard Parte 2" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/02-dashboard/dashboard-visao-geral.png" alt="Dashboard: KPIs financeiros e fluxo diário" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow md:col-span-2">
+                        <img src="./docs_assets/screenshots/02-dashboard/dashboard-bi-pilares.png" alt="Alerta de compras e fila do pátio" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/02-dashboard/dashboard-tema-escuro.png" alt="Dashboard no tema escuro" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
                     </div>
                 </div>
 
                 <div class="section-card p-6">
-                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.2 Gestão de Lavagens</h3>
-                    <p class="text-sm text-slate-600 mb-4">Painel para gerenciamento de fluxo de trabalho (Pendente, Em Progresso, Concluído, Cancelado).</p>
-                    <img src="./docs_assets/tela_gestao_lavagens.png" alt="Gestão de Lavagens" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.3 Gestão de Lavagens</h3>
+                    <p class="text-sm text-slate-600 mb-4">Fluxo de trabalho (Pendente, Em Progresso, Concluída, Cancelada) com filtro por status e forma de pagamento.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <img src="./docs_assets/screenshots/03-lavagens/lavagens-fila.png" alt="Listagem de lavagens" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/03-lavagens/lavagens-concluidas.png" alt="Lavagens concluídas" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                    </div>
                 </div>
 
                 <div class="section-card p-6">
-                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.3 Gestão de Clientes</h3>
-                    <p class="text-sm text-slate-600 mb-4">Telas de listagem e edição de clientes, com controle detalhado do histórico e veículos associados.</p>
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.4 Gestão de Clientes</h3>
+                    <p class="text-sm text-slate-600 mb-4">Listagem com busca, ficha detalhada com veículos e histórico de lavagens, e edição cadastral.</p>
                     <div class="grid md:grid-cols-2 gap-4">
-                        <img src="./docs_assets/tela_todos_clientes.png" alt="Todos os Clientes" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
-                        <img src="./docs_assets/tela_edicao_cliente.png" alt="Edição de Cliente" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/04-clientes/clientes-listagem.png" alt="Listagem de clientes" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/04-clientes/clientes-detalhe.png" alt="Ficha do cliente" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/04-clientes/clientes-edicao.png" alt="Edição de cliente" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow md:col-span-2">
+                    </div>
+                </div>
+
+                <div class="section-card p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.5 Veículos</h3>
+                    <p class="text-sm text-slate-600 mb-4">Frota vinculada aos clientes, com busca por modelo, placa ou nome e formulário de cadastro com validação de placa.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <img src="./docs_assets/screenshots/05-veiculos/veiculos-listagem.png" alt="Listagem de veículos" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/05-veiculos/veiculos-formulario.png" alt="Cadastro de veículo" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                    </div>
+                </div>
+
+                <div class="section-card p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.6 Serviços, Estoque e Movimentações</h3>
+                    <p class="text-sm text-slate-600 mb-4">Catálogo de serviços que alimenta o faturamento, estoque com alerta de itens críticos (base do Runway) e histórico de entradas/saídas.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <img src="./docs_assets/screenshots/06-servicos/tipos-lavagem.png" alt="Catálogo de serviços" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/07-estoque/estoque-critico.png" alt="Estoque com alerta de itens críticos" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/07-estoque/novo-produto.png" alt="Cadastro de insumo" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/08-movimentacao/movimentacao-estoque.png" alt="Movimentações de estoque" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                    </div>
+                </div>
+
+                <div class="section-card p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.7 Análise &amp; Relatórios</h3>
+                    <p class="text-sm text-slate-600 mb-4">Mix de serviços dos últimos 30 dias (volume × rentabilidade) e radar de clientes ausentes com reengajamento por WhatsApp.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <img src="./docs_assets/screenshots/09-analise/analise-mix-servicos.png" alt="Mix de serviços" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/09-analise/analise-retencao.png" alt="Radar de clientes ausentes" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                    </div>
+                </div>
+
+                <div class="section-card p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.8 Configurações e Modais</h3>
+                    <p class="text-sm text-slate-600 mb-4">Backup/restauração em CSV e os modais globais de cadastro, reutilizados em várias telas.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <img src="./docs_assets/screenshots/10-configuracoes/configuracoes-backup.png" alt="Configurações de backup" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow md:col-span-2">
+                        <img src="./docs_assets/screenshots/11-modais/modal-nova-lavagem.png" alt="Modal de nova lavagem" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/11-modais/modal-novo-cliente.png" alt="Modal de novo cliente" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                    </div>
+                </div>
+
+                <div class="section-card p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.9 Visão do Operador (RBAC)</h3>
+                    <p class="text-sm text-slate-600 mb-4">O mesmo sistema com o menu reduzido: as áreas administrativas somem da navegação e são barradas também na API.</p>
+                    <img src="./docs_assets/screenshots/12-operador/visao-operador-rbac.png" alt="Dashboard na visão do operador" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                </div>
+
+                <div class="section-card p-6">
+                    <h3 class="text-lg font-semibold mb-4 text-slate-800 border-b pb-2">7.10 Mobile</h3>
+                    <p class="text-sm text-slate-600 mb-4">Layout responsivo em viewport de celular (390×844), com gaveta de navegação operável por teclado.</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <img src="./docs_assets/screenshots/13-mobile/mobile-dashboard.png" alt="Dashboard no celular" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
+                        <img src="./docs_assets/screenshots/13-mobile/mobile-menu-gaveta.png" alt="Gaveta de navegação no celular" class="rounded-lg border border-slate-200 shadow-sm w-full hover:shadow-md transition-shadow">
                     </div>
                 </div>
             </div>

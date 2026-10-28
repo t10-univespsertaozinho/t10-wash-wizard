@@ -91,7 +91,7 @@ export default function Login() {
               className="input-t10" 
               value={email} 
               onChange={e => { setEmail(e.target.value); limparErro(); }} 
-              placeholder="admin@washwizard.com" 
+              placeholder="voce@example.com" 
               type="email"
               aria-invalid={erro ? true : undefined}
               aria-describedby={erro ? 'login-erro' : undefined}

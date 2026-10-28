@@ -91,7 +91,7 @@ export default function Veiculos() {
             <label htmlFor="veiculo-modelo" className="sr-only">Modelo</label>
             <input id="veiculo-modelo" className="input-t10" placeholder="Modelo" value={modelo} onChange={e => setModelo(e.target.value)} required />
             <label htmlFor="veiculo-placa" className="sr-only">Placa</label>
-            <input id="veiculo-placa" className="input-t10 uppercase font-mono" placeholder="ABC1D23 ou ABC1234" value={placa} onChange={handlePlacaChange} maxLength={8} required />
+            <input id="veiculo-placa" className="input-t10 uppercase font-mono" placeholder="Placa do veículo" value={placa} onChange={handlePlacaChange} maxLength={8} required />
             <div className="flex gap-2">
               <label htmlFor="veiculo-cor" className="sr-only">Cor</label>
               <input id="veiculo-cor" className="input-t10 flex-1" placeholder="Cor" value={cor} onChange={e => setCor(e.target.value)} />

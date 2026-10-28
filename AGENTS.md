@@ -168,4 +168,24 @@ npm run dev        # Development server (ports 8080 frontend, 3001 backend)
 npm run build      # Production build
 npm run lint       # Lint code
 npm run install:all # Install all dependencies (root, backend, frontend)
+
+npm run demo:db    # Gera o SQLite fictício em ~/.cache/wash-wizard-demo/ (fora do repo)
+npm run screenshots       # Banco demo + build + capturas em docs_assets/screenshots/ + auditoria
+npm run screenshots:check # Só valida a sintaxe dos scripts de captura
 ```
+
+As capturas do README (`docs_assets/screenshots/`, catálogo em
+`00-indice.md`) são geradas por `scripts/capture-screenshots.mjs` contra o banco
+de `scripts/demo-data.mjs` — nunca contra o `wash_wizard.db` real. O dataset é
+pseudonimizado na origem (`Cliente 001`, telefone em DDD 00 não atribuído pela
+ANATEL, placa `•••••01`, sem data de nascimento). O pipeline usa Chromium headless
+(viewport, sem chrome do navegador), injeta o JWT via `localStorage`, remove
+metadados com `convert -strip`, roda um portão de privacidade no SQLite antes do
+build e audita o texto de cada tela — incluindo `value` de campos e `placeholder`
+— contra telefone, placa, CPF/CNPJ/CEP, e-mail e caminhos locais. Requer as portas
+3001 e 8080 livres.
+
+A avaliação técnica de LGPD das imagens (achados, base legal, risco residual e a
+pendência das imagens antigas no histórico git) está em
+`docs_assets/screenshots/AVALIACAO-LGPD.md`.
+

@@ -70,7 +70,7 @@ describe('clientes', () => {
   });
 
   it('POST envia o user_id junto do corpo', async () => {
-    await apiDB.createCliente('u1', { nome: 'Alice', telefone: '(16) 99999-0000' } as never);
+    await apiDB.createCliente('u1', { nome: 'Alice', telefone: '(00) 90000-0001' } as never);
     const { url, metodo, corpo } = ultimaChamada();
     expect({ url, metodo }).toEqual({ url: '/api/clientes', metodo: 'POST' });
     expect(corpo).toMatchObject({ nome: 'Alice', user_id: 'u1' });

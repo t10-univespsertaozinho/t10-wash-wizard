@@ -150,7 +150,7 @@ export function NovoClienteModal({
               className="input-t10"
               value={telefone}
               onChange={handleTelefoneChange}
-              placeholder="16 99999-9999"
+              placeholder="(00) 90000-0000"
               maxLength={15}
             />
           </div>

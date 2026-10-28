@@ -131,7 +131,7 @@ describe('formatarDataHora', () => {
 
 describe('apenasDigitos', () => {
   it('remove máscara de telefone', () => {
-    expect(apenasDigitos('(16) 99999-0000')).toBe('16999990000');
+    expect(apenasDigitos('(00) 90000-0001')).toBe('00900000001');
   });
 
   it('devolve string vazia para entrada não textual', () => {
@@ -143,29 +143,29 @@ describe('apenasDigitos', () => {
 
 describe('telefoneDiscavel', () => {
   it('aceita fixo (10) e celular (11) com ou sem máscara', () => {
-    expect(telefoneDiscavel('(16) 3333-4444')).toBe(true);
-    expect(telefoneDiscavel('(16) 99999-0000')).toBe(true);
-    expect(telefoneDiscavel('16999990000')).toBe(true);
+    expect(telefoneDiscavel('(00) 3333-4444')).toBe(true);
+    expect(telefoneDiscavel('(00) 90000-0001')).toBe(true);
+    expect(telefoneDiscavel('00900000001')).toBe(true);
   });
 
   it('aceita número já com código do país', () => {
-    expect(telefoneDiscavel('5516999990000')).toBe(true);
+    expect(telefoneDiscavel('5500900000001')).toBe(true);
   });
 
   it('recusa número ausente ou incompleto', () => {
     expect(telefoneDiscavel(null)).toBe(false);
     expect(telefoneDiscavel('')).toBe(false);
     expect(telefoneDiscavel('99999-0000')).toBe(false); // sem DDD
-    expect(telefoneDiscavel('(16) 9')).toBe(false);
+    expect(telefoneDiscavel('(00) 9')).toBe(false);
   });
 });
 
 describe('montarLinkWhatsapp', () => {
   it('monta o link com o código do país e a mensagem escapada', () => {
-    const link = montarLinkWhatsapp('(16) 99999-0000', 'Olá, João & cia!');
+    const link = montarLinkWhatsapp('(00) 90000-0001', 'Olá, titular & cia!');
 
-    expect(link).toContain('https://wa.me/5516999990000?text=');
-    expect(link).toContain(encodeURIComponent('Olá, João & cia!'));
+    expect(link).toContain('https://wa.me/5500900000001?text=');
+    expect(link).toContain(encodeURIComponent('Olá, titular & cia!'));
   });
 
   it('não duplica o código do país quando já vem no número', () => {

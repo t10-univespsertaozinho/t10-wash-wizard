@@ -31,14 +31,14 @@ describe('isValidEmail', () => {
 
 describe('isValidPhone', () => {
   it('aceita fixo (10 dígitos) e celular (11 dígitos)', () => {
-    expect(isValidPhone('(16) 3333-4444')).toBe(true);
-    expect(isValidPhone('(16) 99999-0000')).toBe(true);
+    expect(isValidPhone('(00) 3333-4444')).toBe(true);
+    expect(isValidPhone('(00) 90000-0001')).toBe(true);
   });
 
   it('recusa quantidade de dígitos fora da faixa', () => {
     expect(isValidPhone('')).toBe(false);
     expect(isValidPhone('99999-0000')).toBe(false);
-    expect(isValidPhone('(16) 99999-00001')).toBe(false);
+    expect(isValidPhone('(00) 90000-00001')).toBe(false);
   });
 });
 
