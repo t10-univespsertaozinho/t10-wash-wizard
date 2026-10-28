@@ -1,149 +1,314 @@
-import sqlite3 from 'sqlite3';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+/**
+ * Camada de acesso ao PostgreSQL (Supabase).
+ *
+ * O restante do backend foi escrito para o driver `sqlite3`: placeholders `?`,
+ * callbacks e uma única conexão implícita. Em vez de reescrever todas as rotas,
+ * este módulo expõe a mesma interface Promise-based (`query/get/all/run/exec`)
+ * sobre um `Pool` do `pg`, convertendo `?` para `$1, $2, ...` de forma
+ * determinística (sem tocar em `?` dentro de strings, comentários ou
+ * dollar-quoted blocks).
+ *
+ * Transações exigem uma conexão dedicada — com Pool, `BEGIN` e `COMMIT` podem
+ * cair em conexões diferentes. Por isso existe `withTransaction`, e as rotas
+ * que precisam de atomicidade usam os helpers do `tx`.
+ */
+import dotenv from 'dotenv';
+import pg from 'pg';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+dotenv.config();
 
-// DB_PATH permite apontar para um arquivo descartável — é o que a suíte de
-// testes de integração usa para não encostar no banco de desenvolvimento.
-const dbPath = process.env.DB_PATH
-  ? path.resolve(process.env.DB_PATH)
-  : path.resolve(__dirname, '../wash_wizard.db');
-const schemaPath = path.resolve(__dirname, 'schema.sql');
+const { Pool, types } = pg;
 
-const dbExists = fs.existsSync(dbPath);
+// ==========================================
+// TYPE PARSERS
+// ==========================================
+// O `pg` devolve NUMERIC/DECIMAL como string para não perder precisão. A API e
+// o React esperam números (`valor.toFixed`, somas, gráficos), então os tipos
+// monetários e contadores são convertidos na borda do banco.
+// OID 1700 = NUMERIC/DECIMAL; OID 20 = BIGINT/INT8 (COUNT(*)).
+types.setTypeParser(1700, (valor) => (valor === null ? null : parseFloat(valor)));
+types.setTypeParser(20, (valor) => (valor === null ? null : parseInt(valor, 10)));
 
-// dbReady só resolve depois que pragmas + schema terminarem de rodar de fato.
-// O servidor precisa esperar isso: sem a espera, o app.listen subia no meio da
-// aplicação do schema e uma requisição chegava com "no such table" (ex: INSERT
-// em auditoria_lavagens logo após o boot de um banco legado).
-let aoAbrir;
-let aoFalhar;
-export const dbReady = new Promise((resolve, reject) => {
-  aoAbrir = resolve;
-  aoFalhar = reject;
-});
-
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Erro ao abrir o banco de dados SQLite', err.message);
-    aoFalhar(err);
-    return;
+// Timestamps: o driver entrega o texto no formato do PostgreSQL
+// ('2026-10-28 15:28:32.123+00'). O JavaScript NÃO aceita esse offset curto
+// quando há 'T' no meio ('...+00' vira Invalid Date), então normalizamos o
+// separador e completamos o offset antes de converter. Valor inesperado é
+// devolvido como veio, em vez de derrubar a serialização da linha inteira.
+function paraIsoUtc(valor, comTimezone) {
+  if (valor === null) return null;
+  let texto = valor.replace(' ', 'T');
+  if (comTimezone) {
+    texto = texto.replace(/([+-]\d{2})(\d{2})$/, '$1:$2').replace(/([+-]\d{2})$/, '$1:00');
+  } else {
+    texto = `${texto}Z`;
   }
-  console.log('Conectado ao banco de dados SQLite.');
-  prepararBanco();
-});
-
-async function prepararBanco() {
-  try {
-    // WAL: leitores não bloqueiam mais o escritor e vice-versa — era o modo
-    // 'delete' antes, o que travava quem consultasse o banco fora do processo.
-    // journal_mode = WAL é persistido no próprio arquivo, sobrevive a restarts.
-    await exec('PRAGMA journal_mode = WAL;');
-    // Em vez de falhar na hora com SQLITE_BUSY, o driver espera até 5s pela
-    // liberação do lock (importante para ferramentas externas de backup).
-    await exec('PRAGMA busy_timeout = 5000;');
-    await exec('PRAGMA foreign_keys = ON;');
-
-    // O schema é inteiramente idempotente (CREATE TABLE/INDEX IF NOT EXISTS),
-    // então é aplicado em toda inicialização. Isso faz dele também a migração:
-    // tabelas novas (ex: auditoria_lavagens) passam a existir em bancos antigos
-    // sem precisar recriar o arquivo nem perder dados.
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    await exec(schema);
-
-    await migrarAuditoriaSemCascade();
-
-    console.log(dbExists
-      ? 'Schema verificado (banco existente, estruturas novas aplicadas).'
-      : 'Schema inicializado com sucesso.');
-    console.log(`SQLite journal_mode = ${(await get('PRAGMA journal_mode;')).journal_mode}`);
-    aoAbrir();
-  } catch (err) {
-    console.error('Erro ao preparar o banco de dados:', err.message);
-    aoFalhar(err);
-  }
+  const data = new Date(texto);
+  return Number.isNaN(data.getTime()) ? valor : data.toISOString();
 }
 
-// CREATE TABLE IF NOT EXISTS não altera uma tabela que já existe, então bancos
-// criados antes desta correção continuariam com o ON DELETE CASCADE em
-// auditoria_lavagens — e perderiam a trilha justamente ao excluir uma lavagem.
-// Esta migração recria a tabela sem a FK, preservando as linhas existentes.
-// É idempotente: só roda quando o DDL atual ainda tem o cascade.
-async function migrarAuditoriaSemCascade() {
-  const tabela = await get(
-    "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'auditoria_lavagens'"
-  );
-  if (!tabela?.sql || !/REFERENCES\s+lavagens/i.test(tabela.sql)) return;
+// TIMESTAMPTZ. O SQLite devolvia ISO 8601 em TEXT e o frontend/API dependem
+// desse formato (`new Date(l.data)`); o parser padrão do pg devolve `Date`, que
+// ao virar CSV muda de formato. Normalizamos para ISO UTC na saída.
+types.setTypeParser(1184, (valor) => paraIsoUtc(valor, true));
+// TIMESTAMP sem timezone: o schema não usa, mas tratamos como UTC por coerência.
+types.setTypeParser(1114, (valor) => paraIsoUtc(valor, false));
 
-  // O PRAGMA só tem efeito fora de transação, por isso vem antes do BEGIN.
-  await exec('PRAGMA foreign_keys = OFF;');
+// DATE (OID 1082). O parser padrão devolve um `Date` à meia-noite local, mas o
+// contrato da API e o formulário do frontend esperam a string 'YYYY-MM-DD'
+// (data_nascimento). Devolver o texto cru preserva o contrato e evita o
+// clássico deslocamento de um dia ao serializar para JSON/CSV.
+types.setTypeParser(1082, (valor) => valor);
+
+// ==========================================
+// CONEXÃO
+// ==========================================
+const connectionString = process.env.DATABASE_URL;
+
+if (!connectionString) {
+  throw new Error(
+    'DATABASE_URL não definida. Configure a string de conexão do PostgreSQL ' +
+    '(Supabase) em backend/.env antes de iniciar o servidor.'
+  );
+}
+
+const url = new URL(connectionString);
+const hostLocal = ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
+
+// Supabase exige SSL. Um PostgreSQL local de testes normalmente não oferece
+// SSL, então `localhost` (ou PGSSLMODE=disable) desliga a negociação.
+const usaIssl = process.env.PGSSLMODE !== 'disable' && !hostLocal;
+
+export const pool = new Pool({
+  connectionString,
+  ssl: usaIssl ? { rejectUnauthorized: false } : false,
+  max: Number(process.env.PG_POOL_MAX) || 5,
+  idleTimeoutMillis: 30_000,
+  connectionTimeoutMillis: 10_000,
+  application_name: 'wash-wizard-backend',
+});
+
+// Um erro em conexão ociosa (ex: pooler derrubou a sessão) não pode virar
+// unhandled 'error' e derrubar o processo.
+pool.on('error', (err) => {
+  console.error('Erro inesperado em conexão ociosa do PostgreSQL:', err.message);
+});
+
+// ==========================================
+// PLACEHOLDERS
+// ==========================================
+/**
+ * Converte `?` posicionais (estilo SQLite) para `$1, $2, ...` (PostgreSQL).
+ *
+ * O scanner ignora `?` dentro de:
+ *  - strings '...' (com escape '' ) e identificadores "..."
+ *  - comentários -- e /* ... *\/
+ *  - blocos dollar-quoted $$...$$ / $tag$...$tag$
+ *
+ * Sem isso, um `?` legítimo dentro de um literal seria renumerado e a query
+ * quebraria de forma silenciosa.
+ */
+export function paraPlaceholdersPostgres(sql) {
+  let saida = '';
+  let indice = 0;
+  let parametros = 0;
+  let estado = 'normal';
+  let dollarTag = null;
+
+  while (indice < sql.length) {
+    const char = sql[indice];
+    const proximo = sql[indice + 1];
+
+    if (estado === 'normal') {
+      if (char === "'") {
+        estado = 'string';
+        saida += char;
+        indice++;
+      } else if (char === '"') {
+        estado = 'identificador';
+        saida += char;
+        indice++;
+      } else if (char === '-' && proximo === '-') {
+        estado = 'comentarioLinha';
+        saida += '--';
+        indice += 2;
+      } else if (char === '/' && proximo === '*') {
+        estado = 'comentarioBloco';
+        saida += '/*';
+        indice += 2;
+      } else if (char === '$') {
+        const restante = sql.slice(indice);
+        const match = restante.match(/^\$[A-Za-z_0-9]*\$/);
+        if (match) {
+          dollarTag = match[0];
+          estado = 'dollar';
+          saida += dollarTag;
+          indice += dollarTag.length;
+        } else {
+          saida += char;
+          indice++;
+        }
+      } else if (char === '?') {
+        saida += `$${++parametros}`;
+        indice++;
+      } else {
+        saida += char;
+        indice++;
+      }
+      continue;
+    }
+
+    if (estado === 'string') {
+      saida += char;
+      if (char === "'") {
+        if (proximo === "'") {
+          saida += proximo;
+          indice += 2;
+          continue;
+        }
+        estado = 'normal';
+      }
+      indice++;
+      continue;
+    }
+
+    if (estado === 'identificador') {
+      saida += char;
+      if (char === '"') {
+        if (proximo === '"') {
+          saida += proximo;
+          indice += 2;
+          continue;
+        }
+        estado = 'normal';
+      }
+      indice++;
+      continue;
+    }
+
+    if (estado === 'comentarioLinha') {
+      saida += char;
+      if (char === '\n') estado = 'normal';
+      indice++;
+      continue;
+    }
+
+    if (estado === 'comentarioBloco') {
+      saida += char;
+      if (char === '*' && proximo === '/') {
+        saida += '/';
+        indice += 2;
+        estado = 'normal';
+        continue;
+      }
+      indice++;
+      continue;
+    }
+
+    if (estado === 'dollar') {
+      if (sql.startsWith(dollarTag, indice)) {
+        saida += dollarTag;
+        indice += dollarTag.length;
+        estado = 'normal';
+        dollarTag = null;
+        continue;
+      }
+      saida += char;
+      indice++;
+    }
+  }
+
+  return saida;
+}
+
+// ==========================================
+// COMPATIBILIDADE SQLite -> PostgreSQL
+// ==========================================
+export const query = async (text, params = []) => {
+  return pool.query(paraPlaceholdersPostgres(text), params);
+};
+
+export const get = async (text, params = []) => {
+  const resultado = await query(text, params);
+  return resultado.rows[0];
+};
+
+export const all = async (text, params = []) => {
+  const resultado = await query(text, params);
+  return resultado.rows;
+};
+
+/**
+ * Espelha o `db.run` do sqlite3: `{ changes, lastID }`.
+ *
+ * `lastID` não existe no PostgreSQL. Quando a query usa `RETURNING id`, ele é
+ * extraído da primeira linha; caso contrário fica `null`. Nenhuma rota atual
+ * depende de `lastID` (o backend sempre gera o id com `crypto.randomUUID`).
+ */
+export const run = async (text, params = []) => {
+  const sql = paraPlaceholdersPostgres(text);
+  const resultado = await pool.query(sql, params);
+  return {
+    changes: resultado.rowCount ?? 0,
+    lastID: resultado.rows?.[0]?.id ?? null,
+  };
+};
+
+/**
+ * Executa SQL puro (DDL, scripts com múltiplos statements, TRUNCATE).
+ * Sem parâmetros o `pg` usa o protocolo simples, que aceita vários comandos.
+ */
+export const exec = async (text) => {
+  await pool.query(text);
+};
+
+/**
+ * Executa `tarefa` dentro de uma transação em uma única conexão do pool.
+ * Os helpers recebidos usam o mesmo client, portanto BEGIN/COMMIT/ROLLBACK
+ * valem para todas as queries da tarefa.
+ */
+export async function withTransaction(tarefa) {
+  const client = await pool.connect();
+  const tx = {
+    query: (text, params = []) => client.query(paraPlaceholdersPostgres(text), params),
+    get: async (text, params = []) => (await tx.query(text, params)).rows[0],
+    all: async (text, params = []) => (await tx.query(text, params)).rows,
+    run: async (text, params = []) => {
+      const resultado = await tx.query(text, params);
+      return {
+        changes: resultado.rowCount ?? 0,
+        lastID: resultado.rows?.[0]?.id ?? null,
+      };
+    },
+    exec: async (text) => client.query(text),
+  };
+
   try {
-    await exec(`
-      BEGIN TRANSACTION;
-      CREATE TABLE auditoria_lavagens_nova (
-        id TEXT PRIMARY KEY,
-        lavagem_id TEXT NOT NULL,
-        user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
-        campo TEXT NOT NULL,
-        valor_anterior TEXT,
-        valor_novo TEXT,
-        data TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
-      );
-      INSERT INTO auditoria_lavagens_nova (id, lavagem_id, user_id, campo, valor_anterior, valor_novo, data)
-        SELECT id, lavagem_id, user_id, campo, valor_anterior, valor_novo, data FROM auditoria_lavagens;
-      DROP TABLE auditoria_lavagens;
-      ALTER TABLE auditoria_lavagens_nova RENAME TO auditoria_lavagens;
-      CREATE INDEX IF NOT EXISTS idx_auditoria_lavagens_lavagem_id ON auditoria_lavagens(lavagem_id);
-      CREATE INDEX IF NOT EXISTS idx_auditoria_lavagens_user_id ON auditoria_lavagens(user_id);
-      COMMIT;
-    `);
-    console.log('Migração aplicada: auditoria_lavagens agora preserva o histórico de exclusões.');
+    await client.query('BEGIN');
+    const resultado = await tarefa(tx);
+    await client.query('COMMIT');
+    return resultado;
   } catch (err) {
-    await exec('ROLLBACK;').catch(() => {});
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // Se o ROLLBACK falhar (conexão morta), o erro original é o relevante.
+    }
     throw err;
   } finally {
-    await exec('PRAGMA foreign_keys = ON;').catch(() => {});
+    client.release();
   }
 }
 
-// Wrapper para Promessas para facilitar o CRUD no Express
-export const run = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.run(sql, params, function (err) {
-      if (err) reject(err);
-      else resolve({ id: this.lastID, changes: this.changes });
-    });
-  });
-};
+// `dbReady` só resolve depois de um SELECT 1 real: o servidor não deve abrir a
+// porta anunciando sucesso antes de o pooler do Supabase aceitar a conexão.
+export const dbReady = (async () => {
+  try {
+    await pool.query('SELECT 1;');
+    console.log('Conectado ao banco de dados PostgreSQL.');
+  } catch (err) {
+    console.error('Erro ao conectar ao PostgreSQL:', err.message);
+    throw err;
+  }
+})();
 
-export const get = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.get(sql, params, (err, result) => {
-      if (err) reject(err);
-      else resolve(result);
-    });
-  });
-};
-
-export const all = (sql, params = []) => {
-  return new Promise((resolve, reject) => {
-    db.all(sql, params, (err, rows) => {
-      if (err) reject(err);
-      else resolve(rows);
-    });
-  });
-};
-
-export const exec = (sql) => {
-  return new Promise((resolve, reject) => {
-    db.exec(sql, (err) => {
-      if (err) reject(err);
-      else resolve();
-    });
-  });
-};
-
-export default db;
+export default { query, get, all, run, exec, withTransaction, pool };

@@ -1,7 +1,7 @@
 {
   "name": "wash-wizard-backend",
   "version": "1.0.0",
-  "description": "Backend API for Wash Wizard (SQLite + Express)",
+  "description": "Backend API for Wash Wizard (PostgreSQL + Express)",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,9 @@
     "dev": "node --watch server.js",
     "seed": "node seed.js",
     "test": "node test/runner.js run",
-    "test:watch": "node test/runner.js"
+    "test:watch": "node test/runner.js",
+    "db:schema": "node scripts/aplicar-sql.js schema.postgres.sql",
+    "db:migrate": "node scripts/aplicar-sql.js migrations/001_auditoria_lavagens_compat.sql"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -22,9 +24,10 @@
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
-    "sqlite3": "^6.0.1"
+    "pg": "^8.23.1"
   },
   "devDependencies": {
+    "sqlite3": "^6.0.1",
     "supertest": "^7.3.1",
     "vitest": "^5.0.3"
   }
