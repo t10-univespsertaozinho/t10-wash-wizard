@@ -440,13 +440,28 @@ const roteiro = [
   {
     id: '05-veiculos/veiculos-formulario',
     rota: '/veiculos',
-    acao: (page) => clicarPorTexto(page, 'Novo Veículo'),
-    legenda: 'Cadastro de veículo vinculado a um cliente, com placa validada.',
+    acao: async (page) => {
+      await clicarPorTexto(page, 'Novo Veículo');
+      await page.waitForSelector('[role="dialog"]', { visible: true });
+      await dormir(600);
+    },
+    verificar: async (page) => {
+      const estado = await page.evaluate(() => {
+        const dialogo = document.querySelector('[role="dialog"]');
+        return {
+          visivel: !!dialogo && dialogo.getBoundingClientRect().height > 200,
+          titulo: dialogo ? dialogo.innerText.split('\n')[0] : '',
+        };
+      });
+      if (!estado.visivel) return 'diálogo não está visível na captura';
+      return estado.titulo.includes('Editar') ? `modal abriu em modo edição ("${estado.titulo}")` : null;
+    },
+    legenda: 'Modal de cadastro de veículo vinculado a um cliente, com placa validada.',
   },
   {
     id: '06-servicos/tipos-lavagem',
     rota: '/tipos-lavagem',
-    legenda: 'Catálogo de serviços: cadastro de preço e descrição usados no faturamento.',
+    legenda: 'Catálogo de serviços com criação e edição por linha, usados no faturamento.',
   },
   {
     id: '07-estoque/estoque-critico',

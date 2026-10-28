@@ -460,10 +460,17 @@ PY
 
 ## Apêndice — achados de qualidade fora do escopo de privacidade
 
-Registrados porque apareceram durante a inspeção, mas **não** são questão de
-LGPD e **não** foram corrigidos sem alinhamento:
+Registrados porque apareceram durante a inspeção e **não** são questão de LGPD.
 
-- `openNovoVeiculo`, `openNovoServico` e `openMovimentacaoEstoque` existem no
-  `ModalContext` mas **não têm gatilho de UI** — são modais inalcançáveis pelo
-  usuário. Ou falta o botão, ou o handler é código morto. Impacto: funcionalidade
-  de cadastro que o README descreve pode não estar acessível na interface.
+- **Resolvido na branch `feat/modais-cadastro`.** `openNovoVeiculo` e
+  `openNovoServico` existiam no `ModalContext` sem gatilho de UI — modais
+  inalcançáveis pelo usuário. As telas `/veiculos` e `/tipos-lavagem` passaram a
+  abrir esses modais para criar e editar, e os formulários inline duplicados
+  foram removidos; `ClienteDetalhe` usa o mesmo modal com `clienteId`. A lacuna
+  real era a **edição de tipo de lavagem**, que antes só permitia criar e
+  excluir (e apagar o serviço quebra o histórico ligado por FK). O
+  `MovimentacaoEstoqueModal` foi removido em vez de ligado: a linha do estoque
+  agora leva a `/movimentacao?produto=<id>`, sem duas implementações do mesmo
+  formulário. A regressão é coberta por
+  `frontend/src/test/cadastros-modais.test.tsx`, que clica nos botões reais em
+  vez de chamar os handlers do contexto.
