@@ -72,13 +72,13 @@ seguem sintéticos.
 | Arquivo | Rota | O que mostra |
 |---|---|---|
 | `05-veiculos/veiculos-listagem.png` | `/veiculos` | Frota cadastrada, com busca por modelo, placa ou cliente. |
-| `05-veiculos/veiculos-formulario.png` | `/veiculos` | Cadastro de veículo vinculado a um cliente, com placa validada. |
+| `05-veiculos/veiculos-formulario.png` | `/veiculos` | Modal de cadastro de veículo vinculado a um cliente, com placa validada. |
 
 ## 06 — Serviços
 
 | Arquivo | Rota | O que mostra |
 |---|---|---|
-| `06-servicos/tipos-lavagem.png` | `/tipos-lavagem` | Catálogo de serviços: cadastro de preço e descrição usados no faturamento. |
+| `06-servicos/tipos-lavagem.png` | `/tipos-lavagem` | Catálogo de serviços com criação e edição por linha, usados no faturamento. |
 
 ## 07 — Estoque
 

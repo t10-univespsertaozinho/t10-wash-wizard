@@ -135,7 +135,7 @@ Listagem com busca, ficha detalhada com veículos e histórico, e edição cadas
 Frota vinculada aos clientes, com busca por modelo, placa ou nome.
 <div align="center">
   <img src="./docs_assets/screenshots/05-veiculos/veiculos-listagem.png" alt="Listagem de veículos" width="49%" />
-  <img src="./docs_assets/screenshots/05-veiculos/veiculos-formulario.png" alt="Formulário de cadastro de veículo" width="49%" />
+  <img src="./docs_assets/screenshots/05-veiculos/veiculos-formulario.png" alt="Modal de cadastro de veículo" width="49%" />
 </div>
 
 ### Serviços e Estoque
