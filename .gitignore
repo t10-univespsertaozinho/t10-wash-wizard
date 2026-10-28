@@ -34,6 +34,8 @@ coverage
 *.sqlite
 *.sql
 !backend/schema.sql
+!backend/schema.postgres.sql
+!backend/migrations/*.sql
 # Arquivos auxiliares do SQLite WAL (backup quente em journal_mode=wal)
 *.db-wal
 *.db-shm

@@ -127,7 +127,7 @@ O controle é reforçado **nas duas pontas**: o frontend esconde/bloqueia rotas 
 O módulo de Business Intelligence (`GET /api/dashboard/stats`) segue regras estritas de integridade relacional para assegurar precisão contábil e operacional:
 
 - **Filtro Estrito por Status:** Todas as métricas de receita (faturamento semanal, faturamento por serviço e ticket médio) filtram exclusivamente lavagens com `status = 'concluida'`. Lavagens com status `pendente`, `em_progresso` ou `cancelada` são sumariamente expurgadas das agregações financeiras para prevenir qualquer distorção no caixa.
-- **Isolamento de Datas no Servidor:** As comparações temporais (semana atual vs. semana anterior, radar de ausência > 30 dias e runway de estoque) utilizam funções canônicas do SQLite (`datetime('now')`, `date('now')` e `julianday('now')`), prevenindo adulterações de data enviadas pelo cliente.
+- **Isolamento de Datas no Servidor:** As comparações temporais (semana atual vs. semana anterior, radar de ausência > 30 dias e runway de estoque) utilizam funções canônicas do PostgreSQL (`NOW() - INTERVAL`, `EXTRACT(EPOCH ...)`), prevenindo adulterações de data enviadas pelo cliente.
 - **Proteção contra Divisão por Zero:** Todas as métricas derivadas (Ticket Médio, Variação %, Taxa de Recorrência e Runway) utilizam estruturas de fallback e `NULLIF` no SQL/JS, garantindo respostas estáveis mesmo em bases recém-inicializadas ou zeradas.
 
 ---
@@ -191,7 +191,7 @@ Sem esse controle, o único freio contra força bruta seria o custo do bcrypt (~
 
 ### 5.1 Backend (autoridade final)
 
-O backend valida e rejeita entradas inválidas com `400` antes de tocar no banco, em vez de deixar a constraint do SQLite estourar como erro genérico:
+O backend valida e rejeita entradas inválidas com `400` antes de tocar no banco, em vez de deixar a constraint do PostgreSQL estourar como erro genérico:
 
 | Recurso | Validações aplicadas |
 |---|---|
@@ -206,7 +206,7 @@ O backend valida e rejeita entradas inválidas com `400` antes de tocar no banco
 
 Todo campo de texto passa por `limparTexto`, que remove caracteres de controle (`\u0000`–`\u001F`, `\u007F`), normaliza em NFC e aplica um limite de tamanho por campo. Rotas de `PUT` verificam a existência do recurso e respondem **404** em vez de devolver `null` silenciosamente.
 
-As `CHECK` constraints do SQLite (`valor >= 0`, `quantidade >= 0`, `role IN (...)`) permanecem como segunda camada. A validação na aplicação existe para que uma entrada inválida gere **400 com mensagem útil**, e não um **500** genérico — o que mascararia erro de cliente como falha de servidor e poluiria os logs, dificultando detectar um ataque real.
+As `CHECK` constraints do PostgreSQL (`valor >= 0`, `quantidade >= 0`, `role IN (...)`) permanecem como segunda camada. A validação na aplicação existe para que uma entrada inválida gere **400 com mensagem útil**, e não um **500** genérico — o que mascararia erro de cliente como falha de servidor e poluiria os logs, dificultando detectar um ataque real.
 
 `data_conclusao` de uma lavagem nunca é aceita do cliente — é preenchida automaticamente pelo servidor no momento em que o `status` muda para `concluida`.
 
@@ -239,21 +239,21 @@ Filtrar apenas `<` e `>` não bastaria: um `}` fecharia a regra CSS e permitiria
 
 Senhas nunca são armazenadas em texto plano. `users.password_hash` guarda o hash gerado por `bcryptjs` (fator de custo 10). A rota `GET /api/users` seleciona explicitamente as colunas públicas (nunca `SELECT *`), garantindo que o hash jamais é incluído em uma resposta da API.
 
-### 6.2 Banco de Dados SQLite
+### 6.2 Banco de Dados PostgreSQL (Supabase)
 
-O banco `wash_wizard.db` é armazenado localmente e **não é commitado** no versionamento (`.gitignore`). O schema (`backend/schema.sql`), por outro lado, **é versionado** — é a definição de código do banco, necessária para inicializar um ambiente do zero.
+O banco é gerenciado pelo Supabase e **nunca é versionado** — o que vai para o repositório é o schema (`backend/schema.postgres.sql`), a definição de código necessária para inicializar um ambiente do zero. A conexão usa a `DATABASE_URL` mantida em `backend/.env` (gitignored), com TLS habilitado para hosts remotos.
 
 **Estrutura de segurança:**
-- Integridade referencial ativada: `PRAGMA foreign_keys = ON;`
-- Prevenção de registros órfãos
+- Integridade referencial garantida pelas FKs do PostgreSQL, com índice em toda coluna de FK
 - `CHECK` constraints no schema para enums (`status`, `role`, `tipo`) e valores não-negativos (`valor`, `quantidade`, `preco`)
+- Erros de integridade (`23503`, `23505`, `23514`, `22P02`) mapeados para `400`/`409`, sem vazar detalhe do banco ao cliente
 - Transações para operações críticas (ver seção 6.3)
 
 ### 6.3 Transações e Condições de Corrida
 
-A movimentação de estoque (`POST /api/movimentacoes`) envolve ler o estoque atual, calcular o novo valor e gravar — uma sequência clássica sujeita a *lost update* se duas requisições concorrentes lerem o mesmo valor antes de qualquer uma escrever. Essa rota executa a leitura, a atualização do produto e a inserção da movimentação dentro de uma única transação `BEGIN IMMEDIATE`, que trava a escrita já no início.
+A movimentação de estoque (`POST /api/movimentacoes`) envolve ler o estoque atual, calcular o novo valor e gravar — uma sequência clássica sujeita a *lost update* se duas requisições concorrentes lerem o mesmo valor antes de qualquer uma escrever. A rota executa a leitura com `SELECT ... FOR UPDATE`, a atualização do produto e a inserção da movimentação dentro de uma transação (`withTransaction`), travando a linha do produto até o `COMMIT`.
 
-Como toda a aplicação compartilha uma única conexão SQLite, e o `sqlite3` não permite `BEGIN` aninhado nela, a seção crítica é adicionalmente **serializada em uma fila de promises** (`emTransacaoSerializada`). Sem essa fila, duas movimentações simultâneas faziam a segunda falhar com `cannot start a transaction within a transaction` e retornar **500** — a integridade do saldo estava preservada (não havia *lost update*), mas movimentações legítimas eram perdidas sob concorrência. Com a fila, requisições concorrentes aguardam sua vez e todas são aplicadas.
+Com o `Pool` do `pg`, cada requisição usa a sua própria conexão; as movimentações concorrem livremente e o `FOR UPDATE` as serializa apenas quando disputam o mesmo produto. Import e reset de backup, que apagam a base inteira, continuam serializados entre si por uma fila de promises (`emTransacaoSerializada`).
 
 Verificado em teste: 20 saídas simultâneas de 5 unidades sobre o mesmo produto resultam em 20 respostas **200** e saldo final exatamente igual ao esperado.
 
@@ -322,7 +322,7 @@ app.post('/api/backup/import', requireAdmin, upload.any(), async (req, res) => {
 });
 ```
 
-O nome das colunas do CSV importado **não pode** ser passado para valores parametrizados (`?`) do SQLite, pois nomes de coluna fazem parte da estrutura da query, não de seus valores — por isso, antes deste controle, um cabeçalho de CSV malicioso (ex: `telefone); DROP TABLE clientes;--`) seria concatenado diretamente na query `INSERT`. Cada coluna do cabeçalho é validada contra uma allowlist fixa por tabela antes de montar a query; qualquer coluna fora da lista rejeita o import inteiro e reverte a transação (`ROLLBACK`), sem tocar o banco.
+O nome das colunas do CSV importado **não pode** ser passado para valores parametrizados (`?`/`$n`), pois nomes de coluna fazem parte da estrutura da query, não de seus valores — por isso, antes deste controle, um cabeçalho de CSV malicioso (ex: `telefone); DROP TABLE clientes;--`) seria concatenado diretamente na query `INSERT`. Cada coluna do cabeçalho é validada contra uma allowlist fixa por tabela antes de montar a query; qualquer coluna fora da lista rejeita o import inteiro e reverte a transação (`ROLLBACK`), sem tocar o banco.
 
 A rota inteira exige `requireAdmin` — importar ou resetar o banco não é uma operação de usuário comum.
 
@@ -344,22 +344,13 @@ A tela de Configurações exibe essas senhas **uma única vez**, em um painel de
 
 #### Verificação de integridade referencial
 
-O import roda com `PRAGMA foreign_keys = OFF` para permitir inserir as tabelas em qualquer ordem. Antes do `COMMIT`, e com a transação ainda aberta, o servidor executa:
-
-```javascript
-const problemasFk = await all('PRAGMA foreign_key_check;');
-if (problemasFk.length > 0) {
-  throw new ValidacaoError(`Backup inconsistente: ${problemasFk.length} referência(s) órfã(s)...`);
-}
-```
-
-Um backup que deixaria referências órfãs (ex: uma lavagem apontando para um cliente ausente do arquivo) é **rejeitado por inteiro** com `ROLLBACK`, em vez de corromper o banco de forma permanente e silenciosa — órfãos fariam os `JOIN` do dashboard de BI omitirem dados sem qualquer erro visível.
+O import apaga e reinsere as tabelas em ordem de dependência (pais antes dos filhos no INSERT, o inverso no DELETE). Antes do `COMMIT`, com a transação ainda aberta, o PostgreSQL valida cada FK linha a linha no próprio `INSERT`; uma referência órfã (ex: uma lavagem apontando para um cliente ausente do arquivo) dispara o SQLSTATE `23503`, que o servidor converte em **400** (`Backup inconsistente`) e desfaz a transação inteira — em vez de corromper o banco de forma permanente e silenciosa. Órfãos fariam os `JOIN` do dashboard de BI omitirem dados sem qualquer erro visível.
 
 > **Consequência operacional:** a importação passou a exigir um **conjunto consistente** de CSVs. Importar apenas `clientes.csv`, por exemplo, apagaria os clientes atuais e deixaria as lavagens existentes órfãs — isso agora é detectado e rejeitado. O fluxo suportado é exportar e reimportar os 7 arquivos juntos, que é o que a tela de Configurações faz.
 
 #### Serialização das transações
 
-A aplicação usa uma única conexão SQLite compartilhada, e o `sqlite3` não aceita `BEGIN` aninhado nela. As rotas que abrem transação — `POST /api/movimentacoes`, `POST /api/backup/import` e `POST /api/backup/reset` — são serializadas por uma fila de promises (`emTransacaoSerializada`). Requisições concorrentes aguardam sua vez em vez de falhar com `cannot start a transaction within a transaction`, e o `PRAGMA foreign_keys = ON` é sempre restaurado fora da transação (dentro dela o pragma é no-op).
+As rotas que abrem transação usam `withTransaction`, que reserva um client dedicado do pool. Import e reset — que apagam a base inteira — são adicionalmente serializados entre si por uma fila de promises (`emTransacaoSerializada`), porque dois imports simultâneos apagariam e reinseririam os dados ao mesmo tempo. As movimentações de estoque não precisam da fila: o `SELECT ... FOR UPDATE` serializa apenas as que disputam o mesmo produto.
 
 ### 7.3 Ordem de Dependências
 
@@ -379,30 +370,31 @@ A aplicação usa uma única conexão SQLite compartilhada, e o `sqlite3` não a
 
 Qualquer usuário autenticado pode editar uma lavagem, inclusive de meses anteriores. Sem registro, reduzir o `valor` de uma lavagem antiga é indistinguível de um lançamento legítimo — e o dashboard de BI, que soma `valor` diretamente, exibiria números internamente consistentes com a alteração, tornando-a invisível.
 
-A tabela `auditoria_lavagens` (`backend/schema.sql`) registra, de forma *append-only*, toda mudança em `valor`, `pagamento` ou `status`:
+A tabela `auditoria_lavagens` (`backend/schema.postgres.sql`) registra, de forma *append-only*, toda mudança em `valor`, `pagamento` ou `status`:
 
 | Coluna | Conteúdo |
 |---|---|
 | `id` | UUID do registro de auditoria |
-| `lavagem_id` | Lavagem alterada (FK, `ON DELETE CASCADE`) |
+| `lavagem_id` | Lavagem alterada (sem FK, para a trilha sobreviver ao DELETE) |
 | `user_id` | Quem alterou — sempre `req.user.id` do token validado |
+| `acao` / `dados_anteriores` / `dados_novos` | Formato do schema provisionado (snapshot completo em `jsonb`) |
 | `campo` | `valor`, `pagamento` ou `status` |
 | `valor_anterior` / `valor_novo` | Estado antes e depois |
-| `data` | Timestamp ISO 8601 |
+| `data` | `TIMESTAMPTZ`, devolvido como ISO 8601 UTC |
 
-O registro é gravado em `PUT /api/lavagens/:id`, apenas quando o valor efetivamente muda — reenviar o mesmo valor não gera ruído na trilha. A lavagem é lida antes do `UPDATE`, e uma lavagem inexistente responde **404**.
+O app grava **os dois formatos** na mesma linha (colunas de snapshot e colunas de campo), preservando o contrato antigo e o backup CSV. O registro é gravado em `PUT /api/lavagens/:id`, apenas quando o valor efetivamente muda — reenviar o mesmo valor não gera ruído na trilha. A lavagem é lida antes do `UPDATE`, e uma lavagem inexistente responde **404**.
 
 Note que `user_id` na tabela `lavagens` identifica quem **criou** o registro; a autoria de cada **alteração** posterior vive somente na trilha de auditoria.
 
-### 8.1 Migração automática do schema
+### 8.1 Provisionamento e migrações do schema
 
-`backend/db.js` aplica `schema.sql` em toda inicialização. Como o schema é integralmente idempotente (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`), ele funciona também como migração: estruturas novas passam a existir em bancos já criados, sem recriar o arquivo nem perder dados. Antes, o schema era aplicado apenas quando o arquivo `.db` não existia, de modo que uma tabela nova nunca chegaria a uma instalação em uso.
+O schema vive em `backend/schema.postgres.sql` e é aplicado explicitamente com `npm run db:schema` (idempotente: `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`). Mudanças que precisam atingir bancos já em uso são versionadas como migrações aditivas em `backend/migrations/` e aplicadas com `npm run db:migrate`. O servidor apenas verifica a conexão (`SELECT 1` via `dbReady`) no boot — não altera estrutura em produção.
 
 ---
 
 ## 9. Sanitização de Erros
 
-Nenhuma resposta de erro (`500`) expõe a mensagem interna do driver SQLite ao cliente:
+Nenhuma resposta de erro (`500`) expõe a mensagem interna do driver PostgreSQL ao cliente:
 
 ```javascript
 // backend/server.js
@@ -479,7 +471,7 @@ Se este sistema saísse do escopo acadêmico para produção real, o próximo in
 ## 12. Referências
 
 - [OWASP Top 10](https://owasp.org/www-project-top-ten/)
-- [SQLite Foreign Keys](https://www.sqlite.org/foreignkeys.html)
+- [PostgreSQL Foreign Keys](https://www.postgresql.org/docs/current/ddl-constraints.html#DDL-CONSTRAINTS-FK)
 - [JWT — jwt.io](https://jwt.io/)
 - [Node.js Security Best Practices](https://nodejs.dev/learn/nodejs-security-best-practices)
 

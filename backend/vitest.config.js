@@ -5,10 +5,9 @@ export default defineConfig({
     environment: 'node',
     include: ['test/**/*.test.js'],
 
-    // Cada arquivo roda em um fork isolado e sequencial: ganha o seu próprio
-    // banco temporário e a sua própria conexão sqlite3 (ver test/helpers.js).
-    // Compartilhar uma conexão entre arquivos deixava a suíte intermitente —
-    // o estado transacional de um arquivo vazava para o beforeEach do seguinte.
+    // Cada arquivo roda em um fork isolado e sequencial. Todos compartilham o
+    // mesmo PostgreSQL de teste (TEST_DATABASE_URL), mas o TRUNCATE do
+    // beforeEach garante que o estado de um arquivo não vaze para o seguinte.
     pool: 'forks',
     maxWorkers: 1,
     minWorkers: 1,

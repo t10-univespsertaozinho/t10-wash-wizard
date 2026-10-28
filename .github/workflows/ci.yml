@@ -48,11 +48,36 @@ jobs:
         run: npm run build
 
   backend:
-    name: Backend (boot + healthcheck)
+    name: Backend (testes + boot)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: backend
+
+    # PostgreSQL descartável para os testes de integração e para o boot.
+    # A suíte apaga os dados do banco: nunca aponte TEST_DATABASE_URL para
+    # produção (helpers.js recusa hosts Supabase de propósito).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: wash_wizard
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Bancos distintos: os testes apagam tudo, o boot usa o banco "de dev".
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/wash_wizard
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/wash_wizard_test
+      PGSSLMODE: disable
+      JWT_SECRET: segredo_de_ci_com_mais_de_32_caracteres_000000
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,8 +95,20 @@ jobs:
       - name: Audit de dependências
         run: npm audit --audit-level=high
 
+      - name: Criar banco de testes
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U postgres -c 'CREATE DATABASE wash_wizard_test'
+
+      - name: Aplicar schema e migrations
+        # `db:schema` é idempotente (CREATE ... IF NOT EXISTS) e `db:migrate`
+        # aplica a compatibilidade da trilha de auditoria.
+        run: |
+          npm run db:schema
+          npm run db:migrate
+
       - name: Testes de integração (vitest + supertest)
-        # Sobe o app Express real contra um SQLite descartável e cobre as
+        # Sobe o app Express real contra o PostgreSQL descartável e cobre as
         # regressões de segurança da auditoria: RBAC das rotas destrutivas,
         # posse de data_conclusao, trilha de auditoria e validação do CSV.
         run: npm test
@@ -94,4 +131,4 @@ jobs:
           test "$CODE" = "401" || { kill $SERVER_PID 2>/dev/null || true; cat /tmp/boot.log; exit 1; }
           kill $SERVER_PID 2>/dev/null || true
           cat /tmp/boot.log
-          grep -q "Backend SQLite rodando" /tmp/boot.log
+          grep -q "Backend PostgreSQL rodando" /tmp/boot.log

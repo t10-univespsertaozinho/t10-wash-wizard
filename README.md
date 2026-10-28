@@ -1,17 +1,17 @@
 # 🌊 Wash Wizard 
 **Sistema Fullstack de Gestão & Business Intelligence (BI) para Centros de Estética Automotiva**  
-*Versão Acadêmica & Empresarial (Arquitetura Local / SQLite / Analytics)*
+*Versão Acadêmica & Empresarial (PostgreSQL / Supabase / Analytics)*
 
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-3-lightgrey.svg)](https://www.sqlite.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-Academic-red.svg)](#)
 
 ---
 
 O **Wash Wizard** é uma plataforma *fullstack* profissional desenvolvida para transformar a gestão operacional e estratégica de centros de estética automotiva, lava-jatos e oficinas de detalhamento (*car detailing*). A solução combina o controle de fluxo de pátio em tempo real com um **Módulo de Data Analytics & BI Prático**, traduzindo dados transacionais brutos em indicadores acionáveis para tomada de decisão rápida e assertiva.
 
-Projetada com uma arquitetura local-first e resiliente, a aplicação opera com Node.js e SQLite embutido, eliminando dependências de nuvem e garantindo alta performance, privacidade total dos dados e portabilidade completa via exportação/importação modular em CSV.
+Projetada com uma arquitetura desacoplada e resiliente, a aplicação opera com Node.js sobre **PostgreSQL gerenciado no Supabase**, garantindo integridade relacional, backup gerenciado pelo provedor e portabilidade completa via exportação/importação modular em CSV.
 
 📄 **[Acesse a Documentação Gráfica Completa (docs.html)](./docs.html)**
 
@@ -37,7 +37,7 @@ Projetada com uma arquitetura local-first e resiliente, a aplicação opera com 
 
 O sistema provê o controle ponta-a-ponta do fluxo operacional e estratégico:
 
-- **Gestão de Clientes e Veículos (com Data de Nascimento):** Cadastro unificado de proprietários e múltiplos veículos com integridade relacional estrita (deleção em cascata e histórico unificado). Inclui suporte ao campo `data_nascimento` (`YYYY-MM-DD`) para identificação de aniversariantes e campanhas promocionais de fidelização, persistido no SQLite e integrado às rotinas de importação/exportação CSV.
+- **Gestão de Clientes e Veículos (com Data de Nascimento):** Cadastro unificado de proprietários e múltiplos veículos com integridade relacional estrita (deleção em cascata e histórico unificado). Inclui suporte ao campo `data_nascimento` (`YYYY-MM-DD`) para identificação de aniversariantes e campanhas promocionais de fidelização, persistido no PostgreSQL e integrado às rotinas de importação/exportação CSV.
 - **Controle de Lavagens (Workflow de Pátio):** Acompanhamento de status em tempo real (`pendente`, `em_progresso`, `concluida`, `cancelada`) com fila operacional rápida.
 - **Cadastros Ágeis em Modais Acessíveis:** Os fluxos operacionais de *Nova Lavagem*, *Novo Cliente*, *Novo Veículo*, *Novo Serviço* e *Movimentação de Estoque* abrem em *overlays* reutilizáveis e centralizados via `ModalProvider` — com foco automático, fechamento por `Esc`/clique fora e suporte pleno a tecnologias assistivas (WCAG 2.4.3, 1.3.1).
 - **Gestão de Estoque e Suprimentos:** Controle de saldo, ponto de pedido (`estoque_minimo`) e histórico de movimentações (entradas e saídas com transações atômicas), acessível diretamente pelo modal de movimentação rápida ou pela página de estoque.
@@ -206,12 +206,12 @@ A aplicação utiliza o padrão **Client-Server** desacoplado em um repositório
 ```text
 [Frontend: React 18 SPA] <---(REST API JSON / Porta 3001)---> [Backend: Node.js + Express]
          |                                                            |
-(Vite Dev Server: Porta 8080)                                (SQLite Engine: wash_wizard.db)
+(Vite Dev Server: Porta 8080)                     (PostgreSQL / Supabase — Pool de conexões)
 ```
 
 ### Evolução Arquitetural de BI (Otimização Server-Side):
 Nas iterações iniciais, o cálculo de métricas era realizado no navegador do cliente através de filtros em memória (`useMemo`) após download de todas as tabelas transacionais brutas. Na evolução analítica atual, implementou-se a **centralização analítica via SQL**:
-- **Descentralização e Eficiência:** O endpoint analítico `GET /api/dashboard/stats` consolida todos os 4 pilares de negócio diretamente no SQLite através de consultas otimizadas com *Common Table Expressions* (CTEs), funções de data (`julianday`, `date`) e agregações relacionais indexadas.
+- **Descentralização e Eficiência:** O endpoint analítico `GET /api/dashboard/stats` consolida todos os 4 pilares de negócio diretamente no PostgreSQL através de consultas otimizadas com *Common Table Expressions* (CTEs), funções de data (`NOW() - INTERVAL`, `to_char`, `EXTRACT(EPOCH ...)`) e agregações relacionais indexadas.
 - **Payload Ultraleve:** O tráfego de rede para carregar o dashboard foi reduzido de centenas de kilobytes (múltiplas tabelas completas) para um **JSON agregado de apenas ~1.2 KB**.
 - **Latência de Consulta:** Tempo de resposta da API analítica **inferior a 30 ms**, assegurando carregamento instantâneo mesmo em hardware modesto ou conexões móveis no pátio.
 
@@ -220,7 +220,7 @@ Nas iterações iniciais, o cálculo de métricas era realizado no navegador do 
 - **Cadastros via Modais (Contexto Global):** Os fluxos de *Nova Lavagem*, *Novo Cliente*, *Novo Veículo*, *Novo Serviço* e *Movimentação de Estoque* abrem em `Dialog` acessíveis gerenciados pelo `ModalProvider`, reutilizados de qualquer tela sem duplicação de UI.
 - **Acessibilidade Completa (WCAG 2.1 AA / W3C):** Tema claro/escuro com contraste verificado, paleta Okabe-Ito (daltônicos), *skip-link* para o conteúdo, gaveta de navegação operável apenas por teclado (foco, `Esc` e retorno de foco), formulários com associação explícita de `<label htmlFor>` para `<input id>` e gráficos Recharts espelhados em tabelas semânticas (`ChartDataTable`) para leitores de tela.
 - **Testes Automatizados com Gate de Cobertura:** Suíte Vitest + React Testing Library com relatório `v8` e limiares calibrados em dois níveis — uma **catraca global** balanceada e **limiares altos (≥90%)** por camada crítica (`src/utils`, `src/services`, `AuthContext`, `ErrorBoundary`). Queda de cobertura falha o pipeline.
-- **Pipeline CI & Segurança:** O job de frontend roda *lint* (ESLint sem erros a11y), suíte com cobertura e build de produção; o job de backend roda testes de integração (43 testes Vitest + Supertest sobre o Express real com SQLite descartável), auditoria de dependências (`npm audit --audit-level=high` com dependências como `body-parser` e `undici` protegidas) e *healthcheck* de boot.
+- **Pipeline CI & Segurança:** O job de frontend roda *lint* (ESLint sem erros a11y), suíte com cobertura e build de produção; o job de backend sobe um PostgreSQL 16 descartável, aplica schema/migrations, roda os testes de integração (43 testes Vitest + Supertest sobre o Express real) e um *healthcheck* de boot, além da auditoria de dependências (`npm audit --audit-level=high`).
 - **Roteamento Protegido:** Validação de sessão ativa via JWT tanto no cliente quanto em cada camada de middleware do servidor.
 
 ---
@@ -238,13 +238,13 @@ Nas iterações iniciais, o cálculo de métricas era realizado no navegador do 
 
 ### Backend
 - **Node.js, Express** (Servidor HTTP RESTful, Middlewares de Autenticação e Roteamento)
-- **SQLite3 (Queries Analíticas com CTEs)** (Motor de Banco de Dados Relacional Embutido com alta performance local)
+- **PostgreSQL 16 / Supabase (Queries Analíticas com CTEs)** (Banco de Dados Relacional Gerenciado, com Pool de conexões via `pg`)
 - **JSON Web Token (JWT) & bcryptjs** (Autenticação Stateless, RBAC e Criptografia segura)
 - **Multer & CSV-Parse** (Processamento e ETL de arquivos de backup com validação de cabeçalhos)
 
 ### Qualidade e CI
 - **Frontend (job `frontend` do `ci.yml`):** `lint` (ESLint com regras a11y W3C estritas), `test:coverage` (91 testes + gate de cobertura calibrado) e `build` de produção — o merge falha se a cobertura cair abaixo dos limiares de `frontend/vitest.config.ts`.
-- **Backend (job `backend`):** 43 testes de integração do app Express real com SQLite descartável, auditoria estrita de dependências (`npm audit --audit-level=high` com resolução de vulnerabilidades em `body-parser` e `undici`) e validação de boot com credenciais inválidas (*healthcheck*).
+- **Backend (job `backend`):** serviço `postgres:16`, aplicação do schema/migrations, 43 testes de integração do app Express real em banco descartável, auditoria estrita de dependências e validação de boot com credenciais inválidas (*healthcheck*).
 
 ---
 
@@ -265,10 +265,11 @@ wash-wizard/
 │   └── package.json        
 ├── backend/                # RESTful API (Server-Side)
 │   ├── server.js           # Ponto de entrada, Middlewares e Rotas
-│   ├── db.js               # Conexões e inicialização do SQLite
+│   ├── db.js               # Pool PostgreSQL (pg), parsers e transações
 │   ├── config.js           # Segredo JWT e configurações de auth
 │   ├── middleware/auth.js  # requireAuth / requireAdmin
-│   ├── schema.sql          # DDL e Constraints (versionado no repo — ver nota abaixo)
+│   ├── schema.postgres.sql # DDL e Constraints (versionado no repo — ver nota abaixo)
+│   ├── migrations/         # Migrações aditivas aplicadas em bancos existentes
 │   ├── test/               # Testes de integração (Vitest + Supertest)
 │   └── package.json        
 ├── backups/                # Diretório automatizado para exports CSV
@@ -276,11 +277,10 @@ wash-wizard/
 ├── ROADMAP.md              # Planejamento da próxima fase (Data Science / Analytics)
 ├── SECURITY.md             # Matriz de RBAC, autenticação e proteções da API
 ├── .github/workflows/ci.yml # CI: lint + cobertura + build (frontend); testes + boot (backend)
-├── package.json            # Orquestrador Root (Scripts concurrently)
-└── wash_wizard.db          # Arquivo do Banco de Dados Relacional (gerado localmente, não versionado)
+└── package.json            # Orquestrador Root (Scripts concurrently)
 ```
 
-> **`backend/schema.sql` é versionado no repositório**, ao contrário do arquivo `.db` em si. É a partir dele que `backend/db.js` inicializa o banco do zero (`CREATE TABLE ... IF NOT EXISTS`) na primeira execução, garantindo que um clone limpo do projeto suba sem depender de um dump de dados.
+> **`backend/schema.postgres.sql` é versionado no repositório** e é a fonte da verdade do schema. `npm run db:schema` aplica o arquivo (idempotente) no banco apontado por `DATABASE_URL`; `npm run db:migrate` aplica as migrações aditivas de `backend/migrations/`. Em um clone limpo, basta configurar o `DATABASE_URL` e rodar os dois comandos para provisionar um banco vazio.
 
 ---
 
@@ -289,6 +289,7 @@ wash-wizard/
 ### Pré-requisitos
 - Node.js `v18.0.0` ou superior.
 - NPM (Node Package Manager).
+- PostgreSQL `16` — local (Docker/instalação nativa) ou um projeto Supabase.
 
 ### Instalação (Método Monorepo)
 
@@ -305,12 +306,18 @@ npm run install:all
 # 3. Configure as variáveis de ambiente
 cp frontend/.env.example frontend/.env
 cp backend/.env.example backend/.env
-# Edite backend/.env e defina um JWT_SECRET próprio (obrigatório fora de um ambiente
-# de desenvolvimento descartável — sem ele, o servidor gera um segredo aleatório a
-# cada boot e invalida sessões existentes a cada restart)
+# Edite backend/.env:
+#   - DATABASE_URL: string de conexão do PostgreSQL/Supabase
+#   - JWT_SECRET: segredo próprio (obrigatório fora de um ambiente descartável —
+#     sem ele, o servidor gera um segredo aleatório a cada boot e invalida sessões)
+#   - TEST_DATABASE_URL: banco descartável usado por `npm test` (nunca o de produção)
 
-# 4. Gere o banco local com dados de exemplo (usuários admin/operador inclusos)
-cd backend && node seed.js && cd ..
+# 4. Provisione o schema e popule os dados de exemplo (usuários inclusos)
+cd backend
+npm run db:schema
+npm run db:migrate
+npm run seed        # DESTRUTIVO: apaga os dados existentes antes de popular
+cd ..
 ```
 
 ### Inicialização e Ambiente de Desenvolvimento
@@ -333,16 +340,27 @@ npm test                # executa a suíte de testes (91 casos)
 npm run test:coverage   # suíte + relatório de cobertura e gate (limiares no vitest.config.ts)
 ```
 
+### Testes Automatizados (Backend)
+
+Os testes de integração exigem um PostgreSQL descartável em `TEST_DATABASE_URL`
+(o helper recusa hosts Supabase para não apagar dados de produção):
+
+```bash
+cd backend
+npm test                # 43 testes de integração (Vitest + Supertest)
+npm run test:watch      # modo watch
+```
+
 ---
 
 ## 🗄️ Gerenciamento de Banco de Dados e Backups
 
-O modelo transacional é estritamente gerenciado no SQLite com `PRAGMA foreign_keys = ON`. A modelagem original, proveniente de serviços em nuvem (como Supabase/Firebase), teve tipagens convertidas para o ambiente local (`UUID` e `Timestamps` manipulados como `TEXT` formato ISO-8601).
+O modelo transacional é gerenciado no PostgreSQL, com integridade referencial garantida por chaves estrangeiras e índices explícitos (`backend/schema.postgres.sql`). O schema usa `TEXT` para chaves primárias (UUIDs gerados na aplicação), `TIMESTAMPTZ` para datas e `NUMERIC` para valores monetários — convertidos para `number` na borda da API pelos *type parsers* de `backend/db.js`.
 
 ### Sistema de Backup (CSV)
 Visando portabilidade dos dados, a aplicação dispõe de rotinas de serialização:
 - **Exportação (Dump):** O administrador pode emitir artefatos `.csv` que mapeiam integralmente o status relacional.
-- **Importação (Restore):** A API injeta registros respeitando estritamente a árvore de dependências do esquema (`Usuários -> Clientes -> Veículos -> Lavagens`), utilizando `BEGIN TRANSACTION` para garantir falha segura sem perda de integridade do modelo.
+- **Importação (Restore):** A API injeta registros respeitando estritamente a árvore de dependências do esquema (`Usuários -> Clientes -> Veículos -> Lavagens`) dentro de uma transação; qualquer violação de FK desfaz o import inteiro e devolve 400 ("Backup inconsistente").
 
 ---
 
@@ -356,7 +374,7 @@ A autenticação e a autorização são reforçadas pelo **backend**, não apena
   - **Operador:** Acesso à gestão de Clientes, Veículos, Lavagens e Dashboard `(/)`
   - **Admin:** Acesso adicional a Tipos de Lavagem, Estoque, Novo Produto, Movimentações, **Análise & Relatórios**, Usuários e Configurações (Sistema de Backup)
 - **CORS restrito:** o backend só aceita requisições da origem definida em `FRONTEND_URL`.
-- **Outras proteções:** allowlist de colunas no import de CSV (previne SQL Injection via cabeçalho malicioso), transações atômicas nas movimentações de estoque, e mensagens de erro genéricas ao cliente (o detalhe real do SQLite fica só no log do servidor).
+- **Outras proteções:** allowlist de colunas no import de CSV (previne SQL Injection via cabeçalho malicioso), transações atômicas nas movimentações de estoque (`SELECT ... FOR UPDATE`), e mensagens de erro genéricas ao cliente (o detalhe real do PostgreSQL fica só no log do servidor).
 
 Detalhes completos, incluindo a matriz de permissões por rota, estão em [`SECURITY.md`](./SECURITY.md).
 
@@ -369,7 +387,7 @@ Detalhes completos, incluindo a matriz de permissões por rota, estão em [`SECU
 ## 🧭 Situação Atual e Próximos Passos
 
 **Fase recente entregue (UX, Acessibilidade, Segurança e Qualidade):**
-- **Cadastro e Aniversário de Clientes:** Suporte ao campo `data_nascimento` (`YYYY-MM-DD`) no fluxo de clientes, persistido no SQLite e disponível nas operações de importação/exportação CSV para promoções e fidelização de aniversariantes do mês.
+- **Cadastro e Aniversário de Clientes:** Suporte ao campo `data_nascimento` (`YYYY-MM-DD`) no fluxo de clientes, persistido no PostgreSQL e disponível nas operações de importação/exportação CSV para promoções e fidelização de aniversariantes do mês.
 - **Novas Modais de Gestão:** Inclusão e centralização das telas de *Movimentação de Estoque*, *Novo Serviço* e *Novo Veículo* integradas ao `ModalProvider`.
 - **Acessibilidade (a11y):** Adequação rigorosa dos formulários aos padrões W3C / WCAG com associação explícita de `<label htmlFor="...">` para `<input id="...">`, além de contraste verificado e compatibilidade com leitores de tela.
 - **Segurança e Auditoria de Dependências:** Atualização de pacotes do backend (`body-parser`, `undici`) para versões seguras, com aprovação em `npm audit --audit-level=high`.
