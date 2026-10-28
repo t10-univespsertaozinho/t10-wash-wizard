@@ -6,6 +6,20 @@
 > **Convenção:** antes de declarar uma tarefa "concluída", qualquer agente AI **deve**
 > adicionar uma entrada aqui.
 
+## 2026-10-28 — Codex — Move configuração Vercel para o projeto frontend
+
+### Resumo
+
+A configuração da Vercel passou para `frontend/vercel.json` e ficou restrita aos
+rewrites da API para o Render e ao fallback SPA. O deploy independente do
+frontend deve usar `frontend/` como Root Directory.
+
+### Arquivos
+
+`vercel.json` (removido), `frontend/vercel.json` (novo), `README.md` e `HISTORY.md`.
+
+---
+
 ## 2026-10-28 — Codex — Configura proxy da Vercel para o backend no Render
 
 ### Resumo
