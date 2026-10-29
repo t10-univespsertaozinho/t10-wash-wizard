@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { obterJwtSecret, JWT_ALGORITHM } from '../config.js';
 import { get } from '../db.js';
+import { sanitizarErroParaLog } from '../log-seguro.js';
 
 // Resolvido no carregamento do middleware (memoizado no config): em produção,
 // JWT_SECRET ausente/curto falha aqui, no boot, com mensagem clara.
@@ -43,7 +44,7 @@ export async function requireAuth(req, res, next) {
     req.user = { ...payload, role: atual.role };
     next();
   } catch (err) {
-    console.error(err);
+    console.error(sanitizarErroParaLog(err));
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
@@ -70,7 +71,7 @@ export async function requireAdmin(req, res, next) {
     req.user.role = atual.role;
     next();
   } catch (err) {
-    console.error(err);
+    console.error(sanitizarErroParaLog(err));
     return res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }

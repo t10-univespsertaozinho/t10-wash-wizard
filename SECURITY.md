@@ -1,7 +1,7 @@
 # Wash Wizard — Política de Segurança
 
-> **Versão:** 3.0
-> **Última atualização:** 2026-10-02
+> **Versão:** 3.1
+> **Última atualização:** 2026-10-29
 > **Escopo:** Projeto Integrador UNIVESP — Engenharia de Computação
 
 ---
@@ -185,6 +185,27 @@ Sem esse controle, o único freio contra força bruta seria o custo do bcrypt (~
 
 `multer` usa `memoryStorage`: sem esses limites, um único upload carregaria gigabytes na RAM e derrubaria o processo Node por OOM. O `fileFilter` também rejeita qualquer arquivo cujo nome não corresponda exatamente a `<tabela>.csv` da allowlist — o que, somado ao `memoryStorage` (que nunca escreve em disco), elimina Path Traversal e Zip Slip.
 
+### 4.5 Política de Cache
+
+Toda resposta de `/api/*` é marcada como não-cacheável, por um middleware registrado **antes das rotas** (`backend/server.js`):
+
+```http
+Cache-Control: no-store, no-cache, must-revalidate, private
+Pragma: no-cache
+Expires: 0
+```
+
+| Diretiva | Para que serve aqui |
+|---|---|
+| `no-store` | Impede que a resposta seja gravada em disco ou memória pelo navegador |
+| `no-cache` + `must-revalidate` | Obriga revalidação no servidor antes de reexibir qualquer cópia |
+| `private` | Barra cache em proxy compartilhado (incluindo a camada de borda da Vercel) |
+| `Pragma` / `Expires` | Cobre intermediários HTTP/1.0 que ignoram `Cache-Control` |
+
+O motivo é operacional, não teórico: as listagens trazem nome, telefone, data de nascimento e histórico financeiro de clientes, e o computador do balcão é compartilhado entre turnos. Sem `no-store`, o botão "voltar" do navegador reexibe a tela de clientes **depois do logout**, porque a resposta ainda está no cache local — tratamento de dado pessoal sem base legal nem titular presente.
+
+O middleware é aplicado ao prefixo `/api` inteiro, de propósito: a API não tem nenhum conteúdo público cacheável a perder, e assim **toda rota nova nasce protegida**, em vez de depender de alguém lembrar de adicionar o cabeçalho.
+
 ---
 
 ## 5. Validação de Entrada
@@ -267,6 +288,28 @@ users (1) ──── (N) clientes (1) ──── (N) veiculos (1) ───�
         │
         └──────────── (N) tipos_lavagem
 ```
+
+### 6.5 Minimização de Dados nas Respostas (LGPD, Art. 6º, III)
+
+Nenhum endpoint usa `SELECT *`. Cada rota declara a lista nominal de colunas que devolve, em `COLUNAS_API` (`backend/server.js`):
+
+| Endpoint | Colunas devolvidas |
+|---|---|
+| `/api/clientes` | `id, nome, telefone, data_nascimento, created_at` |
+| `/api/veiculos` | `id, cliente_id, modelo, placa, cor, marca` |
+| `/api/tipos-lavagem` | `id, nome, descricao, preco` |
+| `/api/lavagens` | `id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, pagamento, observacao, data_conclusao` |
+| `/api/produtos` | `id, nome, categoria, quantidade, estoque_minimo, unidade, preco_unitario` |
+| `/api/movimentacoes` | `id, produto_id, tipo, quantidade, data` |
+
+O ganho imediato é modesto — saem `user_id`, `created_at` e a observação interna da movimentação. O ganho que importa é estrutural: com a lista nominal, **uma coluna nova e sensível não passa a trafegar sozinha** para o navegador só porque foi adicionada ao schema. Um `cpf` acrescentado à tabela `clientes` amanhã continua no banco até que alguém decida, explicitamente, publicá-lo.
+
+A mesma lista vale para o retorno de linha única de `POST`/`PUT`, porque o `AppContext` do frontend funde a resposta na linha já carregada (`{...antiga, ...resposta}`) — dois shapes diferentes deixariam a mesma lista inconsistente após uma edição.
+
+**Duas exceções deliberadas:**
+
+- **Snapshot da trilha de auditoria** (`auditarExclusaoLavagens`) usa `SELECT *`: é o retrato forense da linha que vai deixar de existir, e enxugar colunas ali destruiria justamente a prova que a auditoria exige. O snapshot nunca sai por uma rota de listagem.
+- **`telefone` e `data_nascimento` permanecem na listagem de clientes.** Nenhuma tela busca cliente por id — `EditarCliente.tsx` e `ClienteDetalhe.tsx` leem da listagem compartilhada do `AppContext` —, então omiti-los faria o formulário de edição abrir em branco e **sobrescrever o valor gravado** no próximo salvamento. Reduzir isso de verdade exige primeiro um endpoint de detalhe consumido pelo frontend (ver 11).
 
 ---
 
@@ -399,7 +442,7 @@ Nenhuma resposta de erro (`500`) expõe a mensagem interna do driver PostgreSQL 
 ```javascript
 // backend/server.js
 function handleServerError(res, err) {
-  console.error(err);                                     // detalhe completo só no log do servidor
+  console.error(sanitizarErroParaLog(err));               // diagnóstico sem dado pessoal (ver 9.2)
   res.status(500).json({ error: 'Erro interno do servidor' }); // mensagem genérica ao cliente
 }
 ```
@@ -421,6 +464,27 @@ Registrado **depois de todas as rotas**, converte as exceções que antes caíam
 | Qualquer outra exceção | **500** | `Erro interno do servidor` (detalhe só no log) |
 
 A classe `ValidacaoError` carrega `status` e `clientMessage`, de forma que o que chega ao cliente é sempre uma string escolhida deliberadamente — nunca a mensagem de uma exceção interna.
+
+### 9.2 Sanitização de Logs (LGPD, Art. 6º, VII e VIII)
+
+Esconder o detalhe do erro do cliente não basta se ele reaparece no log do provedor. O `DatabaseError` do `pg` carrega campos que embutem o **valor** da linha que falhou:
+
+```
+detail: 'Key (email)=(maria@exemplo.com) already exists.'
+```
+
+Logar o objeto de erro inteiro publicava esse valor no log do Render — dado pessoal persistido fora do banco, em um sistema sem política de retenção para log. `backend/log-seguro.js` resolve isso com `sanitizarErroParaLog(err)`, usado em `handleServerError`, em `responderErroBanco` e nos dois `catch` de `backend/middleware/auth.js`:
+
+| Campo | Vai para o log? | Por quê |
+|---|---|---|
+| `name`, `message`, `code`, `constraint`, `table`, `column`, `routine`, `schema` | **Sim** | Identificam onde quebrou. A `message` do `pg` nomeia a constraint violada, nunca o valor |
+| `stack` | **Sim** | É código do servidor, não dado do titular |
+| `detail`, `where` | **Não** | Embutem o valor da linha (e-mail, telefone, nome) |
+| `query`, `internalQuery`, `parameters` | **Não** | Carregam o texto da consulta e os valores enviados |
+
+Logs mantidos de propósito, por não conterem dado pessoal: metadados de upload do `multer`, a origem rejeitada pelo CORS, e o `.message` das falhas de conexão do pool.
+
+Nenhum ponto do backend loga `req.body`, senha ou token — verificado na auditoria e coberto por regressão em `backend/test/privacidade-lgpd.test.js`, que força uma violação de unicidade real e falha se o e-mail conflitante aparecer na saída do `console`.
 
 ---
 
@@ -450,6 +514,7 @@ Este é um sistema de porte acadêmico com um backend real de autenticação/aut
 - **Revogação de token em rotas comuns:** rotas administrativas revalidam o perfil no banco a cada requisição (2.3), mas as rotas de uso geral continuam aceitando qualquer token válido não expirado. Revogação imediata universal exigiria uma coluna `token_version` em `users`, comparada no `requireAuth`.
 - **Logout no servidor:** o logout apenas descarta o token no cliente; não há denylist no servidor.
 - **Trilha de auditoria:** cobre as alterações financeiras em lavagens (seção 8). Não cobre criação/remoção de clientes, veículos, produtos e usuários.
+- **Minimização de dados na listagem de clientes:** `telefone` e `data_nascimento` continuam trafegando na listagem porque as telas de detalhe e edição leem da listagem compartilhada do `AppContext`, não de um `GET /api/clientes/:id` (o endpoint existe, mas nenhuma tela o consome). Reduzir isso exige primeiro consumir o endpoint de detalhe no frontend — mudança de comportamento de tela, fora do escopo de uma correção sem regressão. Ver 6.5.
 - **Two-Factor Authentication (2FA):** não implementado.
 - **Isolamento multi-tenant:** não existe — é uma decisão de produto (loja única), não uma limitação técnica pendente.
 - **Rate limiting em memória:** o contador do `express-rate-limit` vive no processo. Com múltiplas instâncias, cada uma teria a própria cota; um deploy horizontal precisaria de um store compartilhado (Redis).

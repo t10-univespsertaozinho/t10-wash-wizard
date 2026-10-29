@@ -14,6 +14,7 @@ import db, { dbReady, get, all, run, exec, withTransaction } from './db.js';
 import { obterJwtSecret, JWT_EXPIRES_IN, JWT_ALGORITHM } from './config.js';
 import { avisarSenhasSeedPadrao } from './seed-credentials.js';
 import { requireAuth, requireAdmin, ehAdmin } from './middleware/auth.js';
+import { sanitizarErroParaLog } from './log-seguro.js';
 
 dotenv.config();
 
@@ -148,6 +149,22 @@ const loginLimiter = rateLimit({
 
 app.use('/api', apiLimiter);
 
+// Nenhuma resposta da API pode ser guardada em cache: as listagens trazem nome,
+// telefone e histórico financeiro de clientes, e o computador do balcão é
+// compartilhado entre turnos — o botão "voltar" do navegador, ou um proxy
+// intermediário, reexibiria o dado depois do logout. `private` barra proxy
+// compartilhado, `no-store` barra disco e memória, e `Pragma`/`Expires` cobrem
+// o HTTP/1.0 antigo. Aplicado antes das rotas para valer também no login e em
+// qualquer rota nova, que nasce protegida em vez de depender de lembrança.
+app.use('/api', (req, res, next) => {
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  });
+  next();
+});
+
 // Nota sobre isolamento por usuário: este é um sistema de um único lava-rápido,
 // não multi-tenant. Toda a equipe autenticada (admin e operadores) compartilha
 // intencionalmente a mesma base de clientes/veículos/lavagens/produtos — por
@@ -178,12 +195,43 @@ const genId = () => crypto.randomUUID();
 const now = () => new Date().toISOString();
 
 const publicUserFields = 'id, email, nome, role, created_at';
+
+// Minimização de dados (LGPD, Art. 6º, III): cada endpoint devolve as colunas
+// que a tela realmente lê, e não `SELECT *`. O ganho imediato é modesto — sai
+// `user_id`, `created_at` e a observação da movimentação —, mas o estrutural é
+// o que importa: com a lista nominal, uma coluna nova e sensível (um `cpf`, uma
+// anotação interna) não passa a trafegar sozinha para o navegador só porque foi
+// adicionada ao schema.
+//
+// Limite declarado: `telefone` e `data_nascimento` CONTINUAM na listagem de
+// clientes. Nenhuma tela busca cliente por id — `EditarCliente.tsx` e
+// `ClienteDetalhe.tsx` leem da listagem compartilhada do AppContext —, então
+// omiti-los faria o formulário de edição abrir em branco e sobrescrever o valor
+// gravado no próximo salvamento.
+//
+// A mesma lista vale para o retorno de linha única de POST/PUT: o AppContext do
+// frontend funde a resposta na linha já carregada (`{...antiga, ...resposta}`),
+// e dois shapes diferentes deixariam a mesma lista inconsistente após uma edição.
+const COLUNAS_API = {
+  clientes: 'id, nome, telefone, data_nascimento, created_at',
+  veiculos: 'id, cliente_id, modelo, placa, cor, marca',
+  tipos_lavagem: 'id, nome, descricao, preco',
+  // `data_conclusao` fica: é timestamp de processo, não dado pessoal, e a UI e a
+  // suíte de integridade das lavagens dependem dele.
+  lavagens: 'id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, pagamento, observacao, data_conclusao',
+  produtos: 'id, nome, categoria, quantidade, estoque_minimo, unidade, preco_unitario',
+  movimentacoes: 'id, produto_id, tipo, quantidade, data',
+};
 const ROLES_VALIDOS = ['admin', 'operador'];
 
 // Loga o erro real no servidor, mas nunca expõe detalhes internos (ex: mensagens
 // do PostgreSQL) ao cliente.
+//
+// O log passa por `sanitizarErroParaLog`: este é o sumidouro de TODO 500 da API,
+// e o objeto cru do `pg` traz `detail`/`where` com o valor da linha que falhou —
+// nome, telefone ou e-mail de cliente no log do Render (ver log-seguro.js).
 function handleServerError(res, err) {
-  console.error(err);
+  console.error(sanitizarErroParaLog(err));
   res.status(500).json({ error: 'Erro interno do servidor' });
 }
 
@@ -200,7 +248,10 @@ const SQLSTATE_PARA_RESPOSTA = {
 function responderErroBanco(res, err) {
   const mapeado = SQLSTATE_PARA_RESPOSTA[err?.code];
   if (mapeado) {
-    console.warn(`Erro de integridade (${err.code}):`, err.detail || err.message);
+    // `err.detail` fica fora do log de propósito: numa violação de unicidade ele
+    // carrega o valor conflitante (`Key (email)=(...) already exists`). A
+    // constraint e a mensagem do `pg` já identificam o que quebrou.
+    console.warn(`Erro de integridade (${err.code}):`, err.constraint || err.message);
     return res.status(mapeado[0]).json({ error: mapeado[1] });
   }
   return handleServerError(res, err);
@@ -382,14 +433,14 @@ app.post('/api/users', requireAdmin, async (req, res) => {
 app.get('/api/clientes', async (req, res) => {
   try {
     // Retorna todos os clientes (sem filtro por user_id para simplificar)
-    const rows = await all('SELECT * FROM clientes', []);
+    const rows = await all(`SELECT ${COLUNAS_API.clientes} FROM clientes`, []);
     res.json(rows);
   } catch (err) { handleServerError(res, err); }
 });
 
 app.get('/api/clientes/:id', async (req, res) => {
   try {
-    const row = await get('SELECT * FROM clientes WHERE id = ?', [req.params.id]);
+    const row = await get(`SELECT ${COLUNAS_API.clientes} FROM clientes WHERE id = ?`, [req.params.id]);
     if (!row) return res.status(404).json({ error: 'Cliente não encontrado' });
     res.json(row);
   } catch (err) { handleServerError(res, err); }
@@ -403,7 +454,7 @@ app.post('/api/clientes', async (req, res) => {
     const id = genId();
     const created_at = now();
     await run('INSERT INTO clientes (id, user_id, nome, telefone, data_nascimento, created_at) VALUES (?, ?, ?, ?, ?, ?)', [id, req.user.id, nome, telefone, data_nascimento, created_at]);
-    const row = await get('SELECT * FROM clientes WHERE id = ?', [id]);
+    const row = await get(`SELECT ${COLUNAS_API.clientes} FROM clientes WHERE id = ?`, [id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -422,7 +473,7 @@ app.put('/api/clientes/:id', async (req, res) => {
     const novaDataNascimento = data_nascimento !== undefined ? data_nascimento : atual.data_nascimento;
 
     await run('UPDATE clientes SET nome = ?, telefone = ?, data_nascimento = ? WHERE id = ?', [nome, telefone, novaDataNascimento, req.params.id]);
-    const row = await get('SELECT * FROM clientes WHERE id = ?', [req.params.id]);
+    const row = await get(`SELECT ${COLUNAS_API.clientes} FROM clientes WHERE id = ?`, [req.params.id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -445,7 +496,7 @@ app.delete('/api/clientes/:id', requireAdmin, async (req, res) => {
 app.get('/api/veiculos', async (req, res) => {
   try {
     const { cliente_id } = req.query;
-    let query = 'SELECT * FROM veiculos';
+    let query = `SELECT ${COLUNAS_API.veiculos} FROM veiculos`;
     let params = [];
     if (cliente_id) { query += ' WHERE cliente_id = ?'; params.push(cliente_id); }
     const rows = await all(query, params);
@@ -469,7 +520,7 @@ app.post('/api/veiculos', async (req, res) => {
     const id = genId();
     await run('INSERT INTO veiculos (id, cliente_id, user_id, placa, marca, cor, modelo, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [id, cliente_id, req.user.id, placa, marca, cor, modelo, now()]);
-    const row = await get('SELECT * FROM veiculos WHERE id = ?', [id]);
+    const row = await get(`SELECT ${COLUNAS_API.veiculos} FROM veiculos WHERE id = ?`, [id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -494,7 +545,7 @@ app.put('/api/veiculos/:id', async (req, res) => {
     if (!atual) return res.status(404).json({ error: 'Veículo não encontrado' });
 
     await run('UPDATE veiculos SET modelo = ?, placa = ?, cor = ? WHERE id = ?', [modelo, placa, cor, req.params.id]);
-    const row = await get('SELECT * FROM veiculos WHERE id = ?', [req.params.id]);
+    const row = await get(`SELECT ${COLUNAS_API.veiculos} FROM veiculos WHERE id = ?`, [req.params.id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -511,7 +562,7 @@ app.post('/api/veiculos/migrate-plates', requireAdmin, async (req, res) => {
 // ==========================================
 app.get('/api/tipos-lavagem', async (req, res) => {
   try {
-    const rows = await all('SELECT * FROM tipos_lavagem');
+    const rows = await all(`SELECT ${COLUNAS_API.tipos_lavagem} FROM tipos_lavagem`);
     res.json(rows);
   } catch (err) { handleServerError(res, err); }
 });
@@ -523,7 +574,7 @@ app.post('/api/tipos-lavagem', requireAdmin, async (req, res) => {
     const preco = numeroNaoNegativo(req.body.preco, 'Preço');
     const id = genId();
     await run('INSERT INTO tipos_lavagem (id, nome, descricao, preco, created_at) VALUES (?, ?, ?, ?, ?)', [id, nome, descricao, preco, now()]);
-    const row = await get('SELECT * FROM tipos_lavagem WHERE id = ?', [id]);
+    const row = await get(`SELECT ${COLUNAS_API.tipos_lavagem} FROM tipos_lavagem WHERE id = ?`, [id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -538,7 +589,7 @@ app.put('/api/tipos-lavagem/:id', requireAdmin, async (req, res) => {
     if (!atual) return res.status(404).json({ error: 'Tipo de lavagem não encontrado' });
 
     await run('UPDATE tipos_lavagem SET nome = ?, descricao = ?, preco = ? WHERE id = ?', [nome, descricao, preco, req.params.id]);
-    const row = await get('SELECT * FROM tipos_lavagem WHERE id = ?', [req.params.id]);
+    const row = await get(`SELECT ${COLUNAS_API.tipos_lavagem} FROM tipos_lavagem WHERE id = ?`, [req.params.id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -570,6 +621,10 @@ const ERRO_PAGAMENTO_CONCLUSAO = 'Para concluir a lavagem, é obrigatório infor
 // atômicos — uma trilha órfã (ou um DELETE sem trilha) é pior que o erro.
 async function auditarExclusaoLavagens(executor, userId, lavagemIds, origem) {
   for (const lavagemId of lavagemIds) {
+    // `SELECT *` deliberado, e a única exceção à allowlist de COLUNAS_API: a
+    // trilha é o retrato forense da linha que vai deixar de existir. Enxugar
+    // colunas aqui destruiria justamente a prova que a auditoria exige — e o
+    // snapshot nunca sai do servidor por uma rota de listagem.
     const lavagem = await executor.get('SELECT * FROM lavagens WHERE id = ?', [lavagemId]);
     if (!lavagem) continue;
     const snapshot = JSON.stringify(lavagem);
@@ -587,7 +642,21 @@ async function auditarExclusaoLavagens(executor, userId, lavagemIds, origem) {
 // Audita as lavagens atingidas em cascata e só então remove a entidade, na
 // mesma transação. `coluna` identifica como as lavagens apontam para a tabela
 // removida (cliente_id / veiculo_id / id).
+// `tabela` e `coluna` entram interpoladas no SQL (um identificador não aceita
+// placeholder `$n`), então são validadas contra allowlists antes de a query ser
+// montada. Hoje os três chamadores passam literais, mas a guarda é o que impede
+// que um chamador futuro — uma rota de exclusão genérica, por exemplo — passe
+// adiante um valor vindo da requisição e transforme isto em SQL injection.
+const COLUNAS_CASCATA_LAVAGEM = ['id', 'cliente_id', 'veiculo_id'];
+
 async function excluirComAuditoria(tabela, coluna, id, origem, userId) {
+  if (!tables.includes(tabela)) {
+    throw new Error(`Tabela não permitida em excluirComAuditoria: ${tabela}`);
+  }
+  if (!COLUNAS_CASCATA_LAVAGEM.includes(coluna)) {
+    throw new Error(`Coluna não permitida em excluirComAuditoria: ${coluna}`);
+  }
+
   await withTransaction(async (tx) => {
     const rows = await tx.all(`SELECT id FROM lavagens WHERE ${coluna} = ?`, [id]);
     await auditarExclusaoLavagens(tx, userId, rows.map(r => r.id), origem);
@@ -598,7 +667,7 @@ async function excluirComAuditoria(tabela, coluna, id, origem, userId) {
 app.get('/api/lavagens', async (req, res) => {
   try {
     const { cliente_id } = req.query;
-    let query = 'SELECT * FROM lavagens';
+    let query = `SELECT ${COLUNAS_API.lavagens} FROM lavagens`;
     let params = [];
     if (cliente_id) { query += ' WHERE cliente_id = ?'; params.push(cliente_id); }
     query += ' ORDER BY data DESC';
@@ -640,7 +709,7 @@ app.post('/api/lavagens', async (req, res) => {
     await run(`INSERT INTO lavagens (id, cliente_id, veiculo_id, tipo_lavagem_id, status, valor, data, user_id, pagamento, observacao, data_conclusao)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, cliente_id, veiculo_id, tipo_lavagem_id, statusFinal, valorNum, now(), req.user.id, pagamentoLimpo, observacaoLimpa, dataConclusao]);
-    const row = await get('SELECT * FROM lavagens WHERE id = ?', [id]);
+    const row = await get(`SELECT ${COLUNAS_API.lavagens} FROM lavagens WHERE id = ?`, [id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -733,7 +802,7 @@ app.put('/api/lavagens/:id', async (req, res) => {
         }
       });
     }
-    const row = await get('SELECT * FROM lavagens WHERE id = ?', [req.params.id]);
+    const row = await get(`SELECT ${COLUNAS_API.lavagens} FROM lavagens WHERE id = ?`, [req.params.id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -753,7 +822,7 @@ app.delete('/api/lavagens/:id', requireAdmin, async (req, res) => {
 // ==========================================
 app.get('/api/produtos', async (req, res) => {
   try {
-    const rows = await all('SELECT * FROM produtos', []);
+    const rows = await all(`SELECT ${COLUNAS_API.produtos} FROM produtos`, []);
     res.json(rows);
   } catch (err) { handleServerError(res, err); }
 });
@@ -771,14 +840,14 @@ app.post('/api/produtos', requireAdmin, async (req, res) => {
     await run(`INSERT INTO produtos (id, nome, quantidade, estoque_minimo, categoria, unidade, preco_unitario, user_id, created_at)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, nome, quantidade, estoqueMinimo, categoria, unidade, precoUnitario, req.user.id, now()]);
-    const row = await get('SELECT * FROM produtos WHERE id = ?', [id]);
+    const row = await get(`SELECT ${COLUNAS_API.produtos} FROM produtos WHERE id = ?`, [id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
 
 app.put('/api/produtos/:id', requireAdmin, async (req, res) => {
   try {
-    const atual = await get('SELECT * FROM produtos WHERE id = ?', [req.params.id]);
+    const atual = await get(`SELECT ${COLUNAS_API.produtos} FROM produtos WHERE id = ?`, [req.params.id]);
     if (!atual) return res.status(404).json({ error: 'Produto não encontrado' });
 
     const nome = textoObrigatorio(req.body.nome, 'Nome do produto', 120);
@@ -790,7 +859,7 @@ app.put('/api/produtos/:id', requireAdmin, async (req, res) => {
 
     await run(`UPDATE produtos SET nome = ?, quantidade = ?, estoque_minimo = ?, categoria = ?, unidade = ?, preco_unitario = ? WHERE id = ?`,
       [nome, quantidade, estoqueMinimo, categoria, unidade, precoUnitario, req.params.id]);
-    const row = await get('SELECT * FROM produtos WHERE id = ?', [req.params.id]);
+    const row = await get(`SELECT ${COLUNAS_API.produtos} FROM produtos WHERE id = ?`, [req.params.id]);
     res.json(row);
   } catch (err) { responderErro(res, err); }
 });
@@ -807,7 +876,7 @@ app.delete('/api/produtos/:id', requireAdmin, async (req, res) => {
 // ==========================================
 app.get('/api/movimentacoes', async (req, res) => {
   try {
-    let query = 'SELECT * FROM movimentacoes';
+    let query = `SELECT ${COLUNAS_API.movimentacoes} FROM movimentacoes`;
     let params = [];
     query += ' ORDER BY data DESC';
     const rows = await all(query, params);
@@ -869,8 +938,8 @@ app.post('/api/movimentacoes', requireAdmin, async (req, res) => {
                  VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [id, produto_id, tipo, quantidade, limparTexto(observacao, 500), req.user.id, now()]);
 
-      const produtoAtualizado = await tx.get('SELECT * FROM produtos WHERE id = ?', [produto_id]);
-      const row = await tx.get('SELECT * FROM movimentacoes WHERE id = ?', [id]);
+      const produtoAtualizado = await tx.get(`SELECT ${COLUNAS_API.produtos} FROM produtos WHERE id = ?`, [produto_id]);
+      const row = await tx.get(`SELECT ${COLUNAS_API.movimentacoes} FROM movimentacoes WHERE id = ?`, [id]);
       return { status: 200, body: { movimentacao: row, produto: produtoAtualizado } };
     });
 
@@ -1495,5 +1564,7 @@ try {
   // Ambiente ESM puro: `export default` abaixo já cobre o caso.
 }
 
-export { app };
+// `excluirComAuditoria` é exportada para que a suíte verifique a guarda de
+// identificadores sem precisar de uma rota que aceite nome de tabela.
+export { app, excluirComAuditoria };
 export default app;
