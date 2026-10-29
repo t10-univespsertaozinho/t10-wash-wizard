@@ -85,6 +85,10 @@ export function NovaLavagemModal({
       setErro("O valor deve ser um número maior ou igual a zero.");
       return;
     }
+    if (status === "concluida" && (!pagamento.trim() || pagamento.trim().toLocaleLowerCase("pt-BR") === "pendente")) {
+      setErro("Para concluir a lavagem, informe uma forma de pagamento diferente de Pendente.");
+      return;
+    }
 
     setSalvando(true);
     try {

@@ -105,8 +105,8 @@ describe('Contrato do dashboard com dados incompletos', () => {
     await prepararBanco();
   });
 
-  it('mantém o shape com lavagem sem pagamento nem observação', async () => {
-    await criarLavagem({ status: 'concluida', data_conclusao: new Date().toISOString(), pagamento: null, observacao: null });
+  it('mantém o shape com lavagem cancelada sem pagamento nem observação', async () => {
+    await criarLavagem({ status: 'cancelada', data_conclusao: null, pagamento: null, observacao: null });
 
     const stats = await buscarStats();
 

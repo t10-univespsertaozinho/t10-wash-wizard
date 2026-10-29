@@ -282,6 +282,12 @@ wash-wizard/
 
 > **`backend/schema.postgres.sql` é versionado no repositório** e é a fonte da verdade do schema. `npm run db:schema` aplica o arquivo (idempotente) no banco apontado por `DATABASE_URL`; `npm run db:migrate` aplica as migrações aditivas de `backend/migrations/`. Em um clone limpo, basta configurar o `DATABASE_URL` e rodar os dois comandos para provisionar um banco vazio.
 
+Lavagens concluídas precisam ter uma forma de pagamento diferente de `Pendente`.
+A API valida a transição e o banco reforça a regra com `CHECK`; lavagens
+canceladas e ainda abertas podem continuar pendentes. A migração normaliza
+registros concluídos legados sem pagamento para `Dinheiro` antes de ativar a
+restrição.
+
 ---
 
 ## ⚙️ Guia de Inicialização

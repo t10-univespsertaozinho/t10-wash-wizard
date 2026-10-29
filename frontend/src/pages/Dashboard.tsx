@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useApp } from '@/contexts/AppContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useDashboardStats } from '@/hooks/useDashboardStats';
@@ -24,6 +24,7 @@ import {
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { useModal } from '@/contexts/ModalContext';
+import { ConcluirLavagemDialog } from '@/components/modals/ConcluirLavagemDialog';
 import { ResponsiveContainer, Bar, Line, ComposedChart, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
 import {
   ChartDataTable,
@@ -40,6 +41,7 @@ import {
 const BAR_RADIUS: [number, number, number, number] = [4, 4, 0, 0];
 
 export default function Dashboard() {
+  const [lavagemParaConcluir, setLavagemParaConcluir] = useState<string | null>(null);
   const { user } = useAuth();
   const { openNovaLavagem } = useModal();
   const {
@@ -74,14 +76,24 @@ export default function Dashboard() {
   // Recarregar analíticos sempre que houver alteração nas lavagens locais.
   // Sem o try/catch, uma falha de rede ou um token expirado virava rejeição não
   // tratada: o card não mudava e o usuário não recebia nenhum aviso (FA-08).
-  const handleUpdateStatus = async (id: string, novoStatus: 'em_progresso' | 'concluida') => {
+  const handleUpdateStatus = async (id: string, novoStatus: 'em_progresso' | 'concluida', pagamento?: string): Promise<boolean> => {
+    if (novoStatus === 'concluida' && pagamento === undefined) {
+      const lavagem = lavagens.find((item) => item.id === id);
+      const atual = lavagem?.pagamento;
+      if (!atual?.trim() || atual.trim().toLocaleLowerCase('pt-BR') === 'pendente') {
+        setLavagemParaConcluir(id);
+        return false;
+      }
+    }
     try {
-      await updateLavagemStatus(id, novoStatus);
+      await updateLavagemStatus(id, novoStatus, pagamento);
       await carregarDadosAnaliticos(true);
+      return true;
     } catch (err) {
       const mensagem = err instanceof Error ? err.message : 'Erro desconhecido';
       console.error('Erro ao atualizar o status da lavagem:', err);
       toast.error(`Não foi possível atualizar o status da lavagem: ${mensagem}`);
+      return false;
     }
   };
 
@@ -534,6 +546,16 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      <ConcluirLavagemDialog
+        open={lavagemParaConcluir !== null}
+        onOpenChange={(open) => { if (!open) setLavagemParaConcluir(null); }}
+        onConfirm={async (pagamento) => {
+          if (!lavagemParaConcluir) return false;
+          const concluida = await handleUpdateStatus(lavagemParaConcluir, 'concluida', pagamento);
+          if (concluida) setLavagemParaConcluir(null);
+          return concluida;
+        }}
+      />
     </div>
   );
 }

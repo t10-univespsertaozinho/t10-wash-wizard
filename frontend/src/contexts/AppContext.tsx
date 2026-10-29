@@ -55,7 +55,7 @@ interface AppContextType extends AppState {
     >,
   ) => Promise<Lavagem>;
   updateLavagem: (id: string, l: Partial<Lavagem>) => Promise<void>;
-  updateLavagemStatus: (id: string, status: Lavagem["status"]) => Promise<void>;
+  updateLavagemStatus: (id: string, status: Lavagem["status"], pagamento?: string) => Promise<void>;
   deleteLavagem: (id: string) => Promise<void>;
   addProduto: (
     p: Omit<Produto, "id" | "updated_at" | "user_id">,
@@ -264,9 +264,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const updateLavagemStatus = async (id: string, status: Lavagem["status"]) => {
+  const updateLavagemStatus = async (id: string, status: Lavagem["status"], pagamento?: string) => {
     const db = getDatabase();
-    const result = await db.updateLavagem(id, { status });
+    const result = await db.updateLavagem(id, { status, ...(pagamento !== undefined ? { pagamento } : {}) });
     const lavagemAtualizada = result || { status };
     setState((s) => ({
       ...s,

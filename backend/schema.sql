@@ -66,7 +66,12 @@ CREATE TABLE IF NOT EXISTS lavagens (
   user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   pagamento TEXT DEFAULT 'Pendente',
   observacao TEXT,
-  data_conclusao TEXT
+  data_conclusao TEXT,
+  CHECK (
+    status <> 'concluida' OR (
+      pagamento IS NOT NULL AND TRIM(pagamento) <> '' AND LOWER(TRIM(pagamento)) <> 'pendente'
+    )
+  )
 );
 
 CREATE TABLE IF NOT EXISTS movimentacoes (
