@@ -330,6 +330,17 @@ segue o schema atual: `users`, `tipos_lavagem`, `clientes`, `veiculos`,
 `produtos`, `lavagens`, `movimentacoes` e `auditoria_lavagens`. Os IDs são `TEXT`,
 gerados pela aplicação, portanto não há sequências numéricas a atualizar.
 
+`npm run db:seed:demo` planeja uma massa fictícia de 180 dias com 45 clientes,
+52 veículos, 5 serviços e 10 produtos, incluindo histórico de lavagens,
+movimentações de estoque e auditoria. Sem flags, apenas exibe contagens; use
+`npm run db:seed:demo -- --apply` para aplicar de forma transacional. A carga é
+aditiva e idempotente: usa IDs no namespace `demo-*` e não remove nem altera
+registros fora desse namespace. A recorrência escolhida (30% fiéis a cada
+15–30 dias, 40% com 2–4 visitas e 30% com uma visita) gera aproximadamente 193
+lavagens; por isso não é matematicamente compatível com a estimativa de 500–750
+lavagens ou 3–7 por dia. O relatório de prévia mostra essa contagem antes da
+gravação.
+
 ### Inicialização e Ambiente de Desenvolvimento
 
 ```bash
