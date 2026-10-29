@@ -1,6 +1,6 @@
 # Wash Wizard — Política de Segurança
 
-> **Versão:** 3.1
+> **Versão:** 3.2
 > **Última atualização:** 2026-10-29
 > **Escopo:** Projeto Integrador UNIVESP — Engenharia de Computação
 
@@ -167,21 +167,32 @@ O backend aceita requisições apenas da origem configurada em `FRONTEND_URL` (`
 
 `express-rate-limit` limita requisições por IP. `app.set('trust proxy', 1)` garante que, atrás de um reverse proxy, o contador use o IP real do cliente e não o do proxy.
 
-| Escopo | Limite | Janela | Observação |
-|---|---|---|---|
-| `POST /api/auth/login` | 10 tentativas | 15 min | `skipSuccessfulRequests` — logins bem-sucedidos não consomem a cota |
-| `/api/*` (geral) | 300 requisições | 1 min | Teto geral contra abuso e exaustão do event loop |
+| Escopo | Limite | Janela | Chave | Observação |
+|---|---|---|---|---|
+| `POST /api/auth/login` | 10 tentativas | 15 min | IP | `skipSuccessfulRequests` — logins bem-sucedidos não consomem a cota |
+| Escritas em `/api/*` (`POST`/`PUT`/`DELETE`) | 100 operações | 15 min | **usuário autenticado** | `GET`/`HEAD`/`OPTIONS` ficam fora da cota |
+| `/api/*` (geral) | 300 requisições | 1 min | IP | Teto geral contra abuso e exaustão do event loop |
 
 Sem esse controle, o único freio contra força bruta seria o custo do bcrypt (~80 ms), o que ainda permitiria centenas de tentativas por segundo com requisições paralelas. Excedido o limite, a resposta é **429** com mensagem em português.
+
+**Por que a cota de escrita é por usuário e não por IP.** O frontend na Vercel chama a API no Render por rewrite de proxy, então o IP que o Express enxerga depende de quantos hops o `X-Forwarded-For` atravessou. Com chave por IP, a loja inteira poderia dividir um único contador e o balcão travaria no meio do expediente — exatamente o falso positivo que o limite não deve causar. A chave `req.user.id` (disponível porque o limiter é registrado depois do `requireAuth`) mede quem age, independente da topologia do proxy.
+
+O teto de 100 escritas por 15 minutos é folgado para a operação real: uma lavagem completa gasta 2 ou 3 escritas (criar, avançar status, concluir), o que permite mais de 30 atendimentos na janela. É apertado para um laço automatizado, que é o alvo — um script inundando a base com cadastros falsos bate no limite antes de sujar o BI. O valor é ajustável por `RATE_LIMIT_MUTACOES`.
+
+Leitura fica deliberadamente fora da cota: o dashboard recarrega sozinho e o operador navega entre telas o tempo todo, então limitar `GET` seria o falso positivo mais visível do dia.
 
 ### 4.4 Limites de Payload
 
 | Vetor | Limite | Resposta ao exceder |
 |---|---|---|
-| Corpo JSON | 200 KB | **413** |
+| Corpo JSON | 50 KB | **413** |
 | Arquivo CSV de backup | 5 MB por arquivo | **413** |
 | Quantidade de arquivos por import | 7 (um por tabela) | **400** |
 | Campos de texto no multipart | 0 | **400** |
+
+50 KB é folgado para o maior corpo que a API recebe de fato — uma lavagem com observação de 500 caracteres não passa de 1 KB — e corta ordens de magnitude de margem para abuso. O upload de backup não passa por esse parser: é `multipart`, com limite próprio no `multer`.
+
+**Não existe parser de `urlencoded`, de propósito.** O Express não interpreta esse formato sem o middleware correspondente, e a API só consome JSON. Adicioná-lo apenas para lhe impor um limite criaria superfície de parsing que hoje não existe.
 
 `multer` usa `memoryStorage`: sem esses limites, um único upload carregaria gigabytes na RAM e derrubaria o processo Node por OOM. O `fileFilter` também rejeita qualquer arquivo cujo nome não corresponda exatamente a `<tabela>.csv` da allowlist — o que, somado ao `memoryStorage` (que nunca escreve em disco), elimina Path Traversal e Zip Slip.
 
@@ -230,6 +241,30 @@ Todo campo de texto passa por `limparTexto`, que remove caracteres de controle (
 As `CHECK` constraints do PostgreSQL (`valor >= 0`, `quantidade >= 0`, `role IN (...)`) permanecem como segunda camada. A validação na aplicação existe para que uma entrada inválida gere **400 com mensagem útil**, e não um **500** genérico — o que mascararia erro de cliente como falha de servidor e poluiria os logs, dificultando detectar um ataque real.
 
 `data_conclusao` de uma lavagem nunca é aceita do cliente — é preenchida automaticamente pelo servidor no momento em que o `status` muda para `concluida`.
+
+### 5.1.1 Schemas de borda com Zod
+
+Os validadores da tabela acima rodam **dentro** do handler, campo a campo, depois de o corpo inteiro já ter sido aceito. Eles cobrem bem o campo que olham, mas nada olhava o corpo como um todo: uma propriedade não declarada entrava, e uma string de 1 MB em um campo opcional era **truncada em silêncio** por `limparTexto` em vez de recusada — um payload abusivo acabava gravado como se fosse válido.
+
+`backend/validacao.js` fecha isso com schemas Zod aplicados por `validateBody(schema)` nas rotas de escrita de clientes, veículos, lavagens e no login. Os validadores internos permanecem: são eles que produzem as mensagens específicas de campo que a suíte cobre, e são a segunda camada da defesa em profundidade.
+
+| Rota | Regras do schema |
+|---|---|
+| `POST`/`PUT /api/clientes` | `nome` 2–120 caracteres; `telefone` opcional, máx. 20 e com 10–11 dígitos; `data_nascimento` opcional em `AAAA-MM-DD`, com verificação de calendário |
+| `POST`/`PUT /api/veiculos` | `cliente_id` obrigatório; `modelo` 1–60; `placa` normalizada (maiúsculas, sem máscara) nos formatos antigo/Mercosul; `marca` e `cor` opcionais, máx. 60 |
+| `POST`/`PUT /api/lavagens` | ids de relacionamento obrigatórios; `valor` numérico ≥ 0 (aceita string de formulário); `pagamento` restrito ao enum; `observacao` máx. 500 |
+| `POST /api/auth/login` | `email` e `senha` obrigatórios, com teto de tamanho |
+
+Erro de schema responde sempre **400** com `{ "error": "Dados inválidos", "detalhes": [{ "campo", "mensagem" }] }`. Nenhuma mensagem ecoa o valor enviado — um `detalhes` com o conteúdo do campo devolveria dado pessoal ao cliente e o levaria para o log de quem registra respostas 4xx.
+
+Quatro decisões de compatibilidade, todas verificadas contra a base real:
+
+- **`strip`, não `strict`.** O frontend envia `user_id` no corpo de todo `POST` (`frontend/src/services/database.ts`). Com `.strict()` a API responderia 400 em cada cadastro. O Zod descarta o campo desconhecido, que é também o comportamento seguro: nenhuma rota confia em `user_id` do corpo — toda gravação usa `req.user.id` do token.
+- **`status` da lavagem fica fora do schema.** O handler já recusa status fora do domínio com mensagem própria, coberta por `test/integridade-lavagens.test.js`. Movê-lo para o schema trocaria aquela mensagem por "Dados inválidos".
+- **`pagamento` é enum dos valores reais** — `PIX`, `Débito`, `Crédito`, `Dinheiro`, `Pendente`. É o que a UI oferece e o que as linhas em produção contêm; um enum em `snake_case` recusaria todas elas.
+- **Login valida só presença.** Formato de e-mail aqui devolveria 400 para `email: "x"`, e o contrato é 401 para credencial inválida. Também é melhor assim: 400 para e-mail malformado e 401 para senha errada é um oráculo que distingue os dois casos.
+
+Não há schema para `clientes.email` porque **a coluna não existe** (`clientes` tem `id`, `user_id`, `nome`, `telefone`, `data_nascimento`, `created_at`); nem para `desconto` em lavagens, pelo mesmo motivo.
 
 ### 5.2 Máscaras de Input (Frontend)
 
