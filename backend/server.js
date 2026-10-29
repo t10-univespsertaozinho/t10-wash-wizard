@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import dotenv from 'dotenv';
 import multer from 'multer';
 import path from 'path';
@@ -15,6 +15,12 @@ import { obterJwtSecret, JWT_EXPIRES_IN, JWT_ALGORITHM } from './config.js';
 import { avisarSenhasSeedPadrao } from './seed-credentials.js';
 import { requireAuth, requireAdmin, ehAdmin } from './middleware/auth.js';
 import { sanitizarErroParaLog } from './log-seguro.js';
+import {
+  validateBody, limparTexto, RE_PLACA,
+  schemaLogin, schemaCliente, schemaClienteAtualizacao,
+  schemaVeiculo, schemaVeiculoAtualizacao,
+  schemaLavagem, schemaLavagemAtualizacao,
+} from './validacao.js';
 
 dotenv.config();
 
@@ -122,8 +128,15 @@ app.use(cors({
 }));
 
 // Limite explícito de corpo: evita que um payload grande consuma memória do
-// processo antes de qualquer validação.
-app.use(express.json({ limit: '200kb' }));
+// processo antes de qualquer validação. 50kb é folgado para o maior corpo que a
+// API recebe de fato (uma lavagem com observação de 500 caracteres não passa de
+// 1kb) e corta ordens de magnitude de margem para abuso. O upload de backup não
+// passa por aqui: é multipart, com limite próprio no multer (5 MB por CSV).
+//
+// Não existe parser de urlencoded de propósito. O Express não interpreta esse
+// formato sem o middleware, e a API só consome JSON — adicioná-lo só para lhe
+// impor um limite criaria superfície de parsing que hoje não existe.
+app.use(express.json({ limit: '50kb' }));
 
 // Teto geral de requisições por IP, para que nenhum cliente monopolize o
 // event loop single-threaded do Node.
@@ -276,20 +289,11 @@ class ValidacaoError extends Error {
 
 const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-// Formatos aceitos de placa, alinhados ao que a UI já produz (usePlacaMask):
-// antigo AAA1234, Mercosul AAA1A23, e o formato de 8 caracteres que o
-// frontend valida hoje (AAAA1AA11).
-const RE_PLACA = /^([A-Z]{3}\d{4}|[A-Z]{3}\d[A-Z]\d{2}|[A-Z]{4}\d[A-Z]{2}\d{2})$/;
-
 const SENHA_MINIMA = 10;
 
-// Remove caracteres de controle e limita o tamanho. Não escapa HTML: o React
-// já escapa na renderização, e escapar aqui causaria double-encoding no banco.
-const limparTexto = (valor, max = 200) => {
-  if (valor === undefined || valor === null) return null;
-  const texto = String(valor).normalize('NFC').replace(/[\u0000-\u001F\u007F]/g, '').trim();
-  return texto.slice(0, max);
-};
+// `RE_PLACA` e `limparTexto` moram em validacao.js, junto dos schemas que usam
+// as mesmas regras — manter duas cópias era o caminho curto para a validação do
+// schema e a do handler divergirem com o tempo.
 
 const textoObrigatorio = (valor, campo, max = 200) => {
   const texto = limparTexto(valor, max);
@@ -359,7 +363,7 @@ function sanitizeCsvCell(valor) {
 // ==========================================
 // AUTH API (rotas públicas)
 // ==========================================
-app.post('/api/auth/login', loginLimiter, async (req, res) => {
+app.post('/api/auth/login', loginLimiter, validateBody(schemaLogin), async (req, res) => {
   try {
     const { email, senha } = req.body;
     if (!email || !senha) {
@@ -391,6 +395,36 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
 
 // A partir daqui, todas as rotas de /api exigem autenticação
 app.use('/api', requireAuth);
+
+// Teto de escritas por usuário autenticado. O apiLimiter global (300/min) freia
+// o volume bruto; este freia o que GRAVA, que é o que custa — cada POST/PUT de
+// lavagem mexe em receita e deixa trilha de auditoria. Um script que inunde a
+// base com cadastros falsos bate aqui antes de sujar o BI.
+//
+// A chave é `req.user.id`, não o IP, e isso é deliberado: o frontend na Vercel
+// chama a API no Render por rewrite de proxy, então o IP que o Express enxerga
+// depende de quantos hops o X-Forwarded-For atravessou. Com chave por IP, a
+// loja inteira poderia dividir um único contador e o balcão travaria no meio do
+// expediente — o falso positivo que a missão pede para evitar. Por usuário, o
+// limite é por quem age, independente da topologia do proxy. O fallback por IP
+// só vale se `req.user` não existir, o que não acontece depois do requireAuth.
+//
+// 100 escritas por 15 minutos: uma lavagem completa gasta 2 ou 3 (criar, avançar
+// status, concluir), o que dá mais de 30 atendimentos no intervalo — muito acima
+// de qualquer pico real de um lava-rápido, e longe de um laço automatizado.
+const mutacaoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_MUTACOES) || 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => (req.user?.id ? `user:${req.user.id}` : ipKeyGenerator(req.ip)),
+  // Leitura não entra na cota: o dashboard recarrega sozinho e o operador
+  // navega entre telas o tempo todo.
+  skip: (req) => ['GET', 'HEAD', 'OPTIONS'].includes(req.method),
+  message: { error: 'Muitas operações de escrita em sequência. Aguarde alguns minutos e tente novamente.' },
+});
+
+app.use('/api', mutacaoLimiter);
 
 // ==========================================
 // USERS API (somente admin)
@@ -446,7 +480,7 @@ app.get('/api/clientes/:id', async (req, res) => {
   } catch (err) { handleServerError(res, err); }
 });
 
-app.post('/api/clientes', async (req, res) => {
+app.post('/api/clientes', validateBody(schemaCliente), async (req, res) => {
   try {
     const nome = textoObrigatorio(req.body.nome, 'Nome do cliente', 120);
     const telefone = telefoneOpcional(req.body.telefone);
@@ -459,7 +493,7 @@ app.post('/api/clientes', async (req, res) => {
   } catch (err) { responderErro(res, err); }
 });
 
-app.put('/api/clientes/:id', async (req, res) => {
+app.put('/api/clientes/:id', validateBody(schemaClienteAtualizacao), async (req, res) => {
   try {
     const nome = textoObrigatorio(req.body.nome, 'Nome do cliente', 120);
     const telefone = telefoneOpcional(req.body.telefone);
@@ -504,7 +538,7 @@ app.get('/api/veiculos', async (req, res) => {
   } catch (err) { handleServerError(res, err); }
 });
 
-app.post('/api/veiculos', async (req, res) => {
+app.post('/api/veiculos', validateBody(schemaVeiculo), async (req, res) => {
   try {
     const { cliente_id } = req.body;
     if (!cliente_id) throw new ValidacaoError('Cliente é obrigatório.');
@@ -535,7 +569,7 @@ app.delete('/api/veiculos/:id', requireAdmin, async (req, res) => {
   } catch (err) { handleServerError(res, err); }
 });
 
-app.put('/api/veiculos/:id', async (req, res) => {
+app.put('/api/veiculos/:id', validateBody(schemaVeiculoAtualizacao), async (req, res) => {
   try {
     const modelo = textoObrigatorio(req.body.modelo, 'Modelo', 80);
     const placa = placaValida(req.body.placa);
@@ -676,7 +710,7 @@ app.get('/api/lavagens', async (req, res) => {
   } catch (err) { handleServerError(res, err); }
 });
 
-app.post('/api/lavagens', async (req, res) => {
+app.post('/api/lavagens', validateBody(schemaLavagem), async (req, res) => {
   try {
     const { cliente_id, veiculo_id, tipo_lavagem_id, status, valor, pagamento, observacao } = req.body;
     if (!cliente_id || !veiculo_id || !tipo_lavagem_id) {
@@ -714,7 +748,7 @@ app.post('/api/lavagens', async (req, res) => {
   } catch (err) { responderErro(res, err); }
 });
 
-app.put('/api/lavagens/:id', async (req, res) => {
+app.put('/api/lavagens/:id', validateBody(schemaLavagemAtualizacao), async (req, res) => {
   try {
     const { status, valor, pagamento, observacao } = req.body;
     if (status !== undefined && !STATUS_LAVAGEM.includes(status)) {
