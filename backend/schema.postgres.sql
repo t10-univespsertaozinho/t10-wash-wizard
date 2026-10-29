@@ -72,7 +72,12 @@ CREATE TABLE IF NOT EXISTS lavagens (
   user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
   pagamento TEXT DEFAULT 'Pendente',
   observacao TEXT,
-  data_conclusao TIMESTAMPTZ
+  data_conclusao TIMESTAMPTZ,
+  CONSTRAINT ck_lavagens_concluida_pagamento_definido CHECK (
+    status <> 'concluida' OR (
+      pagamento IS NOT NULL AND BTRIM(pagamento) <> '' AND LOWER(BTRIM(pagamento)) <> 'pendente'
+    )
+  )
 );
 
 CREATE TABLE IF NOT EXISTS movimentacoes (

@@ -38,7 +38,7 @@ describe('data_conclusao pertence ao servidor (FA-01)', () => {
     const res = await request(app)
       .put(`/api/lavagens/${lavagem.id}`)
       .set('Authorization', `Bearer ${tokenOperador}`)
-      .send({ status: 'concluida', data_conclusao: DATA_FORJADA });
+      .send({ status: 'concluida', pagamento: 'PIX', data_conclusao: DATA_FORJADA });
 
     expect(res.status).toBe(200);
     expect(res.body.data_conclusao).not.toBe(DATA_FORJADA);
@@ -49,12 +49,12 @@ describe('data_conclusao pertence ao servidor (FA-01)', () => {
 
   it('não reescreve data_conclusao de uma lavagem já concluída', async () => {
     const original = '2026-01-15T10:00:00.000Z';
-    const lavagem = await criarLavagem({ status: 'concluida', data_conclusao: original });
+    const lavagem = await criarLavagem({ status: 'concluida', pagamento: 'PIX', data_conclusao: original });
 
     const res = await request(app)
       .put(`/api/lavagens/${lavagem.id}`)
       .set('Authorization', `Bearer ${tokenAdmin}`)
-      .send({ status: 'concluida', observacao: 'revisão' });
+      .send({ status: 'concluida', pagamento: 'PIX', observacao: 'revisão' });
 
     expect(res.status).toBe(200);
     expect(res.body.data_conclusao).toBe(original);
@@ -99,7 +99,7 @@ describe('lavagem não nasce concluída (FA-02)', () => {
     const res = await request(app)
       .post('/api/lavagens')
       .set('Authorization', `Bearer ${tokenOperador}`)
-      .send(novaLavagem({ status: 'concluida' }));
+      .send(novaLavagem({ status: 'concluida', pagamento: 'Dinheiro' }));
 
     expect(res.status).toBe(403);
     expect(await db.get('SELECT count(*) c FROM lavagens')).toMatchObject({ c: 0 });
@@ -109,11 +109,21 @@ describe('lavagem não nasce concluída (FA-02)', () => {
     const res = await request(app)
       .post('/api/lavagens')
       .set('Authorization', `Bearer ${tokenAdmin}`)
-      .send(novaLavagem({ status: 'concluida' }));
+      .send(novaLavagem({ status: 'concluida', pagamento: 'Dinheiro' }));
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('concluida');
     expect(res.body.data_conclusao).not.toBeNull();
+  });
+
+  it('rejeita a criação concluída sem forma de pagamento', async () => {
+    const res = await request(app)
+      .post('/api/lavagens')
+      .set('Authorization', `Bearer ${tokenAdmin}`)
+      .send(novaLavagem({ status: 'concluida', pagamento: 'Pendente' }));
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/forma de pagamento/);
   });
 
   it('rejeita status fora do domínio com 400', async () => {
@@ -133,5 +143,62 @@ describe('lavagem não nasce concluída (FA-02)', () => {
       .send(novaLavagem({ valor: -10 }));
 
     expect(res.status).toBe(400);
+  });
+});
+
+describe('forma de pagamento obrigatória na conclusão', () => {
+  let tokenOperador;
+
+  beforeEach(async () => {
+    await prepararBanco();
+    tokenOperador = await autenticar('operador');
+  });
+
+  it('rejeita conclusão com pagamento pendente e mantém a lavagem aberta', async () => {
+    const lavagem = await criarLavagem({ status: 'em_progresso', pagamento: 'Pendente' });
+
+    const res = await request(app)
+      .put(`/api/lavagens/${lavagem.id}`)
+      .set('Authorization', `Bearer ${tokenOperador}`)
+      .send({ status: 'concluida' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Para concluir a lavagem, é obrigatório informar a forma de pagamento.');
+    expect(await db.get('SELECT status, pagamento FROM lavagens WHERE id = ?', [lavagem.id]))
+      .toMatchObject({ status: 'em_progresso', pagamento: 'Pendente' });
+  });
+
+  it('permite concluir quando o operador informa uma forma de pagamento', async () => {
+    const lavagem = await criarLavagem({ status: 'em_progresso', pagamento: 'Pendente' });
+
+    const res = await request(app)
+      .put(`/api/lavagens/${lavagem.id}`)
+      .set('Authorization', `Bearer ${tokenOperador}`)
+      .send({ status: 'concluida', pagamento: 'PIX' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: 'concluida', pagamento: 'PIX' });
+    expect(res.body.data_conclusao).not.toBeNull();
+  });
+
+  it('permite cancelar uma lavagem mantendo pagamento pendente', async () => {
+    const lavagem = await criarLavagem({ status: 'em_progresso', pagamento: 'Pendente' });
+
+    const res = await request(app)
+      .put(`/api/lavagens/${lavagem.id}`)
+      .set('Authorization', `Bearer ${tokenOperador}`)
+      .send({ status: 'cancelada' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: 'cancelada', pagamento: 'Pendente' });
+  });
+
+  it('o CHECK do PostgreSQL também impede concluir ignorando a API', async () => {
+    const lavagem = await criarLavagem({ status: 'em_progresso', pagamento: 'Pendente' });
+
+    await expect(db.run("UPDATE lavagens SET status = 'concluida' WHERE id = ?", [lavagem.id]))
+      .rejects.toThrow(/ck_lavagens_concluida_pagamento_definido/);
+    expect(await db.get('SELECT status, pagamento FROM lavagens WHERE id = ?', [lavagem.id]))
+      .toMatchObject({ status: 'em_progresso', pagamento: 'Pendente' });
   });
 });

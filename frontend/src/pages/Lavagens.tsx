@@ -2,11 +2,31 @@ import { useApp } from '@/contexts/AppContext';
 import { useModal } from '@/contexts/ModalContext';
 import { useState } from 'react';
 import { Check, X, Pencil, PlayCircle, Plus } from 'lucide-react';
+import { toast } from 'sonner';
+import { ConcluirLavagemDialog } from '@/components/modals/ConcluirLavagemDialog';
 
 export default function Lavagens() {
   const { lavagens, getCliente, getTipoLavagem, veiculos, updateLavagemStatus } = useApp();
   const { openNovaLavagem } = useModal();
   const [filtro, setFiltro] = useState('todos');
+  const [lavagemParaConcluir, setLavagemParaConcluir] = useState<string | null>(null);
+
+  const concluirLavagem = async (id: string, pagamento?: string) => {
+    const lavagem = lavagens.find((item) => item.id === id);
+    const formaDefinida = pagamento ?? lavagem?.pagamento;
+    if (!formaDefinida?.trim() || formaDefinida.trim().toLocaleLowerCase('pt-BR') === 'pendente') {
+      setLavagemParaConcluir(id);
+      return false;
+    }
+    try {
+      await updateLavagemStatus(id, 'concluida', pagamento);
+      setLavagemParaConcluir(null);
+      return true;
+    } catch (error) {
+      toast.error(`Não foi possível concluir a lavagem: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+      return false;
+    }
+  };
 
   const filtered = filtro === 'todos' ? lavagens : lavagens.filter(l => l.status === filtro);
   const sorted = [...filtered].sort((a, b) => b.data.localeCompare(a.data));
@@ -88,7 +108,7 @@ export default function Lavagens() {
                         <button type="button" onClick={() => updateLavagemStatus(l.id, 'em_progresso')} title="Iniciar lavagem" aria-label={`Iniciar lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-accent/10 text-secondary-foreground hover:text-accent-text transition-colors"><PlayCircle size={15} aria-hidden="true" /></button>
                       )}
                       {(l.status === 'pendente' || l.status === 'em_progresso') && (
-                        <button type="button" onClick={() => updateLavagemStatus(l.id, 'concluida')} title="Concluir lavagem" aria-label={`Concluir lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-success/10 text-secondary-foreground hover:text-success transition-colors"><Check size={15} aria-hidden="true" /></button>
+                        <button type="button" onClick={() => concluirLavagem(l.id)} title="Concluir lavagem" aria-label={`Concluir lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-success/10 text-secondary-foreground hover:text-success transition-colors"><Check size={15} aria-hidden="true" /></button>
                       )}
                       {(l.status === 'pendente' || l.status === 'em_progresso') && (
                         <button type="button" onClick={() => updateLavagemStatus(l.id, 'cancelada')} title="Cancelar lavagem" aria-label={`Cancelar lavagem de ${c?.nome || 'cliente'}`} className="p-1.5 rounded-lg hover:bg-destructive/10 text-secondary-foreground hover:text-destructive transition-colors"><X size={15} aria-hidden="true" /></button>
@@ -102,6 +122,11 @@ export default function Lavagens() {
           </tbody>
         </table>
       </div>
+      <ConcluirLavagemDialog
+        open={lavagemParaConcluir !== null}
+        onOpenChange={(open) => { if (!open) setLavagemParaConcluir(null); }}
+        onConfirm={(pagamento) => lavagemParaConcluir ? concluirLavagem(lavagemParaConcluir, pagamento) : Promise.resolve(false)}
+      />
     </div>
   );
 }

@@ -11,7 +11,7 @@
     "test": "node test/runner.js run",
     "test:watch": "node test/runner.js",
     "db:schema": "node scripts/aplicar-sql.js schema.postgres.sql",
-    "db:migrate": "node scripts/aplicar-sql.js migrations/001_auditoria_lavagens_compat.sql",
+    "db:migrate": "node scripts/aplicar-sql.js migrations/001_auditoria_lavagens_compat.sql migrations/002_pagamento_obrigatorio_conclusao.sql",
     "db:ingest": "node scripts/migrate-sqlite-to-pg.js",
     "db:seed:demo": "node scripts/seed-demo.js"
   },

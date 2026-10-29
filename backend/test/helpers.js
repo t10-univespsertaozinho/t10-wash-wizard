@@ -68,6 +68,8 @@ await db.dbReady;
 // arquivo usado para provisionar um PostgreSQL local (`npm run db:schema`).
 const schemaSql = fs.readFileSync(path.resolve(__dirname, '..', 'schema.postgres.sql'), 'utf8');
 await db.exec(schemaSql);
+const migrationPagamentoSql = fs.readFileSync(path.resolve(__dirname, '..', 'migrations', '002_pagamento_obrigatorio_conclusao.sql'), 'utf8');
+await db.exec(migrationPagamentoSql);
 
 export { request, app, db, testDatabaseUrl as dbUrl };
 
@@ -163,7 +165,7 @@ export async function criarLavagem(campos = {}) {
     valor: 80,
     data: new Date().toISOString(),
     user_id: USUARIOS.admin.id,
-    pagamento: 'Pendente',
+    pagamento: campos.status === 'concluida' ? 'Dinheiro' : 'Pendente',
     observacao: '',
     data_conclusao: null,
     ...campos,

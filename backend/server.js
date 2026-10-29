@@ -554,6 +554,10 @@ app.delete('/api/tipos-lavagem/:id', requireAdmin, async (req, res) => {
 // LAVAGENS API
 // ==========================================
 const STATUS_LAVAGEM = ['pendente', 'em_progresso', 'concluida', 'cancelada'];
+const pagamentoDefinido = (valor) => typeof valor === 'string'
+  && valor.trim() !== ''
+  && valor.trim().toLocaleLowerCase('pt-BR') !== 'pendente';
+const ERRO_PAGAMENTO_CONCLUSAO = 'Para concluir a lavagem, é obrigatório informar a forma de pagamento.';
 
 // Exclusão é a única alteração que apaga a métrica do BI sem deixar rastro no
 // próprio registro — então a trilha precisa ser gravada ANTES do DELETE, com um
@@ -627,6 +631,9 @@ app.post('/api/lavagens', async (req, res) => {
     }
     const observacaoLimpa = limparTexto(observacao, 500);
     const pagamentoLimpo = limparTexto(pagamento, 40) || 'Pendente';
+    if (statusFinal === 'concluida' && !pagamentoDefinido(pagamentoLimpo)) {
+      return res.status(400).json({ error: ERRO_PAGAMENTO_CONCLUSAO });
+    }
 
     const id = genId();
     const dataConclusao = statusFinal === 'concluida' ? now() : null;
@@ -655,17 +662,27 @@ app.put('/api/lavagens/:id', async (req, res) => {
     const anterior = await get('SELECT valor, pagamento, status FROM lavagens WHERE id = ?', [req.params.id]);
     if (!anterior) return res.status(404).json({ error: 'Lavagem não encontrada' });
 
+    const pagamentoLimpo = pagamento !== undefined ? limparTexto(pagamento, 40) : undefined;
+    const statusFinal = status !== undefined ? status : anterior.status;
+    const pagamentoFinal = pagamento !== undefined ? pagamentoLimpo : anterior.pagamento;
+    if (statusFinal === 'concluida' && !pagamentoDefinido(pagamentoFinal)) {
+      return res.status(400).json({ error: ERRO_PAGAMENTO_CONCLUSAO });
+    }
+
     // Campos financeiros mexem direto na receita e no ticket médio do BI. A
     // auditoria registra a mudança, mas o registro não basta: a alteração em si
     // passa a exigir perfil de admin (FA-05). Operador segue podendo avançar o
     // status e anotar observações.
     const mudaValor = valor !== undefined && Number(valor) !== Number(anterior.valor);
-    const mudaPagamento = pagamento !== undefined && limparTexto(pagamento, 40) !== anterior.pagamento;
-    if ((mudaValor || mudaPagamento) && !(await ehAdmin(req))) {
+    const mudaPagamento = pagamento !== undefined && pagamentoLimpo !== anterior.pagamento;
+    const definindoPagamentoAoConcluir = status === 'concluida'
+      && anterior.status !== 'concluida'
+      && !pagamentoDefinido(anterior.pagamento)
+      && pagamentoDefinido(pagamentoLimpo);
+    if ((mudaValor || (mudaPagamento && !definindoPagamentoAoConcluir)) && !(await ehAdmin(req))) {
       return res.status(403).json({ error: 'Apenas administradores podem alterar valor ou forma de pagamento da lavagem.' });
     }
 
-    const pagamentoLimpo = pagamento !== undefined ? limparTexto(pagamento, 40) : undefined;
     const observacaoLimpa = observacao !== undefined ? limparTexto(observacao, 500) : undefined;
 
     const updates = [];
