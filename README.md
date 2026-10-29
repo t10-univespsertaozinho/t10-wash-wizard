@@ -317,9 +317,18 @@ cp backend/.env.example backend/.env
 cd backend
 npm run db:schema
 npm run db:migrate
+npm run db:ingest -- --source database.sqlite  # prévia de contagens, sem escrita
+npm run db:ingest -- --source database.sqlite --apply  # importar para DATABASE_URL
 npm run seed        # DESTRUTIVO: apaga os dados existentes antes de popular
 cd ..
 ```
+
+`db:ingest` importa os dados de `backend/database.sqlite` para o PostgreSQL na
+ordem das chaves estrangeiras. Sem `--apply`, mostra apenas as contagens; com
+`--apply`, executa a importação em transação e ignora IDs já existentes. O script
+segue o schema atual: `users`, `tipos_lavagem`, `clientes`, `veiculos`,
+`produtos`, `lavagens`, `movimentacoes` e `auditoria_lavagens`. Os IDs são `TEXT`,
+gerados pela aplicação, portanto não há sequências numéricas a atualizar.
 
 ### Inicialização e Ambiente de Desenvolvimento
 
