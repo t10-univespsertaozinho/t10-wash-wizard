@@ -11,7 +11,8 @@
     "test": "node test/runner.js run",
     "test:watch": "node test/runner.js",
     "db:schema": "node scripts/aplicar-sql.js schema.postgres.sql",
-    "db:migrate": "node scripts/aplicar-sql.js migrations/001_auditoria_lavagens_compat.sql"
+    "db:migrate": "node scripts/aplicar-sql.js migrations/001_auditoria_lavagens_compat.sql",
+    "db:ingest": "node scripts/migrate-sqlite-to-pg.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
